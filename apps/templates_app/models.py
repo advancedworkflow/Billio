@@ -747,3 +747,31 @@ def apply_billing_texts(defaults, organization):
         if not current or current == COMMON_DEFAULTS.get(key, '').strip():
             defaults[key] = value
     return defaults
+
+
+class TemplateAsset(models.Model):
+    """Image importée pour les modèles en mise en page libre (logo secondaire, illustration, motif)."""
+
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='template_assets')
+    file = models.FileField(upload_to='template_assets/%Y/%m/')
+    name = models.CharField(max_length=120, blank=True)
+    mime = models.CharField(max_length=40)
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name or self.file.name
+
+    def data_uri(self):
+        """Image incluse dans le modèle : rien à télécharger au rendu (PDF, e-mail, page client)."""
+        import base64
+        try:
+            with self.file.open('rb') as handle:
+                payload = base64.b64encode(handle.read()).decode('ascii')
+        except (OSError, ValueError):
+            return ''
+        return f'data:{self.mime};base64,{payload}'

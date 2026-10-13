@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template import Context, Template
 from django.views.decorators.http import require_POST
 
-from . import canvas, canvas_table
+from . import canvas, canvas_assets, canvas_shapes, canvas_table
 from .editor_views import _defaults, _primary_org, _schema, _user_templates
 from .models import InvoiceTemplate
 from .preview import FONT_CHOICES, sample_context
@@ -38,7 +38,9 @@ def block_previews(organization, defaults, document_type='invoice', table=None):
     ctx = Context(_context(organization, defaults, document_type))
     render = lambda source: Template('{% load billio_format %}' + source).render(ctx)  # noqa: E731
     previews = {key: render(canvas._fill(spec[3], canvas.PREFIX)) for key, spec in canvas.BLOCKS.items() if spec[3]}
-    previews['items'] = render(canvas.build_items(table, canvas.PREFIX))
+    previews['items'] = render(canvas.build_items(table, canvas.PREFIX, css_color=canvas.css_color, font_stack=canvas.font_stack))
+    # Valeurs d'exemple des variables {client}, {numero}… des textes libres.
+    previews['vars'] = {key: render(spec[1]).strip() for key, spec in canvas.DOC_VARIABLES.items()}
     return previews
 
 
@@ -63,6 +65,11 @@ def canvas_editor(request, template_id):
         'palette': canvas.palette(),
         'previews': block_previews(template.organization, defaults, table=canvas.clean(layout['canvas'])['table']),
         'tableVariables': canvas_table.variables_for_editor(),
+        'tablePresets': canvas_table.PRESETS,
+        'docVariables': canvas.doc_variables_for_editor(),
+        'shapes': canvas_shapes.editor_shapes(),
+        'assets': canvas_assets.assets_for(template.organization),
+        'pageHeight': canvas.PAGE_HEIGHT,
         'mandatory': canvas.MANDATORY,
         'pageWidth': canvas.PAGE_WIDTH,
         'padding': canvas.PAGE_PADDING,
@@ -95,7 +102,7 @@ def canvas_save(request, template_id):
     if InvoiceTemplate.objects.filter(organization=template.organization, name=name).exclude(id=template.id).exists():
         return JsonResponse({'ok': False, 'error': 'Un autre modèle porte déjà ce nom.'}, status=400)
     layout_canvas = canvas.clean(data.get('canvas'))
-    html_source, css = canvas.build(layout_canvas)
+    html_source, css = canvas.build(layout_canvas, canvas_assets.resolve(template.organization, layout_canvas))
 
     accent = str(data.get('accent') or '#111827')[:9]
     defaults = dict(_defaults(template))

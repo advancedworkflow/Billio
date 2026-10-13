@@ -7,12 +7,12 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ font_families|safe }}&display=swap">
 <style>{{ canvas_css|safe }}</style>
-<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.4">
+<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=2.0">
 {% endblock %}
 
 {% block content %}
 {{ config|json_script:"canvas-editor-config" }}
-<div class="ed" x-data="canvasEditor()" x-init="init()" @keydown.window="onKey($event)">
+<div class="ed" x-data="canvasEditor()" x-init="init()" @keydown.window="onKey($event)" :class="advanced ? 'is-advanced' : 'is-simple'">
 
     <!-- Barre du haut -->
     <div class="ed-bar">
@@ -22,10 +22,14 @@
             <button type="button" class="ed-seg" :class="documentType === 'invoice' && 'is-on'" @click="setDocType('invoice')">Facture</button>
             <button type="button" class="ed-seg" :class="documentType === 'quote' && 'is-on'" @click="setDocType('quote')">Devis</button>
         </div>
+        <div class="ed-bar-group ed-mode" role="group" aria-label="Mode d'édition">
+            <button type="button" class="ed-seg" :class="!advanced && 'is-on'" @click="setMode(false)" title="L'essentiel : blocs, couleurs, styles prêts à l'emploi"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Simple</button>
+            <button type="button" class="ed-seg" :class="advanced && 'is-on'" @click="setMode(true)" title="Tous les réglages : polices, bordures, dégradés, colonnes au pixel près"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Avancé</button>
+        </div>
         <div class="ed-bar-spacer"></div>
         <button type="button" class="ed-btn ed-btn--ghost" @click="undo()" :disabled="!history.length" aria-label="Annuler" title="Annuler (Ctrl+Z)"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
         <button type="button" class="ed-btn ed-btn--ghost" @click="redo()" :disabled="!future.length" aria-label="Rétablir" title="Rétablir (Ctrl+Y)"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
-        <a :href="`{% url 'templates_app:template-preview-frame' template.id %}?type=${documentType}`" target="_blank" rel="noopener" class="ed-btn" @click="if (dirty) { $event.preventDefault(); save(true); }"><i data-lucide="eye" class="w-4 h-4"></i> Aperçu</a>
+        <a :href="previewUrl()" target="_blank" rel="noopener" class="ed-btn" @click="if (dirty) { $event.preventDefault(); save(true); }"><i data-lucide="eye" class="w-4 h-4"></i> Aperçu</a>
         <button type="button" class="ed-btn ed-btn--primary" @click="save()" :disabled="saving">
             <span x-text="saving ? 'Enregistrement…' : (dirty ? 'Enregistrer' : 'Enregistré')"></span>
         </button>
@@ -34,27 +38,67 @@
     <p class="ed-warning" x-show="warning" x-text="warning" role="status"></p>
 
     <div class="ed-main">
-        <!-- Blocs -->
-        <aside class="ed-panel ed-palette" aria-label="Blocs">
-            <p class="ed-panel-title">Blocs</p>
-            <p class="ed-hint">Glissez un bloc sur la page, ou cliquez pour l'ajouter.</p>
-            <div class="ed-palette-list">
-                <template x-for="item in palette" :key="item.type">
-                    <button type="button" class="ed-chip" draggable="true" @dragstart="dragNew = item.type; $event.dataTransfer.setData('text/plain', item.type)" @dragend="dragNew = null" @click="addBlock(item.type)">
-                        <i :data-lucide="icons[item.type] || 'square'" class="w-4 h-4"></i>
-                        <span x-text="item.label"></span>
-                    </button>
-                </template>
+        <!-- Bibliothèque : blocs, formes, images -->
+        <aside class="ed-panel ed-palette" aria-label="Bibliothèque">
+            <div class="ed-tabs" role="tablist">
+                <button type="button" role="tab" :class="libTab === 'blocks' && 'is-on'" @click="libTab = 'blocks'"><i data-lucide="layout-template" class="w-3.5 h-3.5"></i> Blocs</button>
+                <button type="button" role="tab" :class="libTab === 'shapes' && 'is-on'" @click="libTab = 'shapes'; icons_()"><i data-lucide="shapes" class="w-3.5 h-3.5"></i> Formes</button>
+                <button type="button" role="tab" :class="libTab === 'images' && 'is-on'" @click="libTab = 'images'; icons_()"><i data-lucide="image" class="w-3.5 h-3.5"></i> Images</button>
             </div>
-            <p class="ed-panel-title ed-panel-title--gap">Formes</p>
-            <p class="ed-hint">Pour des en-têtes créatifs : placées derrière les blocs, elles peuvent toucher les bords de la page.</p>
-            <div class="ed-shapes">
-                <button type="button" class="ed-shape-btn ed-shape-btn--wide" @click="addBanner()"><svg viewBox="0 0 40 24"><rect width="40" height="12" rx="1"/></svg><span>Bandeau d'en-tête</span></button>
-                <template x-for="sh in shapeKinds" :key="sh.kind">
-                    <button type="button" class="ed-shape-btn" @click="addShape(sh.kind)" :title="sh.label">
-                        <svg viewBox="0 0 40 24" x-html="sh.icon"></svg><span x-text="sh.label"></span>
-                    </button>
-                </template>
+
+            <div x-show="libTab === 'blocks'">
+                <p class="ed-hint">Glissez un bloc sur la page, ou cliquez pour l'ajouter.</p>
+                <div class="ed-palette-list">
+                    <template x-for="item in palette" :key="item.type">
+                        <button type="button" class="ed-chip" draggable="true" @dragstart="dragNew = item.type; $event.dataTransfer.setData('text/plain', item.type)" @dragend="dragNew = null" @click="addBlock(item.type)">
+                            <i :data-lucide="icons[item.type] || 'square'" class="w-4 h-4"></i>
+                            <span x-text="item.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <div x-show="libTab === 'shapes'" x-cloak>
+                <p class="ed-sub ed-sub--first">Décors prêts à l'emploi</p>
+                <div class="ed-presets">
+                    <template x-for="d in decorPresets" :key="d.key">
+                        <button type="button" class="ed-preset" @click="addDecor(d.key)">
+                            <svg viewBox="0 0 30 42" class="ed-preset-page" x-html="d.icon"></svg><span x-text="d.label"></span>
+                        </button>
+                    </template>
+                </div>
+                <p class="ed-sub">Formes</p>
+                <label class="ed-field ed-field--inline"><span>Placer dans</span>
+                    <select class="ed-input" x-model="shapeTarget">
+                        <option value="header">l'en-tête</option><option value="footer">le bas de page</option>
+                        <option value="page-top">la page (haut)</option><option value="page-bottom">la page (bas)</option>
+                    </select></label>
+                <div class="ed-shapes">
+                    <template x-for="sh in shapes" :key="sh.kind">
+                        <button type="button" class="ed-shape-btn" @click="addShape(sh.kind)" :title="sh.label">
+                            <span class="ed-shape-ico" x-html="shapeIcon(sh)"></span><span x-text="sh.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <div x-show="libTab === 'images'" x-cloak>
+                <p class="ed-hint">PNG, JPEG, WebP ou SVG, 4 Mo maximum. L'image est incluse dans le modèle : elle apparaît aussi dans le PDF.</p>
+                <label class="ed-upload" :class="uploading && 'is-busy'">
+                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" @change="upload($event)">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <span x-text="uploading ? 'Import en cours…' : 'Importer une image'"></span>
+                </label>
+                <p class="ed-error ed-error--inline" x-show="uploadError" x-text="uploadError"></p>
+                <div class="ed-assets">
+                    <template x-for="a in assets" :key="a.id">
+                        <div class="ed-asset">
+                            <button type="button" class="ed-asset-img" @click="addImage(a)" :title="`Ajouter « ${a.name} »`"><img :src="a.url" alt=""></button>
+                            <button type="button" class="ed-asset-del" @click="deleteAsset(a)" aria-label="Supprimer de la bibliothèque"><i data-lucide="x" class="w-3 h-3"></i></button>
+                        </div>
+                    </template>
+                </div>
+                <p class="ed-hint" x-show="!assets.length">Aucune image pour l'instant. Idées : signature scannée, tampon, illustration, motif de fond.</p>
             </div>
         </aside>
 
@@ -62,17 +106,26 @@
         <section class="ed-stage" x-ref="stage" @pointerdown.self="select(null)">
             <div class="ed-page-wrap" :style="`width:${pageWidth * scale}px;height:${pageHeight() * scale}px`">
                 <div class="ed-page cv-doc" x-ref="page" :style="pageStyle()" @pointerdown.self="select(null)">
+                    <!-- Décors de page (accrochés en haut ou en bas de la feuille) -->
+                    <template x-for="b in pageLayer()" :key="b.id">
+                        <div class="ed-block ed-deco cv-deco" :class="blockClasses(b)" :style="decorStyle(b)" tabindex="0" role="button"
+                             :aria-label="labelOf(b) + ' — déplacer avec les flèches'" @pointerdown="startMove($event, b)" @focus="select(b.id)">
+                            <div class="ed-block-content" x-html="blockHtml(b)"></div>
+                            <span class="ed-block-tag" x-text="labelOf(b) + (b.anchor === 'bottom' ? ' · bas de page' : ' · haut de page')"></span>
+                            <span class="ed-resize" @pointerdown.stop="startResize($event, b)" aria-hidden="true"></span>
+                        </div>
+                    </template>
                     <template x-for="band in ['header', 'footer']" :key="band">
                         <div :class="`ed-band ed-band--${band}`" :style="`height:${canvas.heights[band]}px;order:${band === 'header' ? 0 : 2}`" :data-band="band"
                              @dragover.prevent="dropHint = band" @dragleave="dropHint = null" @drop.prevent="dropNew($event, band)"
                              @pointerdown.self="select(null)">
                             <span class="ed-band-label" x-text="band === 'header' ? 'En-tête' : 'Bas de page'"></span>
                             <template x-for="b in blocksIn(band)" :key="b.id">
-                                <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px` + (b.type === 'shape' ? `;height:${b.h}px` : '')"
-                                     tabindex="0" role="button" :aria-label="labelOf(b.type) + ' — déplacer avec les flèches'"
-                                     @pointerdown="startMove($event, b)" @focus="select(b.id)">
+                                <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px` + (isDecor(b) ? `;height:${b.h}px` : '')"
+                                     tabindex="0" role="button" :aria-label="labelOf(b) + ' — déplacer avec les flèches'"
+                                     @pointerdown="startMove($event, b)" @focus="select(b.id)" @dblclick="b.type === 'text' && focusText()">
                                     <div class="ed-block-content" x-html="blockHtml(b)"></div>
-                                    <span class="ed-block-tag" x-text="labelOf(b.type)"></span>
+                                    <span class="ed-block-tag" x-text="labelOf(b)"></span>
                                     <span class="ed-resize" @pointerdown.stop="startResize($event, b)" aria-hidden="true"></span>
                                 </div>
                             </template>
@@ -80,11 +133,18 @@
                             <span class="ed-band-resize" @pointerdown.stop="startBandResize($event, band)" title="Glisser pour changer la hauteur"></span>
                         </div>
                     </template>
-                    <div class="ed-items cv-body" style="order:1" x-show="canvas.items !== false" :class="selectedId === 'table' && 'is-selected'"
-                         @pointerdown.self="select('table')" @click="select('table')" tabindex="0" role="button" aria-label="Régler le tableau des lignes">
-                        <div class="ed-items-preview" x-html="previews.items"></div>
-                        <span class="ed-items-label">Tableau des lignes · cliquez pour choisir les colonnes et le style</span>
-                        <button type="button" class="ed-items-remove" @click.stop="setItems(false); select(null)" title="Retirer le tableau des lignes"><i data-lucide="x" class="w-3.5 h-3.5"></i> Retirer</button>
+                    <div class="ed-items cv-body" x-ref="items" :style="`order:1;padding:0 ${canvas.table.inset}px`" x-show="canvas.items !== false" :class="selectedId === 'table' && 'is-selected'"
+                         @pointerdown.self="select('table')">
+                        <div class="ed-items-preview" x-html="previews.items" @click="onTableClick($event)"></div>
+                        <template x-if="selectedId === 'table'">
+                            <div>
+                                <template x-for="edge in colEdges" :key="edge.i">
+                                    <span class="ed-col-handle" :style="`left:${edge.x - 4}px;top:${edge.top}px;height:${edge.h}px`" title="Glisser pour changer la largeur"
+                                          @pointerdown.stop.prevent="startColResize($event, edge)"></span>
+                                </template>
+                            </div>
+                        </template>
+                        <span class="ed-items-label">Tableau des lignes · cliquez une colonne pour la régler</span>
                     </div>
                     <div class="ed-items-add" style="order:1" x-show="canvas.items === false">
                         <button type="button" @click="setItems(true)"><i data-lucide="table" class="w-4 h-4"></i> Ajouter le tableau des lignes</button>
@@ -96,178 +156,268 @@
         </section>
 
         <!-- Réglages -->
-        <aside class="ed-panel ed-props" aria-label="Réglages">
+        <aside class="ed-panel ed-props" aria-label="Réglages" x-ref="props">
+            <!-- Bloc sélectionné -->
             <template x-if="selected()">
                 <div class="ed-props-body">
-                    <p class="ed-panel-title" x-text="labelOf(selected().type)"></p>
-<template x-if="selected().type === 'shape'">
-                        <div class="ed-props-group">
-                            <label class="ed-field"><span>Forme</span>
-                                <select class="ed-input" :value="selected().shape" @change="update({shape: $event.target.value})">
-                                    <template x-for="sh in shapeKinds" :key="sh.kind"><option :value="sh.kind" x-text="sh.label" :selected="selected().shape === sh.kind"></option></template>
-                                </select></label>
-                            <div class="ed-field">
-                        <span>Couleur</span>
-                        <div class="ed-swatches">
-                            <template x-for="t in colorTokens.filter((t) => t)" :key="t">
-                                <button type="button" class="ed-swatch" :class="[(selected().fill || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ fill: t })"></button>
-                            </template>
-                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().fill || '') && 'is-on'" :style="/^#/.test(selected().fill || '') ? `background:${selected().fill}` : ''">
-                                <input type="color" :value="/^#/.test(selected().fill || '') ? selected().fill : '#6d28d9'" @input="update({ fill: $event.target.value }, false)" @change="snapshot()">
-                                <i data-lucide="pipette" class="w-3 h-3"></i>
-                            </label>
-                        </div>
+                    <div class="ed-props-head">
+                        <p class="ed-panel-title" x-text="labelOf(selected())"></p>
+                        <button type="button" class="ed-icon" @click="select(null)" aria-label="Fermer"><i data-lucide="x" class="w-4 h-4"></i></button>
                     </div>
+
+                    <!-- Forme -->
+                    <template x-if="selected().type === 'shape'">
+                        <div class="ed-props-group">
+                            <div class="ed-shapes ed-shapes--pick">
+                                <template x-for="sh in shapes" :key="sh.kind">
+                                    <button type="button" class="ed-shape-btn" :class="selected().shape === sh.kind && 'is-on'" @click="update({shape: sh.kind})" :title="sh.label">
+                                        <span class="ed-shape-ico" x-html="shapeIcon(sh)"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            {% include "templates_app/_swatches.html" with prop="fill" label="Couleur" %}
+                            <label class="ed-switch adv"><input type="checkbox" :checked="selected().gradient" @change="update({gradient: $event.target.checked})"> <span>Dégradé</span></label>
+                            <template x-if="selected().gradient">
+                                <div>{% include "templates_app/_swatches.html" with prop="fill2" label="Seconde couleur du dégradé" %}</div>
+                            </template>
                             <label class="ed-field"><span>Opacité <em x-text="`${selected().opacity} %`"></em></span>
                                 <input type="range" min="5" max="100" step="5" :value="selected().opacity" @input="update({opacity: +$event.target.value}, false)" @change="snapshot()"></label>
-                            <label class="ed-field"><span>Arrondi des coins <em x-text="`${selected().radius} px`"></em></span>
-                                <input type="range" min="0" max="60" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
-                            <label class="ed-field"><span>Hauteur</span><input class="ed-input" type="number" min="2" max="900" :value="selected().h" @change="update({h: +$event.target.value})"></label>
-                            <button type="button" class="ed-btn" @click="update({x: 0, w: pageWidth})"><i data-lucide="move-horizontal" class="w-4 h-4"></i> Pleine largeur</button>
+                            <template x-if="['rect', 'frame'].includes(selected().shape)">
+                                <label class="ed-field"><span>Arrondi des coins <em x-text="`${selected().radius} px`"></em></span>
+                                    <input type="range" min="0" max="80" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
+                            </template>
+                            <template x-if="selected().shape === 'frame'">
+                                <label class="ed-field"><span>Épaisseur du cadre <em x-text="`${selected().thickness} px`"></em></span>
+                                    <input type="range" min="1" max="40" :value="selected().thickness" @input="update({thickness: +$event.target.value}, false)" @change="snapshot()"></label>
+                            </template>
+                            <div class="ed-segs adv" role="group" aria-label="Retourner">
+                                <button type="button" class="ed-seg" :class="selected().flip_x && 'is-on'" @click="update({flip_x: !selected().flip_x})"><i data-lucide="flip-horizontal-2" class="w-4 h-4"></i> Miroir</button>
+                                <button type="button" class="ed-seg" :class="selected().flip_y && 'is-on'" @click="update({flip_y: !selected().flip_y})"><i data-lucide="flip-vertical-2" class="w-4 h-4"></i> Retourner</button>
+                            </div>
                         </div>
                     </template>
-                    <template x-if="selected().type !== 'shape'">
+
+                    <!-- Image -->
+                    <template x-if="selected().type === 'image'">
                         <div class="ed-props-group">
-                                        <div class="ed-field">
-                        <span>Alignement</span>
-                        <div class="ed-segs" role="group">
-                            <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
-                                <button type="button" class="ed-seg" :class="selected().align === a[0] && 'is-on'" @click="update({align: a[0]})" :aria-label="a[0]"><i :data-lucide="a[1]" class="w-4 h-4"></i></button>
-                            </template>
-                        </div>
-                    </div>
-                    <div class="ed-field">
-                        <span>Taille du texte</span>
-                        <div class="ed-segs" role="group">
-                            <template x-for="s in [['s','Petit'],['m','Normal'],['l','Grand']]" :key="s[0]">
-                                <button type="button" class="ed-seg" :class="selected().size === s[0] && 'is-on'" @click="update({size: s[0]})" x-text="s[1]"></button>
-                            </template>
-                        </div>
-                    </div>
-                    <label class="ed-switch"><input type="checkbox" :checked="selected().accent" @change="update({accent: $event.target.checked})"> <span>Couleur d'accent</span></label>
-                    <div class="ed-field">
-                        <span>Couleur du texte</span>
-                        <div class="ed-swatches">
-                            <template x-for="t in colorTokens" :key="t">
-                                <button type="button" class="ed-swatch" :class="[(selected().color || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ color: t })"></button>
-                            </template>
-                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().color || '') && 'is-on'" :style="/^#/.test(selected().color || '') ? `background:${selected().color}` : ''">
-                                <input type="color" :value="/^#/.test(selected().color || '') ? selected().color : '#6d28d9'" @input="update({ color: $event.target.value }, false)" @change="snapshot()">
-                                <i data-lucide="pipette" class="w-3 h-3"></i>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="ed-field">
-                        <span>Fond du bloc</span>
-                        <div class="ed-swatches">
-                            <template x-for="t in colorTokens" :key="t">
-                                <button type="button" class="ed-swatch" :class="[(selected().bg || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ bg: t })"></button>
-                            </template>
-                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().bg || '') && 'is-on'" :style="/^#/.test(selected().bg || '') ? `background:${selected().bg}` : ''">
-                                <input type="color" :value="/^#/.test(selected().bg || '') ? selected().bg : '#6d28d9'" @input="update({ bg: $event.target.value }, false)" @change="snapshot()">
-                                <i data-lucide="pipette" class="w-3 h-3"></i>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="ed-grid2">
-                        <label class="ed-field"><span>Marge intérieure</span><input type="range" min="0" max="40" step="2" :value="selected().pad" @input="update({pad: +$event.target.value}, false)" @change="snapshot()"></label>
-                        <label class="ed-field"><span>Arrondi</span><input type="range" min="0" max="60" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
-                    </div>
+                            <div class="ed-field"><span>Image</span>
+                                <div class="ed-assets ed-assets--pick">
+                                    <template x-for="a in assets" :key="a.id">
+                                        <button type="button" class="ed-asset-img" :class="selected().asset === a.id && 'is-on'" @click="update({asset: a.id})"><img :src="a.url" alt=""></button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="ed-segs" role="group" aria-label="Ajustement">
+                                <button type="button" class="ed-seg" :class="selected().fit === 'contain' && 'is-on'" @click="update({fit: 'contain'})">Entière</button>
+                                <button type="button" class="ed-seg" :class="selected().fit === 'cover' && 'is-on'" @click="update({fit: 'cover'})">Remplir</button>
+                            </div>
+                            <label class="ed-switch" x-show="selected().band !== 'page'"><input type="checkbox" :checked="selected().behind" @change="update({behind: $event.target.checked})"> <span>Derrière le texte (décor)</span></label>
+                            <label class="ed-field"><span>Opacité <em x-text="`${selected().opacity} %`"></em></span>
+                                <input type="range" min="5" max="100" step="5" :value="selected().opacity" @input="update({opacity: +$event.target.value}, false)" @change="snapshot()"></label>
+                            <label class="ed-field"><span>Arrondi <em x-text="`${selected().radius} px`"></em></span>
+                                <input type="range" min="0" max="80" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
                         </div>
                     </template>
-                    <template x-if="selected().type === 'text'">
-                        <label class="ed-field"><span>Texte</span><textarea class="ed-input" rows="5" maxlength="1500" :value="selected().text" @input="update({text: $event.target.value}, false)" @change="commit()"></textarea></label>
+
+                    <!-- Blocs de contenu -->
+                    <template x-if="!isDecor(selected()) && selected().type !== 'image'">
+                        <div class="ed-props-group">
+                            <template x-if="selected().type === 'text'">
+                                <div class="ed-field">
+                                    <span>Texte</span>
+                                    <textarea class="ed-input" rows="4" maxlength="1500" x-ref="text" :value="selected().text" @input="update({text: $event.target.value}, false)" @change="commit()"></textarea>
+                                    <small class="ed-hint">Insérer une variable, remplacée par la vraie valeur sur chaque document :</small>
+                                    <div class="ed-vars">
+                                        <template x-for="v in docVars" :key="v.key">
+                                            <button type="button" class="ed-var" @click="insertTextVar(v.key)" x-text="v.label"></button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="ed-field">
+                                <span>Alignement</span>
+                                <div class="ed-segs" role="group">
+                                    <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
+                                        <button type="button" class="ed-seg" :class="selected().align === a[0] && 'is-on'" @click="update({align: a[0]})" :aria-label="a[0]"><i :data-lucide="a[1]" class="w-4 h-4"></i></button>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="ed-field">
+                                <span>Taille du texte</span>
+                                <div class="ed-segs" role="group">
+                                    <template x-for="s in [['s','S'],['m','M'],['l','L'],['xl','XL'],['xxl','XXL']]" :key="s[0]">
+                                        <button type="button" class="ed-seg" :class="selected().size === s[0] && 'is-on'" @click="update({size: s[0]})" x-text="s[1]"></button>
+                                    </template>
+                                </div>
+                            </div>
+                            {% include "templates_app/_swatches.html" with prop="color" label="Couleur du texte" auto=1 %}
+                            {% include "templates_app/_swatches.html" with prop="bg" label="Fond" auto=1 %}
+                            <template x-if="selected().type === 'totals'">
+                                <div>{% include "templates_app/_swatches.html" with prop="hl" label="Total à payer en bandeau" auto=1 %}</div>
+                            </template>
+                            <label class="ed-field adv"><span>Police</span>
+                                <select class="ed-input" :value="selected().font" @change="update({font: $event.target.value})">
+                                    <option value="">Police du modèle</option>
+                                    <template x-for="f in fonts" :key="f"><option :value="f" x-text="f" :selected="selected().font === f" :style="`font-family:${fontStacks[f]}`"></option></template>
+                                </select></label>
+                            <div class="ed-grid2 adv">
+                                <label class="ed-switch"><input type="checkbox" :checked="selected().upper" @change="update({upper: $event.target.checked})"> <span>Majuscules</span></label>
+                                <label class="ed-field"><span>Interlettrage</span><input type="range" min="0" max="40" :value="selected().tracking" @input="update({tracking: +$event.target.value}, false)" @change="snapshot()"></label>
+                            </div>
+                            <div class="adv">{% include "templates_app/_swatches.html" with prop="border" label="Bordure" auto=1 %}</div>
+                            <div class="ed-grid2 adv">
+                                <label class="ed-field"><span>Marge intérieure</span><input type="range" min="0" max="60" step="2" :value="selected().pad" @input="update({pad: +$event.target.value}, false)" @change="snapshot()"></label>
+                                <label class="ed-field"><span>Arrondi</span><input type="range" min="0" max="80" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
+                            </div>
+                            <label class="ed-field adv" x-show="selected().border"><span>Épaisseur de la bordure <em x-text="`${selected().bw} px`"></em></span>
+                                <input type="range" min="1" max="6" :value="selected().bw" @input="update({bw: +$event.target.value}, false)" @change="snapshot()"></label>
+                        </div>
                     </template>
-                    <div class="ed-grid3">
+
+                    <!-- Position, plan, ordre -->
+                    <template x-if="isDecor(selected())">
+                        <label class="ed-field"><span>Plan</span>
+                            <select class="ed-input" :value="layerOf(selected())" @change="setLayer($event.target.value)">
+                                <option value="header">En-tête</option><option value="footer">Bas de page</option>
+                                <option value="page-top">Page — accroché en haut</option><option value="page-bottom">Page — accroché en bas</option>
+                            </select></label>
+                    </template>
+                    <div class="ed-grid4 adv">
                         <label class="ed-field"><span>X</span><input class="ed-input" type="number" :value="selected().x" @change="update({x: +$event.target.value})"></label>
                         <label class="ed-field"><span>Y</span><input class="ed-input" type="number" :value="selected().y" @change="update({y: +$event.target.value})"></label>
-                        <label class="ed-field"><span>Largeur</span><input class="ed-input" type="number" :value="selected().w" @change="update({w: +$event.target.value})"></label>
+                        <label class="ed-field"><span>Larg.</span><input class="ed-input" type="number" :value="selected().w" @change="update({w: +$event.target.value})"></label>
+                        <label class="ed-field" x-show="isDecor(selected()) || selected().type === 'image'"><span>Haut.</span><input class="ed-input" type="number" :value="selected().h" @change="update({h: +$event.target.value})"></label>
                     </div>
                     <div class="ed-props-actions">
+                        <button type="button" class="ed-btn" @click="update({x: 0, w: pageWidth})" x-show="isDecor(selected())"><i data-lucide="move-horizontal" class="w-4 h-4"></i> Pleine largeur</button>
+                        <button type="button" class="ed-btn" @click="arrange(1)" x-show="isDecor(selected())" title="Devant les autres décors"><i data-lucide="bring-to-front" class="w-4 h-4"></i></button>
+                        <button type="button" class="ed-btn" @click="arrange(-1)" x-show="isDecor(selected())" title="Derrière les autres décors"><i data-lucide="send-to-back" class="w-4 h-4"></i></button>
                         <button type="button" class="ed-btn" @click="duplicate()"><i data-lucide="copy" class="w-4 h-4"></i> Dupliquer</button>
                         <button type="button" class="ed-btn ed-btn--danger" @click="remove()"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer</button>
                     </div>
-                    <p class="ed-hint">Flèches : déplacer (Maj + flèche : 10 px). Suppr : retirer le bloc.</p>
+                    <p class="ed-hint">Flèches : déplacer (Maj + flèche : 10 px). Suppr : retirer. Échap : désélectionner.</p>
                 </div>
             </template>
-            <template x-if="selectedId === 'table' && canvas.table">
-                <div class="ed-props-body">
-                    <p class="ed-panel-title">Tableau des lignes</p>
 
-                    <p class="ed-sub">Colonnes</p>
-                    <div class="ed-cols">
-                        <template x-for="(col, i) in canvas.table.columns" :key="i">
-                            <div class="ed-col">
-                                <div class="ed-col-head">
-                                    <span class="ed-col-var" x-text="col.key === 'perso' ? 'Personnalisée' : varLabel(col.key)"></span>
-                                    <button type="button" class="ed-icon" @click="moveColumn(i, -1)" :disabled="i === 0" aria-label="Monter"><i data-lucide="chevron-up" class="w-3.5 h-3.5"></i></button>
-                                    <button type="button" class="ed-icon" @click="moveColumn(i, 1)" :disabled="i === canvas.table.columns.length - 1" aria-label="Descendre"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i></button>
-                                    <button type="button" class="ed-icon ed-icon--danger" @click="removeColumn(i)" :disabled="canvas.table.columns.length === 1" aria-label="Retirer la colonne"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            <!-- Tableau des lignes -->
+            <template x-if="selectedId === 'table'">
+                <div class="ed-props-body">
+                    <div class="ed-props-head">
+                        <p class="ed-panel-title">Tableau des lignes</p>
+                        <button type="button" class="ed-icon" @click="select(null)" aria-label="Fermer"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <p class="ed-sub ed-sub--first">Style</p>
+                    <div class="ed-tpresets">
+                        <template x-for="p in tablePresets" :key="p.key">
+                            <button type="button" class="ed-tpreset" :class="presetActive(p) && 'is-on'" @click="applyTablePreset(p)">
+                                <span class="ed-tmini" :style="presetStyle(p)"><i></i><i></i><i></i><i></i></span>
+                                <span x-text="p.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                    {% include "templates_app/_swatches.html" with prop="th_bg" label="Fond des titres" auto=1 %}
+                    {% include "templates_app/_swatches.html" with prop="th_fg" label="Texte des titres" auto=1 %}
+
+                    <p class="ed-sub">Colonnes <small>— cliquez une colonne sur la page, glissez son bord pour la largeur</small></p>
+                    <div class="ed-cols" x-ref="cols">
+                        <template x-for="(col, i) in canvas.table.columns" :key="i + col.key">
+                            <div class="ed-col" :class="activeCol === i && 'is-open'" :data-col-card="i">
+                                <div class="ed-col-head" @click="activeCol = activeCol === i ? null : i">
+                                    <i data-lucide="grip-vertical" class="w-3.5 h-3.5 ed-col-grip"></i>
+                                    <input class="ed-col-label" maxlength="40" x-model="col.label" @input="tableChanged()" @click.stop :aria-label="`Titre de la colonne ${i + 1}`">
+                                    <span class="ed-col-var" x-show="col.key === 'perso' || col.label !== varLabel(col.key)" x-text="col.key === 'perso' ? 'perso' : varLabel(col.key)"></span>
+                                    <button type="button" class="ed-icon" @click.stop="moveColumn(i, -1)" :disabled="i === 0" aria-label="Vers la gauche"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" class="ed-icon" @click.stop="moveColumn(i, 1)" :disabled="i === canvas.table.columns.length - 1" aria-label="Vers la droite"><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" class="ed-icon ed-icon--danger" @click.stop="removeColumn(i)" :disabled="canvas.table.columns.length === 1" aria-label="Retirer la colonne"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
                                 </div>
-                                <label class="ed-field"><span>Titre de la colonne</span><input class="ed-input" maxlength="40" x-model="col.label" @input="tableChanged()"></label>
-                                <template x-if="col.key === 'perso'">
-                                    <div class="ed-field">
-                                        <span>Contenu</span>
-                                        <input class="ed-input" maxlength="200" x-model="col.text" @input="tableChanged()" placeholder="Ex. {quantite} × {prix_unitaire}" :data-col="i">
-                                        <div class="ed-vars">
-                                            <template x-for="v in tableVars" :key="v.key">
-                                                <button type="button" class="ed-var" @click="insertVar(i, v.key)" x-text="v.label"></button>
+                                <template x-if="activeCol === i">
+                                    <div class="ed-col-body">
+                                        <template x-if="col.key === 'perso'">
+                                            <div class="ed-field">
+                                                <span>Contenu de la colonne</span>
+                                                <input class="ed-input" maxlength="200" x-model="col.text" @input="tableChanged()" placeholder="Ex. {quantite} × {prix_unitaire}" :data-col="i">
+                                                <div class="ed-vars">
+                                                    <template x-for="v in tableVars" :key="v.key">
+                                                        <button type="button" class="ed-var" @click="insertVar(i, v.key)" x-text="v.label"></button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <div class="ed-segs" role="group" aria-label="Alignement">
+                                            <template x-for="a in [['auto','Auto'],['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
+                                                <button type="button" class="ed-seg" :class="col.align === a[0] && 'is-on'" @click="col.align = a[0]; tableChanged(true)">
+                                                    <template x-if="a[0] === 'auto'"><span>Auto</span></template>
+                                                    <template x-if="a[0] !== 'auto'"><i :data-lucide="a[1]" class="w-4 h-4"></i></template>
+                                                </button>
                                             </template>
+                                        </div>
+                                        <div class="ed-grid2">
+                                            <label class="ed-field"><span>Largeur (%)</span><input class="ed-input" type="number" min="0" max="70" :value="col.width || ''" @change="col.width = Math.max(0, Math.min(70, +$event.target.value || 0)); tableChanged(true)" placeholder="Auto"></label>
+                                            <label class="ed-switch"><input type="checkbox" x-model="col.strong" @change="tableChanged(true)"> <span>En gras</span></label>
                                         </div>
                                     </div>
                                 </template>
-                                <div class="ed-grid2">
-                                    <label class="ed-field"><span>Alignement</span>
-                                        <select class="ed-input" x-model="col.align" @change="tableChanged(true)">
-                                            <option value="auto">Auto</option><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option>
-                                        </select></label>
-                                    <label class="ed-field"><span>Largeur (%)</span><input class="ed-input" type="number" min="0" max="70" :value="col.width || ''" @change="col.width = Math.max(0, Math.min(70, +$event.target.value || 0)); tableChanged(true)" placeholder="Auto"></label>
-                                </div>
-                                <label class="ed-switch"><input type="checkbox" x-model="col.strong" @change="tableChanged(true)"> <span>En gras</span></label>
                             </div>
                         </template>
                     </div>
-                    <label class="ed-field" x-show="canvas.table.columns.length < 10"><span>Ajouter une colonne</span>
-                        <select class="ed-input" @change="addColumn($event.target.value); $event.target.value = ''">
-                            <option value="">Choisir une variable…</option>
-                            <template x-for="v in tableVars" :key="v.key"><option :value="v.key" x-text="v.label"></option></template>
-                            <option value="perso">Colonne personnalisée (texte + variables)</option>
-                        </select></label>
+                    <div class="ed-field" x-show="canvas.table.columns.length < 10">
+                        <span>Ajouter une colonne</span>
+                        <div class="ed-vars">
+                            <template x-for="v in tableVars.filter((v) => !canvas.table.columns.some((c) => c.key === v.key))" :key="v.key">
+                                <button type="button" class="ed-var" @click="addColumn(v.key)" x-text="'+ ' + v.label"></button>
+                            </template>
+                            <button type="button" class="ed-var ed-var--strong" @click="addColumn('perso')">+ Colonne personnalisée</button>
+                        </div>
+                    </div>
 
-                    <p class="ed-sub">Style</p>
-                    <label class="ed-field"><span>En-tête</span>
-                        <select class="ed-input" x-model="canvas.table.header" @change="tableChanged(true)">
-                            <option value="line">Trait sous les titres</option><option value="soft">Fond gris</option><option value="accent">Fond couleur d'accent</option><option value="none">Sans</option>
-                        </select></label>
-                    <label class="ed-field"><span>Séparateurs</span>
-                        <select class="ed-input" x-model="canvas.table.borders" @change="tableChanged(true)">
-                            <option value="rows">Entre les lignes</option><option value="grid">Grille complète</option><option value="none">Aucun</option>
-                        </select></label>
-                    <div class="ed-field">
-                        <span>Espacement</span>
-                        <div class="ed-segs" role="group">
+                    <div class="adv">
+                        <p class="ed-sub">Lignes et bordures</p>
+                        <div class="ed-segs" role="group" aria-label="Séparateurs">
+                            <template x-for="d in [['rows','Entre les lignes'],['grid','Grille'],['none','Aucun']]" :key="d[0]">
+                                <button type="button" class="ed-seg" :class="canvas.table.borders === d[0] && 'is-on'" @click="canvas.table.borders = d[0]; tableChanged(true)" x-text="d[1]"></button>
+                            </template>
+                        </div>
+                        {% include "templates_app/_swatches.html" with prop="border_color" label="Couleur des bordures" auto=1 %}
+                        <label class="ed-field"><span>Épaisseur <em x-text="`${canvas.table.border_width} px`"></em></span>
+                            <input type="range" min="0" max="4" :value="canvas.table.border_width" @input="canvas.table.border_width = +$event.target.value; tableChanged()" @change="snapshot()"></label>
+                        <label class="ed-switch"><input type="checkbox" x-model="canvas.table.stripes" @change="tableChanged(true)"> <span>Lignes alternées</span></label>
+                        <template x-if="canvas.table.stripes">
+                            <div>{% include "templates_app/_swatches.html" with prop="stripe_color" label="Couleur des lignes alternées" auto=1 %}</div>
+                        </template>
+                        <label class="ed-field"><span>Arrondi des titres <em x-text="`${canvas.table.radius} px`"></em></span>
+                            <input type="range" min="0" max="24" :value="canvas.table.radius" @input="canvas.table.radius = +$event.target.value; tableChanged()" @change="snapshot()"></label>
+
+                        <p class="ed-sub">Texte et espace</p>
+                        <div class="ed-segs" role="group" aria-label="Espacement">
                             <template x-for="d in [['compact','Serré'],['normal','Normal'],['airy','Aéré']]" :key="d[0]">
                                 <button type="button" class="ed-seg" :class="canvas.table.density === d[0] && 'is-on'" @click="canvas.table.density = d[0]; tableChanged(true)" x-text="d[1]"></button>
                             </template>
                         </div>
-                    </div>
-                    <div class="ed-field">
-                        <span>Taille du texte</span>
-                        <div class="ed-segs" role="group">
+                        <div class="ed-segs" role="group" aria-label="Taille du texte">
                             <template x-for="z in [['s','Petit'],['m','Normal'],['l','Grand']]" :key="z[0]">
                                 <button type="button" class="ed-seg" :class="canvas.table.size === z[0] && 'is-on'" @click="canvas.table.size = z[0]; tableChanged(true)" x-text="z[1]"></button>
                             </template>
                         </div>
+                        <label class="ed-field"><span>Police</span>
+                            <select class="ed-input" x-model="canvas.table.font" @change="tableChanged(true)">
+                                <option value="">Police du modèle</option>
+                                <template x-for="f in fonts" :key="f"><option :value="f" x-text="f" :selected="canvas.table.font === f"></option></template>
+                            </select></label>
+                        <label class="ed-field"><span>Marges gauche et droite <em x-text="`${canvas.table.inset} px`"></em></span>
+                            <input type="range" min="0" max="160" step="2" :value="canvas.table.inset" @input="canvas.table.inset = +$event.target.value; dirty = true; measureCols()" @change="snapshot()"></label>
+                        <label class="ed-switch"><input type="checkbox" x-model="canvas.table.uppercase" @change="tableChanged(true)"> <span>Titres en majuscules</span></label>
+                        <label class="ed-switch"><input type="checkbox" x-model="canvas.table.show_description" @change="tableChanged(true)"> <span>Description sous la désignation</span></label>
+                        <label class="ed-field"><span>Texte si aucune ligne</span><input class="ed-input" maxlength="80" x-model="canvas.table.empty_text" @input="tableChanged()"></label>
                     </div>
-                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.stripes" @change="tableChanged(true)"> <span>Lignes alternées</span></label>
-                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.uppercase" @change="tableChanged(true)"> <span>Titres en majuscules</span></label>
-                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.show_description" @change="tableChanged(true)"> <span>Description sous la désignation</span></label>
-                    <label class="ed-field"><span>Texte si aucune ligne</span><input class="ed-input" maxlength="80" x-model="canvas.table.empty_text" @input="tableChanged()"></label>
+                    <p class="ed-hint" x-show="!advanced">Bordures, police, marges et lignes alternées : passez en mode <button type="button" class="ed-link-btn" @click="setMode(true)">Avancé</button>.</p>
                     <div class="ed-props-actions">
                         <button type="button" class="ed-btn ed-btn--danger" @click="setItems(false); select(null)"><i data-lucide="trash-2" class="w-4 h-4"></i> Retirer le tableau</button>
                     </div>
                 </div>
             </template>
+
+            <!-- Modèle -->
             <template x-if="!selected() && selectedId !== 'table'">
                 <div class="ed-props-body">
                     <p class="ed-panel-title">Modèle</p>
@@ -289,17 +439,14 @@
                         </template>
                     </div>
                     <p class="ed-sub">Couleurs du modèle</p>
-                    <p class="ed-hint">Chaque couleur est une variable : la changer ici met à jour tous les blocs et formes qui l'utilisent.</p>
-                    <label class="ed-field"><span>Accent</span>
-                        <div class="ed-color"><input type="color" x-model="accent" @input="dirty = true"><input class="ed-input" x-model="accent" maxlength="7" @input="dirty = true"></div>
-                    </label>
-                    <label class="ed-field"><span>Secondaire</span>
-                        <div class="ed-color"><input type="color" x-model="canvas.colors.secondary" @input="dirty = true"><input class="ed-input" x-model="canvas.colors.secondary" maxlength="7" @input="dirty = true"></div>
-                    </label>
-                    <label class="ed-field"><span>Texte</span>
-                        <div class="ed-color"><input type="color" x-model="canvas.colors.ink" @input="dirty = true"><input class="ed-input" x-model="canvas.colors.ink" maxlength="7" @input="dirty = true"></div>
-                    </label>
-                    <label class="ed-field"><span>Police</span>
+                    <p class="ed-hint">Chaque couleur est une variable : la changer met à jour tous les blocs, formes et tableaux qui l'utilisent.</p>
+                    <div class="ed-colorvars">
+                        <label><input type="color" x-model="accent" @input="dirty = true"><span>Accent</span></label>
+                        <label><input type="color" x-model="canvas.colors.secondary" @input="dirty = true"><span>Secondaire</span></label>
+                        <label><input type="color" x-model="canvas.colors.ink" @input="dirty = true"><span>Texte</span></label>
+                        <label><input type="color" x-model="canvas.colors.page" @input="dirty = true"><span>Fond de page</span></label>
+                    </div>
+                    <label class="ed-field"><span>Police du modèle</span>
                         <select class="ed-input" x-model="font" @change="dirty = true">
                             <option value="">Inter (par défaut)</option>
                             <template x-for="f in fonts" :key="f"><option :value="f" x-text="f" :selected="font === f"></option></template>
@@ -309,385 +456,21 @@
                     <label class="ed-field"><span>Mot de fin</span><input class="ed-input" x-model="texts.thank_you" @input="textsChanged()"></label>
                     <label class="ed-field"><span>Mentions légales</span><textarea class="ed-input" rows="4" x-model="texts.legal_mentions" @input="textsChanged()"></textarea></label>
                     <label class="ed-switch"><input type="checkbox" x-model="isDefault" @change="dirty = true"> <span>Modèle par défaut</span></label>
-                    <p class="ed-hint">Cliquez sur un bloc de la page pour le régler. Les zones « En-tête » et « Bas de page » s'agrandissent avec la poignée sous chacune.</p>
+                    <p class="ed-hint">Cliquez sur un bloc, une forme ou le tableau pour le régler. Les zones « En-tête » et « Bas de page » s'agrandissent avec la poignée sous chacune.</p>
                     <a class="ed-link" href="{% url 'templates_app:template-edit' template.id %}?code=1">Modifier le code HTML / CSS (avancé)</a>
                 </div>
             </template>
         </aside>
     </div>
 </div>
-
 <script>
-function canvasEditor() {
-    const cfg = JSON.parse(document.getElementById('canvas-editor-config').textContent);
-    const SNAP = 4, GUIDE = 6;
-    const clone = (o) => JSON.parse(JSON.stringify(o));
-    const esc = (t) => String(t || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-    return {
-        name: cfg.name, isDefault: cfg.isDefault, accent: cfg.accent, font: cfg.font, fonts: cfg.fonts,
-        texts: cfg.texts, palette: cfg.palette, previews: cfg.previews, canvas: clone(cfg.canvas),
-        pageWidth: cfg.pageWidth, documentType: 'invoice', selectedId: null, scale: 1, guide: null,
-        history: [], future: [], dirty: false, saving: false, error: '', warning: '', dragNew: null, dropHint: null, drag: null,
-        icons: { logo: 'image', title: 'heading-1', issuer: 'building-2', client: 'user', meta: 'calendar', total_due: 'badge-euro',
-                 subject: 'text-quote', totals: 'sigma', payment: 'landmark', legal: 'scale', text: 'type', divider: 'minus' },
-
-        init() {
-            this.fit();
-            // Une zone s'agrandit d'elle-même si un bloc dépasse (adresse longue, texte…).
-            this.$nextTick(() => this.fitBands());
-            window.addEventListener('resize', () => this.fit());
-            // La largeur de la zone n'est définitive qu'une fois la page posée (panneaux, polices) : on réajuste à chaque changement.
-            if (window.ResizeObserver && this.$refs.stage) new ResizeObserver(() => this.fit()).observe(this.$refs.stage);
-            window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
-            this.$watch('selectedId', () => this.icons_());
-            this.icons_();
-        },
-        icons_() { this.$nextTick(() => window.lucide && lucide.createIcons()); },
-        fit() {
-            const width = this.$refs.stage ? this.$refs.stage.clientWidth - 48 : this.pageWidth;
-            this.scale = Math.min(1, Math.max(0.45, width / this.pageWidth));
-        },
-        refit() { this.$nextTick(() => requestAnimationFrame(() => this.fitBands())); },
-        bottomOf(band) {
-            let bottom = 24;
-            // Les formes sont un décor : un nouveau bloc se pose par-dessus, pas en dessous.
-            this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block:not(.cv-b-shape)`).forEach((el) => { bottom = Math.max(bottom, el.offsetTop + el.offsetHeight + 16); });
-            return bottom;
-        },
-        fitBands() {
-            if (!this.$refs.page) return;
-            for (const band of ['header', 'footer']) {
-                let needed = 60;
-                this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block`).forEach((el) => {
-                    needed = Math.max(needed, el.offsetTop + el.offsetHeight + 16);
-                });
-                if (needed > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, Math.ceil(needed / SNAP) * SNAP);
-            }
-        },
-        // --- Couleurs-variables et formes ---
-        colorTokens: ['', 'accent', 'secondary', 'ink', 'white', 'black', 'muted'],
-        colorNames: { '': 'Automatique', accent: 'Accent', secondary: 'Secondaire', ink: 'Texte', white: 'Blanc', black: 'Noir', muted: 'Gris' },
-        previewColor(token) {
-            return { accent: this.accent, secondary: this.canvas.colors.secondary, ink: this.canvas.colors.ink,
-                     white: '#ffffff', black: '#111827', muted: '#6b7280' }[token] || token || '';
-        },
-        shapeKinds: [
-            { kind: 'rect', label: 'Rectangle', icon: '<rect x="4" y="4" width="32" height="16" rx="2"/>' },
-            { kind: 'ellipse', label: 'Cercle', icon: '<ellipse cx="20" cy="12" rx="10" ry="10"/>' },
-            { kind: 'triangle', label: 'Angle', icon: '<polygon points="4,2 34,2 4,22"/>' },
-            { kind: 'diagonal', label: 'Diagonale', icon: '<polygon points="2,2 38,2 38,12 2,22"/>' },
-            { kind: 'line', label: 'Ligne', icon: '<rect x="2" y="10" width="36" height="3" rx="1"/>' },
-        ],
-        shapeSvg(b) {
-            const w = b.w, h = b.h, fill = this.previewColor(b.fill || 'accent'), op = (b.opacity || 100) / 100;
-            const paint = `fill="${esc(fill)}" fill-opacity="${op}"`;
-            let body;
-            if (b.shape === 'ellipse') body = `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2}" ry="${h / 2}" ${paint}/>`;
-            else if (b.shape === 'triangle') body = `<polygon points="0,0 ${w},0 0,${h}" ${paint}/>`;
-            else if (b.shape === 'diagonal') body = `<polygon points="0,0 ${w},0 ${w},${Math.round(h * 0.55)} 0,${h}" ${paint}/>`;
-            else body = `<rect width="${w}" height="${h}" rx="${Math.min(b.radius || 0, h / 2, w / 2)}" ${paint}/>`;
-            return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block">${body}</svg>`;
-        },
-        addShape(kind, patch = {}) {
-            this.snapshot();
-            const band = 'header';
-            const base = { rect: [200, 120], ellipse: [140, 140], triangle: [260, 160], diagonal: [794, 180], line: [300, 4] }[kind] || [200, 120];
-            const block = Object.assign(this.newBlock('shape', band, kind === 'diagonal' ? 0 : 40, 20), {
-                shape: kind, w: base[0], h: base[1], fill: 'accent', opacity: 100, radius: 0,
-            }, patch);
-            this.clamp(block);
-            // Après les formes existantes (donc devant elles), mais avant les blocs de contenu.
-            let at = 0;
-            this.canvas.blocks.forEach((x, i) => { if (x.type === 'shape') at = i + 1; });
-            this.canvas.blocks.splice(at, 0, block);
-            this.selectedId = block.id;
-            this.icons_();
-            this.refit();
-        },
-        addBanner() {
-            // Bandeau pleine largeur en haut de page ; les blocs posés dessus passent en blanc d'un clic.
-            this.addShape('rect', { x: 0, y: 0, w: this.pageWidth, h: 150 });
-        },
-        // Éléments obligatoires d'une facture absents de la page.
-        missing() {
-            const present = new Set(this.canvas.blocks.map((b) => b.type));
-            const out = Object.entries(cfg.mandatory || {}).filter(([key]) => !present.has(key)).map(([key, label]) => ({ key, label }));
-            if (this.canvas.items === false) out.unshift({ key: 'items', label: 'Tableau des lignes' });
-            return out;
-        },
-
-        // --- Tableau des lignes ---
-        tableVars: cfg.tableVariables || [],
-        varLabel(key) { return (this.tableVars.find((v) => v.key === key) || {}).label || key; },
-        tableChanged(record = false) {
-            if (record) this.snapshot(); else this.dirty = true;
-            clearTimeout(this._tableTimer);
-            this._tableTimer = setTimeout(() => this.refreshPreviews(), record ? 50 : 400);
-        },
-        addColumn(key) {
-            if (!key) return;
-            this.snapshot();
-            const col = { key, label: key === 'perso' ? 'Colonne' : this.varLabel(key), align: 'auto', width: 0, strong: false };
-            if (key === 'perso') col.text = '';
-            this.canvas.table.columns.push(col);
-            this.tableChanged();
-            this.icons_();
-        },
-        moveColumn(i, delta) {
-            const cols = this.canvas.table.columns, j = i + delta;
-            if (j < 0 || j >= cols.length) return;
-            this.snapshot();
-            [cols[i], cols[j]] = [cols[j], cols[i]];
-            this.tableChanged();
-        },
-        removeColumn(i) {
-            if (this.canvas.table.columns.length <= 1) return;
-            this.snapshot();
-            this.canvas.table.columns.splice(i, 1);
-            this.tableChanged();
-        },
-        insertVar(i, key) {
-            const col = this.canvas.table.columns[i];
-            const input = this.$root.querySelector(`input[data-col="${i}"]`);
-            const token = `{${key}}`;
-            const text = col.text || '';
-            const at = input && document.activeElement === input ? input.selectionStart : text.length;
-            col.text = (text.slice(0, at) + token + text.slice(at)).slice(0, 200);
-            this.tableChanged();
-            this.$nextTick(() => { if (input) { input.focus(); input.setSelectionRange(at + token.length, at + token.length); } });
-        },
-        setItems(on) {
-            this.snapshot();
-            this.canvas.items = on;
-            this.dirty = true;
-            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
-        },
-        pageHeight() { return this.canvas.heights.header + this.canvas.heights.footer + 260; },
-        pageStyle() {
-            const font = this.font && cfg.fontStacks[this.font] ? `font-family:${cfg.fontStacks[this.font]};` : '';
-            const c = this.canvas.colors || {};
-            return `transform:scale(${this.scale});--accent:${this.accent};--c2:${c.secondary || '#f3f4f6'};--ink:${c.ink || '#1f2937'};color:var(--ink);--logo-h:52px;${font}`;
-        },
-        labelOf(type) { return type === 'shape' ? 'Forme' : ((this.palette.find((p) => p.type === type) || {}).label || type); },
-        blocksIn(band) { return this.canvas.blocks.filter((b) => b.band === band); },
-        selected() { return this.canvas.blocks.find((b) => b.id === this.selectedId) || null; },
-        select(id) { this.selectedId = id; },
-        blockClasses(b) {
-            return [`cv-b-${b.type}`, `al-${b.align}`, `sz-${b.size}`, b.accent ? 'is-accent' : '', b.id === this.selectedId ? 'is-selected' : ''].join(' ');
-        },
-        blockHtml(b) {
-            if (b.type === 'shape') return this.shapeSvg(b);
-            let html;
-            if (b.type === 'text') html = `<p class="cv-text">${esc(b.text) || '<span class="ed-placeholder">Votre texte…</span>'}</p>`;
-            else {
-                html = this.previews[b.type] || '';
-                if (!html.trim()) html = '<span class="ed-placeholder">(vide sur ce document)</span>';
-            }
-            const css = [];
-            if (b.color) css.push(`color:${this.previewColor(b.color)}`);
-            if (b.bg) css.push(`background:${this.previewColor(b.bg)}`);
-            if (b.pad) css.push(`padding:${b.pad}px`);
-            if (b.radius) css.push(`border-radius:${b.radius}px`);
-            return css.length ? `<div class="cv-box${b.color ? ' has-color' : ''}" style="${esc(css.join(';'))}">${html}</div>` : html;
-        },
-
-        // --- Historique ---
-        snapshot() { this.history.push(clone(this.canvas)); if (this.history.length > 60) this.history.shift(); this.future = []; this.dirty = true; },
-        commit() { this.dirty = true; },
-        undo() { if (!this.history.length) return; this.future.push(clone(this.canvas)); this.canvas = this.history.pop(); this.dirty = true; this.icons_(); this.refit(); this.refreshPreviews(); },
-        redo() { if (!this.future.length) return; this.history.push(clone(this.canvas)); this.canvas = this.future.pop(); this.dirty = true; this.icons_(); this.refreshPreviews(); },
-
-        // --- Blocs ---
-        newBlock(type, band, x, y) {
-            const spec = this.palette.find((p) => p.type === type);
-            const w = Math.min(spec ? spec.w : 200, this.pageWidth - x);
-            const block = { id: 'b' + Math.random().toString(16).slice(2, 10), type, band, x, y, w: spec ? w : 200, align: 'left', size: 'm', accent: false, color: '', bg: '', pad: 0, radius: 0 };
-            if (type === 'text') block.text = 'Votre texte';
-            return block;
-        },
-        addBlock(type) {
-            const spec = this.palette.find((p) => p.type === type);
-            const band = spec.band;
-            const bottom = Math.ceil(this.bottomOf(band) / SNAP) * SNAP;  // sous le dernier bloc, d'après sa vraie hauteur
-            this.snapshot();
-            if (bottom + 60 > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, bottom + 90);
-            const block = this.newBlock(type, band, cfg.padding, bottom);
-            this.canvas.blocks.push(block);
-            this.selectedId = block.id;
-            this.icons_();
-            this.refit();
-        },
-        dropNew(event, band) {
-            this.dropHint = null;
-            const type = this.dragNew || event.dataTransfer.getData('text/plain');
-            if (!type || !this.palette.find((p) => p.type === type)) return;
-            const rect = event.currentTarget.getBoundingClientRect();
-            const x = Math.max(0, Math.round((event.clientX - rect.left) / this.scale / SNAP) * SNAP - 20);
-            const y = Math.max(0, Math.round((event.clientY - rect.top) / this.scale / SNAP) * SNAP - 12);
-            this.snapshot();
-            const block = this.newBlock(type, band, Math.min(x, this.pageWidth - 60), Math.min(y, this.canvas.heights[band] - 20));
-            this.canvas.blocks.push(block);
-            this.selectedId = block.id;
-            this.dragNew = null;
-            this.refit();
-        },
-        update(patch, record = true) {
-            const b = this.selected();
-            if (!b) return;
-            if (record) this.snapshot(); else this.dirty = true;
-            Object.assign(b, patch);
-            this.clamp(b);
-            this.refit();
-        },
-        clamp(b) {
-            if (b.type === 'shape') b.h = Math.max(2, Math.min(900, Math.round(b.h || 0)));
-            b.w = Math.max(b.type === 'shape' ? 2 : 40, Math.min(this.pageWidth, Math.round(b.w)));
-            b.x = Math.max(0, Math.min(this.pageWidth - b.w, Math.round(b.x)));
-            b.y = Math.max(0, Math.min(this.canvas.heights[b.band] - 10, Math.round(b.y)));
-        },
-        duplicate() {
-            const b = this.selected();
-            if (!b) return;
-            this.snapshot();
-            const copy = Object.assign(clone(b), { id: 'b' + Math.random().toString(16).slice(2, 10), y: b.y + 24 });
-            this.clamp(copy);
-            this.canvas.blocks.push(copy);
-            this.selectedId = copy.id;
-            this.refit();
-        },
-        remove() {
-            if (!this.selectedId) return;
-            this.snapshot();
-            this.canvas.blocks = this.canvas.blocks.filter((b) => b.id !== this.selectedId);
-            this.selectedId = null;
-        },
-
-        // --- Glisser / redimensionner ---
-        bandAt(clientY) {
-            for (const el of this.$refs.page.querySelectorAll('[data-band]')) {
-                const r = el.getBoundingClientRect();
-                if (clientY >= r.top && clientY <= r.bottom) return { band: el.dataset.band, rect: r };
-            }
-            return null;
-        },
-        snapX(b) {
-            const candidates = [[cfg.padding, b.x], [this.pageWidth - cfg.padding - b.w, b.x], [(this.pageWidth - b.w) / 2, b.x]];
-            const lines = [cfg.padding, this.pageWidth - cfg.padding, this.pageWidth / 2];
-            for (let i = 0; i < candidates.length; i += 1) {
-                if (Math.abs(candidates[i][0] - b.x) <= GUIDE) { b.x = Math.round(candidates[i][0]); this.guide = lines[i] * 1; return; }
-            }
-            this.guide = null;
-        },
-        startMove(event, b) {
-            if (event.button !== 0) return;
-            this.select(b.id);
-            const start = { x: event.clientX, y: event.clientY, bx: b.x, by: b.y, band: b.band, moved: false };
-            const before = clone(this.canvas);
-            const move = (e) => {
-                const dx = (e.clientX - start.x) / this.scale, dy = (e.clientY - start.y) / this.scale;
-                if (!start.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
-                start.moved = true;
-                b.x = Math.round((start.bx + dx) / SNAP) * SNAP;
-                const over = this.bandAt(e.clientY);
-                if (over && over.band !== b.band) {
-                    b.band = over.band;
-                    b.y = Math.round((e.clientY - over.rect.top) / this.scale / SNAP) * SNAP;
-                } else if (b.band === start.band) {
-                    b.y = Math.round((start.by + dy) / SNAP) * SNAP;
-                } else if (over) {
-                    b.y = Math.round((e.clientY - over.rect.top) / this.scale / SNAP) * SNAP;
-                }
-                this.clamp(b);
-                this.snapX(b);
-            };
-            const up = () => {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', up);
-                this.guide = null;
-                if (start.moved) { this.history.push(before); this.future = []; this.dirty = true; this.refit(); }
-            };
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', up);
-        },
-        startResize(event, b) {
-            this.select(b.id);
-            const start = { x: event.clientX, y: event.clientY, w: b.w, h: b.h };
-            const before = clone(this.canvas);
-            const move = (e) => {
-                b.w = Math.round((start.w + (e.clientX - start.x) / this.scale) / SNAP) * SNAP;
-                if (b.type === 'shape') b.h = Math.round((start.h + (e.clientY - start.y) / this.scale) / SNAP) * SNAP;
-                this.clamp(b);
-            };
-            const up = () => {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', up);
-                this.history.push(before); this.future = []; this.dirty = true;
-            };
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', up);
-        },
-        startBandResize(event, band) {
-            const start = { y: event.clientY, h: this.canvas.heights[band] };
-            const before = clone(this.canvas);
-            const lowest = this.blocksIn(band).reduce((max, b) => Math.max(max, b.y + 20), 60);
-            const move = (e) => {
-                this.canvas.heights[band] = Math.max(lowest, Math.min(900, Math.round((start.h + (e.clientY - start.y) / this.scale) / SNAP) * SNAP));
-            };
-            const up = () => {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', up);
-                this.history.push(before); this.future = []; this.dirty = true;
-            };
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', up);
-        },
-
-        // --- Clavier ---
-        onKey(e) {
-            const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); this.redo(); return; }
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); this.save(); return; }
-            const b = this.selected();
-            if (!b || typing) return;
-            const step = e.shiftKey ? 10 : 1;
-            const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-            if (moves[e.key]) { e.preventDefault(); this.update({ x: b.x + moves[e.key][0], y: b.y + moves[e.key][1] }); }
-            else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.remove(); }
-            else if (e.key === 'Escape') { this.select(null); }
-        },
-
-        // --- Aperçus et enregistrement ---
-        csrf() { const el = document.querySelector('[name=csrfmiddlewaretoken]'); return el ? el.value : ''; },
-        async refreshPreviews() {
-            const response = await fetch('{% url "templates_app:template-canvas-previews" template.id %}', {
-                method: 'POST', headers: { 'X-CSRFToken': this.csrf(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texts: this.texts, document_type: this.documentType, table: this.canvas.table }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (data.ok) { this.previews = data.previews; this.refit(); }
-        },
-        textsChanged() {
-            this.dirty = true;
-            clearTimeout(this._textTimer);
-            this._textTimer = setTimeout(() => this.refreshPreviews(), 500);
-        },
-        setDocType(type) { this.documentType = type; this.refreshPreviews(); },
-        async save(thenPreview = false) {
-            this.saving = true; this.error = '';
-            const response = await fetch('{% url "templates_app:template-canvas-save" template.id %}', {
-                method: 'POST', headers: { 'X-CSRFToken': this.csrf(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: this.name, canvas: this.canvas, accent: this.accent, font: this.font, texts: this.texts, is_default: this.isDefault }),
-            });
-            const data = await response.json().catch(() => ({}));
-            this.saving = false;
-            if (!response.ok || !data.ok) { this.error = data.error || data.message || 'Enregistrement impossible.'; return; }
-            const gaps = this.missing();
-            this.warning = gaps.length ? `Enregistré, mais il manque des mentions obligatoires : ${gaps.map((m) => m.label).join(', ')}.` : '';
-            this.dirty = false;
-            if (thenPreview) window.open(`{% url 'templates_app:template-preview-frame' template.id %}?type=${this.documentType}`, '_blank', 'noopener');
-        },
-    };
-}
+window.CANVAS_EDITOR_URLS = {
+    previews: '{% url "templates_app:template-canvas-previews" template.id %}',
+    save: '{% url "templates_app:template-canvas-save" template.id %}',
+    preview: '{% url "templates_app:template-preview-frame" template.id %}',
+    upload: '{% url "templates_app:template-asset-upload" %}',
+    assetDelete: '{% url "templates_app:template-asset-delete" 0 %}',
+};
 </script>
+<script src="{% static 'js/canvas-editor.js' %}?v=2.0"></script>
 {% endblock %}

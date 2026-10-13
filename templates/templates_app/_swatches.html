@@ -1,0 +1,17 @@
+{# Nuancier : couleurs-variables du modèle + couleur libre. Paramètres : prop (champ), label, auto (1 = proposer « automatique »). #}
+<div class="ed-field">
+    <span>{{ label }}</span>
+    <div class="ed-swatches">
+        <template x-for="t in swatchTokens({% if auto %}true{% else %}false{% endif %})" :key="t">
+            <button type="button" class="ed-swatch" :class="[getColor('{{ prop }}') === t && 'is-on', !t && 'is-auto']"
+                    :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" :aria-label="colorNames[t]"
+                    @click="setColor('{{ prop }}', t)"></button>
+        </template>
+        <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(getColor('{{ prop }}')) && 'is-on'"
+               :style="/^#/.test(getColor('{{ prop }}')) ? `background:${getColor('{{ prop }}')}` : ''">
+            <input type="color" :value="/^#/.test(getColor('{{ prop }}')) ? getColor('{{ prop }}') : '#6d28d9'"
+                   @input="setColor('{{ prop }}', $event.target.value, false)" @change="snapshot()">
+            <i data-lucide="pipette" class="w-3 h-3"></i>
+        </label>
+    </div>
+</div>

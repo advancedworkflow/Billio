@@ -16,6 +16,10 @@ FONT_CHOICES = {
     'Montserrat': ("'Montserrat', Arial, sans-serif", 'Montserrat:wght@400;500;600;700;800'),
     'Lora': ("'Lora', Georgia, serif", 'Lora:wght@400;500;600;700'),
     'Newsreader': ("'Newsreader', Georgia, serif", 'Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600'),
+    'Playfair Display': ("'Playfair Display', Georgia, serif", 'Playfair+Display:wght@400;600;700;800'),
+    'Cormorant Garamond': ("'Cormorant Garamond', Georgia, serif", 'Cormorant+Garamond:wght@400;500;600;700'),
+    'Poppins': ("'Poppins', Arial, sans-serif", 'Poppins:wght@400;500;600;700;800'),
+    'Oswald': ("'Oswald', 'Arial Narrow', sans-serif", 'Oswald:wght@400;500;600;700'),
     'Arial': ('Arial, Helvetica, sans-serif', None),
 }
 
