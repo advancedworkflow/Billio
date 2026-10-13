@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div style="position:fixed;top:16px;right:16px;z-index:60">{% include "components/language_switcher.html" %}</div>
+    <div class="max-w-2xl mx-auto px-4 py-10">
+        <div class="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm text-center">
+            {% if quote.status == 'accepted' %}
+                <div class="mx-auto w-14 h-14 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-2xl">✓</div>
+                <h1 class="text-2xl font-bold text-gray-900 mt-4">Devis accepté</h1>
+                <p class="text-sm text-gray-500 mt-2">Merci {{ quote.accepted_by_name|default:quote.client.name }}, votre acceptation du devis {{ quote.quote_number }} a bien été enregistrée.</p>
+            {% else %}
+                <div class="mx-auto w-14 h-14 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-2xl">✕</div>
+                <h1 class="text-2xl font-bold text-gray-900 mt-4">Devis refusé</h1>
+                <p class="text-sm text-gray-500 mt-2">Le devis {{ quote.quote_number }} a été marqué comme refusé.</p>
+                {% if quote.rejection_reason %}<p class="text-sm text-gray-600 mt-4 italic">« {{ quote.rejection_reason }} »</p>{% endif %}
+            {% endif %}
+
+            <a href="{% url 'invoices:public-quote-view' quote.id %}" class="mt-8 inline-flex items-center justify-center px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
+                Revoir le devis
+            </a>
+        </div>
+    </div>
+</body>
+</html>

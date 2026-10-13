@@ -1,0 +1,58 @@
+/* Chrono Billio : pastille de la barre du haut, panneau, fenêtre détachée et widget au premier plan.
+   Autonome (variables locales) car chargé aussi dans la fenêtre « toujours au premier plan ». */
+.bt-chip, .bt-widget, .bt-standalone {
+  --bt-primary: var(--billio-primary, #6d28d9);
+  --bt-primary-hover: var(--billio-primary-hover, #4c1d95);
+  --bt-text: var(--billio-text, #18181b);
+  --bt-muted: var(--billio-text-muted, #52525b);
+  --bt-border: var(--billio-border, #e4e4e7);
+  --bt-card: var(--billio-card, #ffffff);
+  --bt-danger: var(--billio-danger, #b91c1c);
+  --bt-success: var(--billio-success, #22c55e);
+}
+
+/* Pastille dans la barre du haut */
+.bt-chip { display: inline-flex; align-items: center; gap: .4rem; }
+.bt-chip [data-bt-chip-time] { display: none; font-variant-numeric: tabular-nums; font-weight: 600; font-size: .8125rem; }
+.bt-chip.is-running { background: rgba(185, 28, 28, .08); color: var(--bt-danger); padding-left: .65rem; padding-right: .75rem; }
+.bt-chip.is-running [data-bt-chip-time] { display: inline; }
+.bt-chip.is-running::before { content: ''; width: .5rem; height: .5rem; border-radius: 999px; background: var(--bt-danger); animation: bt-pulse 1.4s ease-in-out infinite; }
+.bt-panel { position: absolute; right: 0; top: calc(100% + .5rem); width: 18.5rem; z-index: 60; background: var(--bt-card, #fff); border: 1px solid var(--billio-border, #e4e4e7); border-radius: 1rem; box-shadow: 0 18px 40px -12px rgba(24, 24, 27, .25); }
+
+/* Widget */
+.bt-widget { display: flex; flex-direction: column; gap: .6rem; padding: 1rem; color: var(--bt-text); font: 400 .875rem/1.4 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.bt-head { display: flex; align-items: center; gap: .5rem; }
+.bt-label { font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--bt-muted); }
+.bt-dot { width: .5rem; height: .5rem; border-radius: 999px; background: var(--bt-border); }
+.bt-widget.is-running .bt-dot { background: var(--bt-danger); animation: bt-pulse 1.4s ease-in-out infinite; }
+.bt-time { font: 700 2.25rem/1 Manrope, Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.bt-project { display: block; color: var(--bt-text); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-project span { color: var(--bt-muted); }
+.bt-project:hover strong { color: var(--bt-primary); }
+.bt-desc { margin: 0; color: var(--bt-muted); font-size: .8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bt-muted { margin: 0; color: var(--bt-muted); }
+.bt-form { display: flex; flex-direction: column; gap: .5rem; margin: 0; }
+.bt-input { width: 100%; box-sizing: border-box; padding: .5rem .65rem; border: 1px solid var(--bt-border); border-radius: .6rem; background: #fff; color: var(--bt-text); font: inherit; }
+.bt-input:focus { outline: 2px solid rgba(109, 40, 217, .35); outline-offset: 0; border-color: var(--bt-primary); }
+.bt-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .9rem; border: 0; border-radius: .65rem; color: #fff; font: 600 .875rem/1 Inter, system-ui, sans-serif; cursor: pointer; }
+.bt-btn--start { background: var(--bt-primary); }
+.bt-btn--start:hover { background: var(--bt-primary-hover); }
+.bt-btn--stop { background: var(--bt-danger); }
+.bt-btn--stop:hover { filter: brightness(.9); }
+.bt-icon-play { width: 0; height: 0; border-left: .55rem solid currentColor; border-top: .35rem solid transparent; border-bottom: .35rem solid transparent; }
+.bt-icon-stop { width: .6rem; height: .6rem; border-radius: 2px; background: currentColor; }
+.bt-link { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--bt-primary); font: 500 .8125rem/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
+.bt-link:hover { text-decoration: underline; }
+.bt-msg { margin: 0; color: var(--bt-danger); font-size: .8125rem; }
+.bt-msg:empty { display: none; }
+
+/* Fenêtre détachée / widget au premier plan */
+.bt-standalone { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bt-card, #fff); }
+.bt-standalone > [data-bt-mount], .bt-standalone > div { flex: 1; display: flex; }
+.bt-standalone .bt-widget { flex: 1; box-sizing: border-box; justify-content: center; background: var(--bt-card); }
+.bt-pip .bt-widget { padding: .85rem 1rem; gap: .45rem; }
+.bt-pip .bt-time { font-size: 2rem; }
+.bt-hint { margin: 0; padding: .6rem 1rem; font: .75rem/1.4 Inter, system-ui, sans-serif; color: var(--bt-muted, #52525b); border-top: 1px solid var(--billio-border, #e4e4e7); background: var(--billio-card, #fff); }
+
+@keyframes bt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .bt-dot, .bt-chip.is-running::before { animation: none !important; } }

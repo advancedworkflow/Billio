@@ -1,0 +1,639 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Billio{% endblock %}
+{% block page_title %}Éditeur de modèle{% endblock %}
+{% block page_subtitle %}{{ template.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/template-editor.css' %}?v=1.2">
+<script src="{% static 'js/template-editor-extras.js' %}?v=1.2"></script>
+{% endblock %}
+
+{% block content %}
+{{ config|json_script:"te-config" }}
+<div class="te" x-data="templateEditor()" x-init="init()" @keydown.window.ctrl.s.prevent="save()" @keydown.window.meta.s.prevent="save()">
+    <form x-ref="csrf" class="hidden">{% csrf_token %}</form>
+
+    <!-- Barre du haut -->
+    <header class="te-top">
+        <a href="{% url 'templates_app:template-list' %}" class="te-icon-btn" title="Retour aux modèles"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+        <input class="te-name" x-model="name" @input="touch()" maxlength="100" aria-label="Nom du modèle">
+        <span class="te-status" :class="error && 'is-error'" x-text="status"></span>
+        <div class="te-top-spacer"></div>
+        <label class="te-default"><input type="checkbox" x-model="isDefault" @change="touch()"> Modèle par défaut</label>
+        <button type="button" class="te-btn te-btn--primary" @click="save()" :disabled="saving"><i data-lucide="check" class="w-4 h-4"></i> Enregistrer</button>
+    </header>
+
+    <div class="te-body">
+        <!-- Panneau de réglages -->
+        <aside class="te-panel">
+            <div class="te-modes te-modes--5">
+                <button type="button" :class="mode === 'simple' && 'is-active'" @click="setMode('simple')" title="Disposition, couleurs, police, textes"><i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i> Simple</button>
+                <button type="button" :class="mode === 'table' && 'is-active'" @click="setMode('table')" title="Style et colonnes du tableau des lignes"><i data-lucide="table" class="w-3.5 h-3.5"></i> Tableau</button>
+                <button type="button" :class="mode === 'blocks' && 'is-active'" @click="setMode('blocks')" title="Ajouter des blocs (note, échéance, signatures…)"><i data-lucide="layout-template" class="w-3.5 h-3.5"></i> Blocs</button>
+                <button type="button" :class="mode === 'visual' && 'is-active'" @click="setMode('visual')" title="Cliquer, modifier et déplacer les éléments"><i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i> Visuel</button>
+                <button type="button" :class="mode === 'dev' && 'is-active'" @click="setMode('dev')" title="HTML, CSS et variables"><i data-lucide="code-2" class="w-3.5 h-3.5"></i> Code</button>
+            </div>
+
+            <!-- ============ Tableau des lignes ============ -->
+            <div class="te-scroll" x-show="mode === 'table'" x-cloak>
+                <template x-if="!tableInfo.found">
+                    <div class="te-visual-empty">
+                        <span class="te-visual-icon"><i data-lucide="table" class="w-5 h-5"></i></span>
+                        <p><strong>Aucun tableau de lignes détecté</strong></p>
+                        <p class="te-help">Ce modèle n'a pas de tableau des prestations (avec une ligne d'en-tête). Choisissez une disposition dans le mode Simple, ou ajoutez-en un dans le mode Code.</p>
+                    </div>
+                </template>
+                <template x-if="tableInfo.found">
+                    <div>
+                        <section class="te-section">
+                            <p class="te-label">Style du tableau</p>
+                            <div class="te-tpresets">
+                                <template x-for="p in tablePresets" :key="p.key">
+                                    <button type="button" class="te-tpreset" :class="tableSettings.preset === p.key && 'is-active'" @click="applyTablePreset(p)">
+                                        <span class="te-tpreset-thumb" :data-borders="p.borders" :data-key="p.key"><i></i><i></i><i></i><i></i></span>
+                                        <span x-text="p.label"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </section>
+                        <section class="te-section">
+                            <p class="te-label">Couleurs</p>
+                            <div class="te-grid-2">
+                                <label class="te-field"><span>Fond de l'en-tête</span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.head, '#f3f4f6')" @input="setTable({ head: $event.target.value })"></label>
+                                <label class="te-field"><span>Texte de l'en-tête</span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.headText, '#111827')" @input="setTable({ headText: $event.target.value })"></label>
+                                <label class="te-field"><span>Bordures</span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.border, '#e5e7eb')" @input="setTable({ border: $event.target.value, borders: tableSettings.borders || 'rows' })"></label>
+                                <label class="te-field"><span class="te-field-row">Lignes alternées <button type="button" class="te-link" x-show="tableSettings.stripe" @click="setTable({ stripe: '' })">Aucune</button></span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.stripe, '#f8fafc')" @input="setTable({ stripe: $event.target.value })"></label>
+                            </div>
+                        </section>
+                        <section class="te-section">
+                            <p class="te-label">Mise en forme</p>
+                            <div class="te-field"><span>Bordures</span>
+                                <div class="te-seg-btns">
+                                    <template x-for="[v, l] in [['', 'Origine'], ['rows', 'Lignes'], ['all', 'Grille'], ['none', 'Aucune']]" :key="v">
+                                        <button type="button" :class="(tableSettings.borders || '') === v && 'is-active'" @click="setTable({ borders: v })" x-text="l"></button>
+                                    </template>
+                                </div></div>
+                            <div class="te-field"><span>Densité des lignes</span>
+                                <div class="te-seg-btns">
+                                    <template x-for="[v, l] in [['compact', 'Compacte'], ['normal', 'Normale'], ['comfy', 'Aérée']]" :key="v">
+                                        <button type="button" :class="tableSettings.density === v && 'is-active'" @click="setTable({ density: v })" x-text="l"></button>
+                                    </template>
+                                </div></div>
+                            <label class="te-field"><span>Taille du texte <em x-text="tableSettings.fontSize ? tableSettings.fontSize + ' px' : 'origine'"></em></span>
+                                <input type="range" class="te-range" min="9" max="16" step="0.5" :value="tableSettings.fontSize || 12.5" @input="setTable({ fontSize: $event.target.value })"></label>
+                            <div class="te-field"><span>En-têtes de colonnes</span>
+                                <div class="te-seg-btns">
+                                    <template x-for="[v, l] in [['', 'Origine'], ['yes', 'MAJUSCULES'], ['no', 'Normales']]" :key="v">
+                                        <button type="button" :class="(tableSettings.upper || '') === v && 'is-active'" @click="setTable({ upper: v })" x-text="l"></button>
+                                    </template>
+                                </div></div>
+                            <label class="te-check"><input type="checkbox" :checked="tableSettings.numbersRight" @change="setTable({ numbersRight: $event.target.checked })"> Chiffres alignés à droite</label>
+                        </section>
+                        <section class="te-section">
+                            <p class="te-label">Colonnes affichées</p>
+                            <template x-for="c in tableInfo.cols" :key="c.index">
+                                <label class="te-check"><input type="checkbox" :disabled="c.index === 1" :checked="!(tableSettings.hideCols || []).includes(c.index)" @change="toggleCol(c.index)"> <span x-text="c.label"></span></label>
+                            </template>
+                            <label class="te-check" x-show="tableInfo.descSelector"><input type="checkbox" :checked="!tableSettings.hideDesc" @change="setTable({ hideDesc: !$event.target.checked })"> Description sous chaque ligne</label>
+                            <p class="te-help">Une colonne masquée disparaît aussi du PDF. La désignation reste toujours visible.</p>
+                        </section>
+                        <section class="te-section" x-show="tableInfo.totalSelector">
+                            <p class="te-label">Total à payer</p>
+                            <div class="te-grid-2">
+                                <label class="te-field"><span>Fond</span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.totalBg, '#ffffff')" @input="setTable({ totalBg: $event.target.value })"></label>
+                                <label class="te-field"><span>Texte</span><input type="color" class="te-input te-input--color" :value="colorValue(tableSettings.totalText, '#111827')" @input="setTable({ totalText: $event.target.value })"></label>
+                            </div>
+                        </section>
+                        <section class="te-section">
+                            <button type="button" class="te-btn te-btn--block" @click="resetTable()"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Revenir au tableau d'origine</button>
+                        </section>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ============ Blocs (widgets) ============ -->
+            <div class="te-scroll" x-show="mode === 'blocks'" x-cloak>
+                <section class="te-section">
+                    <p class="te-label">Ajouter un bloc</p>
+                    <label class="te-field"><span>Emplacement</span>
+                        <select class="te-input" x-model="blockPosition">
+                            <template x-for="[v, l] in blockPositions" :key="v"><option :value="v" x-text="l" :selected="blockPosition === v"></option></template>
+                        </select></label>
+                    <div class="te-blocks">
+                        <template x-for="b in blockTypes" :key="b.type">
+                            <button type="button" class="te-block" @click="insertBlock(b.type)" :title="b.desc">
+                                <span class="te-block-icon"><i :data-lucide="b.icon" class="w-4 h-4"></i></span>
+                                <span class="te-block-text"><strong x-text="b.label"></strong><small x-text="b.desc"></small></span>
+                                <i data-lucide="plus" class="w-4 h-4 te-block-add"></i>
+                            </button>
+                        </template>
+                    </div>
+                </section>
+                <section class="te-section">
+                    <p class="te-label">Blocs du modèle <span x-text="blocks().length"></span></p>
+                    <p class="te-help" x-show="!blocks().length">Aucun bloc ajouté pour l'instant.</p>
+                    <template x-for="b in blocks()" :key="b.id">
+                        <div class="te-blockcard">
+                            <div class="te-blockcard-head">
+                                <span class="te-block-icon"><i :data-lucide="b.icon" class="w-3.5 h-3.5"></i></span>
+                                <strong x-text="b.label"></strong>
+                                <button type="button" class="te-icon-btn" @click="shiftBlock(b.id, -1)" title="Monter"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i></button>
+                                <button type="button" class="te-icon-btn" @click="shiftBlock(b.id, 1)" title="Descendre"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i></button>
+                                <button type="button" class="te-icon-btn" @click="removeBlock(b.id)" title="Retirer le bloc"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            <select class="te-input te-input--sm" @change="moveBlock(b.id, $event.target.value)">
+                                <template x-for="[v, l] in blockPositions" :key="v"><option :value="v" x-text="l" :selected="b.position === v"></option></template>
+                            </select>
+                            <template x-for="f in blockVars(b.id)" :key="f.name">
+                                <label class="te-field"><span x-text="f.label.split(' — ').pop()"></span>
+                                    <template x-if="f.type === 'textarea'"><textarea class="te-input" rows="3" :value="defaults[f.name] || ''" @input="setVar(f.name, $event.target.value)"></textarea></template>
+                                    <template x-if="f.type !== 'textarea'"><input class="te-input" :type="f.type === 'number' ? 'number' : 'text'" :value="defaults[f.name] || ''" @input="setVar(f.name, $event.target.value)"></template>
+                                </label>
+                            </template>
+                        </div>
+                    </template>
+                    <p class="te-help" x-show="blocks().length">Pour un réglage fin, passez en mode Visuel : cliquez le bloc dans l'aperçu pour changer ses couleurs ou le déplacer.</p>
+                </section>
+            </div>
+
+
+            <!-- ============ Mode visuel ============ -->
+            <div class="te-scroll" x-show="mode === 'visual'" x-cloak>
+                <template x-if="!sel">
+                    <div class="te-visual-empty">
+                        <span class="te-visual-icon"><i data-lucide="mouse-pointer-click" class="w-5 h-5"></i></span>
+                        <p><strong>Cliquez sur un élément de l'aperçu</strong></p>
+                        <p class="te-help">Titre, bloc client, tableau, totaux, mentions… Vous pourrez changer son texte, ses couleurs, sa taille ou le masquer.</p>
+                    </div>
+                </template>
+                <template x-if="sel">
+                    <div>
+                        <section class="te-section">
+                            <div class="te-sel-head">
+                                <div><p class="te-label" x-text="sel.label"></p><p class="te-help" x-show="sel.count > 1" x-text="`S'applique aux ${sel.count} éléments de ce type`"></p></div>
+                                <button type="button" class="te-icon-btn" @click="deselect()" title="Désélectionner"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            </div>
+                            <template x-if="sel.varName">
+                                <label class="te-field"><span>Texte <em class="te-tag">variable</em></span>
+                                    <textarea class="te-input" rows="3" :value="defaults[sel.varName] || ''" @input="setVar(sel.varName, $event.target.value)"></textarea></label>
+                            </template>
+                            <template x-if="!sel.varName && sel.staticText !== null">
+                                <label class="te-field"><span>Texte</span>
+                                    <input class="te-input" :value="sel.staticText" @change="editStaticText($event.target.value)"></label>
+                            </template>
+                            <p class="te-help" x-show="!sel.varName && sel.staticText === null && sel.dynamic">Ce texte vient de vos données (client, montants…) : seul son style se modifie ici.</p>
+                        </section>
+                        <section class="te-section">
+                            <p class="te-label">Style</p>
+                            <div class="te-grid-2">
+                                <label class="te-field"><span>Couleur du texte</span><input type="color" class="te-input te-input--color" :value="styleOf('color') || '#111827'" @input="setStyle('color', $event.target.value)"></label>
+                                <label class="te-field"><span>Fond</span><input type="color" class="te-input te-input--color" :value="styleOf('background-color') || '#ffffff'" @input="setStyle('background-color', $event.target.value)"></label>
+                            </div>
+                            <label class="te-field"><span>Taille du texte <em x-text="(styleOf('font-size') || sel.computed.fontSize)"></em></span>
+                                <input type="range" class="te-range" min="8" max="48" step="1" :value="parseInt(styleOf('font-size') || sel.computed.fontSize)" @input="setStyle('font-size', $event.target.value + 'px')"></label>
+                            <div class="te-field"><span>Graisse</span>
+                                <div class="te-seg-btns">
+                                    <template x-for="[v, l] in [['400', 'Normal'], ['600', 'Semi-gras'], ['800', 'Gras']]" :key="v">
+                                        <button type="button" :class="(styleOf('font-weight') || sel.computed.fontWeight) === v && 'is-active'" @click="setStyle('font-weight', v)" x-text="l"></button>
+                                    </template>
+                                </div></div>
+                            <div class="te-field"><span>Alignement</span>
+                                <div class="te-seg-btns">
+                                    <template x-for="[v, icon] in [['left', 'align-left'], ['center', 'align-center'], ['right', 'align-right']]" :key="v">
+                                        <button type="button" :class="(styleOf('text-align') || sel.computed.textAlign) === v && 'is-active'" @click="setStyle('text-align', v)"><i :data-lucide="icon" class="w-3.5 h-3.5"></i></button>
+                                    </template>
+                                </div></div>
+                            <label class="te-field"><span>Marge intérieure <em x-text="(parseInt(styleOf('padding')) || 0) + ' px'"></em></span>
+                                <input type="range" class="te-range" min="0" max="40" step="1" :value="parseInt(styleOf('padding')) || 0" @input="setStyle('padding', $event.target.value + 'px')"></label>
+                            <label class="te-field"><span>Arrondi <em x-text="(parseInt(styleOf('border-radius')) || 0) + ' px'"></em></span>
+                                <input type="range" class="te-range" min="0" max="30" step="1" :value="parseInt(styleOf('border-radius')) || 0" @input="setStyle('border-radius', $event.target.value + 'px')"></label>
+                            <div class="te-sel-actions">
+                                <button type="button" class="te-btn" @click="setStyle('display', 'none'); deselect()"><i data-lucide="eye-off" class="w-3.5 h-3.5"></i> Masquer</button>
+                                <button type="button" class="te-btn" x-show="overrides[sel.selector]" @click="resetSelected()"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Réinitialiser</button>
+                            </div>
+                        </section>
+                        <section class="te-section">
+                            <p class="te-label">Position &amp; taille</p>
+                            <p class="te-help te-help--top">Glissez l'élément sélectionné dans l'aperçu pour le déplacer, ou utilisez les flèches (Maj : par 10 px).</p>
+                            <div class="te-move">
+                                <div class="te-move-pad">
+                                    <span></span><button type="button" @click="moveBy(0, $event.shiftKey ? -10 : -2)" title="Monter"><i data-lucide="chevron-up" class="w-4 h-4"></i></button><span></span>
+                                    <button type="button" @click="moveBy($event.shiftKey ? -10 : -2, 0)" title="Gauche"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                    <button type="button" @click="resetPosition()" title="Position d'origine"><i data-lucide="crosshair" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" @click="moveBy($event.shiftKey ? 10 : 2, 0)" title="Droite"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                                    <span></span><button type="button" @click="moveBy(0, $event.shiftKey ? 10 : 2)" title="Descendre"><i data-lucide="chevron-down" class="w-4 h-4"></i></button><span></span>
+                                </div>
+                                <div class="te-move-xy">
+                                    <label class="te-field"><span>Horizontal (px)</span><input type="number" class="te-input" :value="offsetOf('x')" @change="setOffset('x', $event.target.value)"></label>
+                                    <label class="te-field"><span>Vertical (px)</span><input type="number" class="te-input" :value="offsetOf('y')" @change="setOffset('y', $event.target.value)"></label>
+                                </div>
+                            </div>
+                            <label class="te-field"><span>Largeur <em x-text="styleOf('width') || 'auto'"></em></span>
+                                <input type="range" class="te-range" min="20" max="100" step="1" :value="parseInt(styleOf('width')) || 100" @input="setStyles({ width: $event.target.value + '%' })"></label>
+                            <div class="te-grid-2">
+                                <label class="te-field"><span>Espace au-dessus <em x-text="(parseInt(styleOf('margin-top')) || 0) + ' px'"></em></span>
+                                    <input type="range" class="te-range" min="0" max="80" step="1" :value="parseInt(styleOf('margin-top')) || 0" @input="setStyles({ 'margin-top': $event.target.value + 'px' })"></label>
+                                <label class="te-field"><span>Espace en dessous <em x-text="(parseInt(styleOf('margin-bottom')) || 0) + ' px'"></em></span>
+                                    <input type="range" class="te-range" min="0" max="80" step="1" :value="parseInt(styleOf('margin-bottom')) || 0" @input="setStyles({ 'margin-bottom': $event.target.value + 'px' })"></label>
+                            </div>
+                            <div class="te-grid-2">
+                                <label class="te-field"><span>Bordure</span><input type="color" class="te-input te-input--color" :value="(styleOf('border-color') || '#e5e7eb')" @input="setStyles({ border: '1px solid ' + $event.target.value, 'border-color': $event.target.value })"></label>
+                                <label class="te-field"><span>Opacité <em x-text="Math.round((parseFloat(styleOf('opacity')) || 1) * 100) + ' %'"></em></span>
+                                    <input type="range" class="te-range" min="0.1" max="1" step="0.05" :value="parseFloat(styleOf('opacity')) || 1" @input="setStyles({ opacity: $event.target.value })"></label>
+                            </div>
+                        </section>
+                    </div>
+                </template>
+                <section class="te-section" x-show="Object.keys(overrides).length">
+                    <p class="te-label">Retouches <span x-text="Object.keys(overrides).length"></span></p>
+                    <template x-for="key in Object.keys(overrides)" :key="key">
+                        <div class="te-retouch">
+                            <button type="button" class="te-retouch-name" @click="selectBySelector(key)" x-text="overrideLabel(key)"></button>
+                            <button type="button" class="te-icon-btn" @click="removeOverride(key)" title="Annuler cette retouche"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </template>
+                    <button type="button" class="te-link" @click="overrides = {}; touch(); refresh(true)">Tout réinitialiser</button>
+                </section>
+            </div>
+
+            <!-- ============ Mode simple ============ -->
+            <div class="te-scroll" x-show="mode === 'simple'">
+                <section class="te-section" x-show="cfg.layouts.length">
+                    <p class="te-label">Disposition</p>
+                    <div class="te-layouts">
+                        <template x-for="l in cfg.layouts" :key="l.id">
+                            <button type="button" class="te-layout" :class="layoutId === l.id && 'is-active'" @click="applyLayout(l)" :title="l.description">
+                                <span class="te-layout-thumb"><iframe :src="`{% url 'templates_app:marketplace-preview-frame' 0 %}`.replace('/0/', `/${l.id}/`)" loading="lazy" tabindex="-1"></iframe></span>
+                                <span x-text="l.title"></span>
+                            </button>
+                        </template>
+                    </div>
+                </section>
+
+                <section class="te-section" x-show="has('accent_color')">
+                    <p class="te-label">Couleur principale</p>
+                    <div class="te-colors">
+                        <template x-for="c in palette" :key="c">
+                            <button type="button" class="te-color" :class="(defaults.accent_color || '').toLowerCase() === c && 'is-active'" :style="`background:${c}`" @click="setVar('accent_color', c)" :aria-label="c"></button>
+                        </template>
+                        <label class="te-color te-color--custom" title="Autre couleur"><input type="color" :value="defaults.accent_color || '#111827'" @input="setVar('accent_color', $event.target.value)"></label>
+                    </div>
+                </section>
+
+                <section class="te-section">
+                    <p class="te-label">Police</p>
+                    <select class="te-input" x-model="font" @change="touch(); refresh()">
+                        <option value="">Selon la disposition</option>
+                        <template x-for="f in cfg.fonts" :key="f"><option :value="f" x-text="f" :selected="font === f"></option></template>
+                    </select>
+                </section>
+
+                <section class="te-section" x-show="has('logo_height')">
+                    <p class="te-label">Taille du logo <span x-text="(defaults.logo_height || 52) + ' px'"></span></p>
+                    <input type="range" min="28" max="120" step="2" class="te-range" :value="defaults.logo_height || 52" @input="setVar('logo_height', $event.target.value)">
+                    <p class="te-help">Le logo se change dans les réglages de l'<a href="{% url 'organizations:organization-list' %}" class="underline">organisation</a>.</p>
+                </section>
+
+                <section class="te-section" x-show="has('payment_terms') || has('thank_you') || has('legal_mentions')">
+                    <p class="te-label">Textes du document</p>
+                    <label class="te-field" x-show="has('payment_terms')"><span>Conditions de paiement</span>
+                        <textarea class="te-input" rows="3" :value="defaults.payment_terms || ''" @input="setVar('payment_terms', $event.target.value)"></textarea></label>
+                    <label class="te-field" x-show="has('thank_you')"><span>Mot de fin</span>
+                        <input class="te-input" :value="defaults.thank_you || ''" @input="setVar('thank_you', $event.target.value)"></label>
+                    <label class="te-field" x-show="has('legal_mentions')"><span>Mentions légales</span>
+                        <textarea class="te-input" rows="4" :value="defaults.legal_mentions || ''" @input="setVar('legal_mentions', $event.target.value)"></textarea></label>
+                </section>
+
+                <section class="te-section" x-show="otherFields.length">
+                    <p class="te-label">Autres réglages</p>
+                    <template x-for="f in otherFields" :key="f.name">
+                        <label class="te-field"><span x-text="f.label || f.name"></span>
+                            <template x-if="f.type === 'textarea'"><textarea class="te-input" rows="3" :value="defaults[f.name] || ''" @input="setVar(f.name, $event.target.value)"></textarea></template>
+                            <template x-if="f.type === 'color'"><input type="color" class="te-input te-input--color" :value="defaults[f.name] || '#000000'" @input="setVar(f.name, $event.target.value)"></template>
+                            <template x-if="f.type !== 'textarea' && f.type !== 'color'"><input class="te-input" :type="f.type === 'number' ? 'number' : 'text'" :value="defaults[f.name] || ''" @input="setVar(f.name, $event.target.value)"></template>
+                        </label>
+                    </template>
+                </section>
+            </div>
+
+            <!-- ============ Mode développeur ============ -->
+            <div class="te-dev" x-show="mode === 'dev'" x-cloak>
+                <div class="te-tabs">
+                    <button type="button" :class="devTab === 'html' && 'is-active'" @click="devTab = 'html'">HTML</button>
+                    <button type="button" :class="devTab === 'css' && 'is-active'" @click="devTab = 'css'">CSS</button>
+                    <button type="button" :class="devTab === 'vars' && 'is-active'" @click="devTab = 'vars'">Variables <span x-text="schema.length"></span></button>
+                </div>
+
+                <div class="te-code-wrap" x-show="devTab === 'html'">
+                    <textarea class="te-code" x-ref="html" spellcheck="false" x-model="html" @input="touch(); refresh()" @keydown.tab.prevent="indent($event)"></textarea>
+                    <div class="te-snippets">
+                        <p class="te-label">Insérer une donnée</p>
+                        <div class="te-chips">
+                            <template x-for="k in cfg.builtins" :key="k"><button type="button" @click="insert(`{% templatetag openvariable %} ${k} {% templatetag closevariable %}`)" x-text="k"></button></template>
+                            <template x-for="f in schema" :key="'v' + f.name"><button type="button" class="is-var" @click="insert(`{% templatetag openvariable %} ${f.name} {% templatetag closevariable %}`)" x-text="f.name"></button></template>
+                        </div>
+                        <button type="button" class="te-link" @click="insert(itemsSnippet)">+ Boucle des lignes de la facture</button>
+                    </div>
+                </div>
+                <div class="te-code-wrap" x-show="devTab === 'css'" x-cloak>
+                    <textarea class="te-code" x-ref="css" spellcheck="false" x-model="css" @input="touch(); refresh()" @keydown.tab.prevent="indent($event)"></textarea>
+                    <p class="te-help">Les variables marchent aussi dans le CSS : <code>{% templatetag openvariable %} accent_color {% templatetag closevariable %}</code>.</p>
+                </div>
+                <div class="te-scroll" x-show="devTab === 'vars'" x-cloak>
+                    <p class="te-help">Les variables apparaissent dans le mode simple et s'utilisent dans le HTML / CSS. La valeur est celle appliquée aux documents.</p>
+                    <template x-for="(f, i) in schema" :key="i">
+                        <div class="te-var">
+                            <div class="te-var-row">
+                                <input class="te-input te-mono" x-model="f.name" @input="touch()" placeholder="nom_variable">
+                                <select class="te-input" x-model="f.type" @change="touch(); refresh()">
+                                    <option value="text">Texte</option><option value="textarea">Texte long</option><option value="color">Couleur</option><option value="number">Nombre</option>
+                                </select>
+                                <button type="button" class="te-icon-btn" @click="schema.splice(i, 1); touch(); refresh()" title="Retirer"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            <input class="te-input" x-model="f.label" @input="touch()" placeholder="Libellé affiché">
+                            <input class="te-input" :value="defaults[f.name] || ''" @input="setVar(f.name, $event.target.value)" placeholder="Valeur">
+                        </div>
+                    </template>
+                    <button type="button" class="te-btn te-btn--block" @click="schema.push({ name: '', type: 'text', label: '' }); touch()"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Ajouter une variable</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Aperçu -->
+        <section class="te-preview">
+            <div class="te-preview-bar">
+                <div class="te-seg">
+                    <button type="button" :class="docType === 'invoice' && 'is-active'" @click="docType = 'invoice'; refresh(true)">Facture</button>
+                    <button type="button" :class="docType === 'quote' && 'is-active'" @click="docType = 'quote'; refresh(true)">Devis</button>
+                </div>
+                <p class="te-preview-note">Aperçu avec des données d'exemple · <span x-text="Math.round(scale * 100) + ' %'"></span></p>
+            </div>
+            <div class="te-stage" x-ref="stage">
+                <div class="te-error" x-show="error" x-cloak><i data-lucide="triangle-alert" class="w-4 h-4"></i><span x-text="error"></span></div>
+                <div class="te-paper-wrap" :style="`width:${794 * scale}px;height:${1123 * scale}px`"><div class="te-paper" :style="`transform: scale(${scale})`">
+                    <iframe x-ref="frame" title="Aperçu du modèle"></iframe>
+                </div></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+function templateEditor() {
+    const cfg = JSON.parse(document.getElementById('te-config').textContent);
+    const SIMPLE = ['accent_color', 'logo_height', 'payment_terms', 'legal_mentions', 'thank_you'];
+    return {
+        ...window.templateEditorExtras(),
+        cfg,
+        mode: 'simple',
+        devTab: 'html',
+        docType: 'invoice',
+        name: cfg.name,
+        isDefault: cfg.isDefault,
+        html: cfg.html,
+        css: '',
+        overrides: {},
+        sel: null,
+        schema: (cfg.schema || []).map((f) => ({ ...f })),
+        defaults: { ...(cfg.defaults || {}) },
+        font: cfg.font || '',
+        layoutId: null,
+        dirty: false,
+        saving: false,
+        status: 'Enregistré',
+        error: '',
+        scale: 0.8,
+        palette: ['#111827', '#1e3a8a', '#2563eb', '#6d28d9', '#0f766e', '#15803d', '#a16207', '#b91c1c', '#db2777'],
+        itemsSnippet: `{% templatetag openblock %} for item in items {% templatetag closeblock %}\n<tr>\n  <td>{% templatetag openvariable %} item.name {% templatetag closevariable %}</td>\n  <td>{% templatetag openvariable %} item.quantity|qty {% templatetag closevariable %}</td>\n  <td>{% templatetag openvariable %} item.unit_price|money:currency {% templatetag closevariable %}</td>\n  <td>{% templatetag openvariable %} item.total|money:currency {% templatetag closevariable %}</td>\n</tr>\n{% templatetag openblock %} endfor {% templatetag closeblock %}\n`,
+        // Les variables des blocs se règlent dans le mode Blocs.
+        get otherFields() { return this.schema.filter((f) => f.name && !SIMPLE.includes(f.name) && !f.name.startsWith('bw_')); },
+        has(name) { return this.schema.some((f) => f.name === name); },
+        csrf() { const i = this.$refs.csrf.querySelector('input'); return i ? i.value : ''; },
+
+        // ---- mode visuel : retouches stockées dans un bloc CSS repéré par des marqueurs
+        VISUAL_START: '/* billio:retouches-visuelles */',
+        VISUAL_END: '/* billio:fin-retouches */',
+        splitCss(css) {
+            const start = css.indexOf(this.VISUAL_START);
+            const end = css.indexOf(this.VISUAL_END);
+            if (start < 0 || end < start) return { base: css, overrides: {} };
+            const block = css.slice(start + this.VISUAL_START.length, end);
+            const overrides = {};
+            block.replace(/([^{}]+)\{([^}]*)\}/g, (m, selector, body) => {
+                const props = {};
+                body.split(';').forEach((decl) => {
+                    const i = decl.indexOf(':');
+                    if (i > 0) props[decl.slice(0, i).trim()] = decl.slice(i + 1).replace('!important', '').trim();
+                });
+                overrides[selector.trim()] = props;
+                return m;
+            });
+            return { base: (css.slice(0, start) + css.slice(end + this.VISUAL_END.length)).trimEnd(), overrides };
+        },
+        fullCss() {
+            // Ordre : CSS du modèle, tableau, blocs, puis retouches visuelles (prioritaires).
+            const base = this.css + (this._rawExtra || this.extraCss());
+            const rules = Object.entries(this.overrides).filter(([, props]) => Object.keys(props).length)
+                .map(([sel, props]) => `${sel} { ${Object.entries(props).map(([k, v]) => `${k}: ${v} !important`).join('; ')}; }`);
+            return rules.length ? `${base}\n\n${this.VISUAL_START}\n${rules.join('\n')}\n${this.VISUAL_END}\n` : base;
+        },
+        setMode(mode) { this.mode = mode; if (mode !== 'visual') this.deselect(); this.refresh(true); this.$nextTick(() => window.lucide && lucide.createIcons()); },
+        frameDoc() { try { return this.$refs.frame.contentDocument; } catch (e) { return null; } },
+        selectorFor(el) {
+            const doc = el.ownerDocument;
+            const parts = [];
+            for (let node = el; node && node !== doc.body; node = node.parentElement) {
+                const cls = [...node.classList].find((c) => !c.startsWith('te-'));
+                let part = cls ? `.${CSS.escape(cls)}` : node.tagName.toLowerCase();
+                if (!cls && node.parentElement) {
+                    const same = [...node.parentElement.children].filter((c) => c.tagName === node.tagName);
+                    if (same.length > 1) part += `:nth-of-type(${same.indexOf(node) + 1})`;
+                }
+                parts.unshift(part);
+                // Premier ancêtre portant une classe : sélecteur stable d'un rendu à l'autre.
+                if (cls) return parts.join(' > ');
+            }
+            return parts.join(' > ');
+        },
+        labelFor(el) {
+            const names = { H1: 'Titre', H2: 'Titre', H3: 'Titre', TH: 'En-tête de colonne', TD: 'Cellule du tableau', TABLE: 'Tableau', TR: 'Ligne du tableau', IMG: 'Image', P: 'Paragraphe', SPAN: 'Texte', DIV: 'Bloc' };
+            const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
+            return `${names[el.tagName] || 'Élément'}${text ? ` « ${text.slice(0, 28)}${text.length > 28 ? '…' : ''} »` : ''}`;
+        },
+        overrideLabel(selector) {
+            const doc = this.frameDoc();
+            const el = doc && doc.querySelector(selector);
+            return el ? this.labelFor(el) : selector;
+        },
+        bindFrame() {
+            const doc = this.frameDoc();
+            if (!doc || !doc.body) return;
+            // Tableau des lignes : repéré à chaque rendu (sélecteur et colonnes réelles du modèle).
+            this.detectTable(doc);
+            if (this._rawExtra) { this._rawExtra = ''; if (this.tableInfo.selector) this.refresh(true); }
+            const style = doc.createElement('style');
+            style.textContent = this.mode === 'visual'
+                ? '[data-te-hover]{outline:2px dashed rgba(109,40,217,.55)!important;outline-offset:2px;cursor:pointer}[data-te-sel]{outline:2px solid #6d28d9!important;outline-offset:2px}'
+                : '';
+            doc.head.appendChild(style);
+            if (this.mode !== 'visual') return;
+            let hovered = null;
+            doc.addEventListener('mouseover', (e) => {
+                if (hovered) hovered.removeAttribute('data-te-hover');
+                hovered = this.pickTarget(e.target);
+                if (hovered) hovered.setAttribute('data-te-hover', '');
+            });
+            doc.addEventListener('mouseleave', () => { if (hovered) hovered.removeAttribute('data-te-hover'); });
+            this.bindDrag(doc);
+            doc.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this._justDragged) return;
+                const target = this.pickTarget(e.target);
+                if (target) this.select(target, e.target.closest('[data-tpl-var]'));
+            });
+            if (this.sel) this.selectBySelector(this.sel.selector, true);
+        },
+        pickTarget(node) {
+            if (!node || node.nodeType !== 1 || node === node.ownerDocument.body) return null;
+            // Le marqueur de variable n'est pas un élément de mise en page : on cible son parent.
+            if (node.hasAttribute('data-tpl-var')) node = node.parentElement;
+            return node && node !== node.ownerDocument.body ? node : null;
+        },
+        select(el, varEl) {
+            const doc = this.frameDoc();
+            doc.querySelectorAll('[data-te-sel]').forEach((n) => n.removeAttribute('data-te-sel'));
+            const selector = this.selectorFor(el);
+            doc.querySelectorAll(selector).forEach((n) => n.setAttribute('data-te-sel', ''));
+            const cs = doc.defaultView.getComputedStyle(el);
+            const varName = (varEl || el.querySelector(':scope > [data-tpl-var]') || {}).dataset?.tplVar || null;
+            const ownText = el.children.length === 0 ? (el.textContent || '').trim() : '';
+            const staticText = !varName && ownText && this.html.split(ownText).length === 2 ? ownText : null;
+            this.sel = {
+                selector, varName, staticText, dynamic: !!ownText && !staticText,
+                count: doc.querySelectorAll(selector).length, label: this.labelFor(el),
+                computed: { fontSize: cs.fontSize, fontWeight: String(cs.fontWeight), textAlign: cs.textAlign === 'start' ? 'left' : cs.textAlign },
+            };
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        selectBySelector(selector, keepQuiet) {
+            const doc = this.frameDoc();
+            const el = doc && doc.querySelector(selector);
+            if (el) this.select(el); else if (!keepQuiet) this.sel = null;
+        },
+        deselect() {
+            this.sel = null;
+            const doc = this.frameDoc();
+            if (doc) doc.querySelectorAll('[data-te-sel]').forEach((n) => n.removeAttribute('data-te-sel'));
+        },
+        styleOf(prop) { return this.sel && (this.overrides[this.sel.selector] || {})[prop]; },
+        setStyle(prop, value) {
+            if (!this.sel) return;
+            this.overrides = { ...this.overrides, [this.sel.selector]: { ...(this.overrides[this.sel.selector] || {}), [prop]: value } };
+            // Aperçu instantané, puis rendu serveur pour confirmer.
+            const doc = this.frameDoc();
+            if (doc) doc.querySelectorAll(this.sel.selector).forEach((n) => n.style.setProperty(prop, value, 'important'));
+            this.touch();
+            this.refresh();
+        },
+        resetSelected() { if (this.sel) this.removeOverride(this.sel.selector); },
+        removeOverride(selector) {
+            const next = { ...this.overrides };
+            delete next[selector];
+            this.overrides = next;
+            this.touch();
+            this.refresh(true);
+        },
+        editStaticText(value) {
+            const text = this.sel && this.sel.staticText;
+            if (!text || !value.trim() || this.html.split(text).length !== 2) return;
+            this.html = this.html.replace(text, value.trim());
+            this.sel.staticText = value.trim();
+            this.layoutId = null;
+            this.touch();
+            this.refresh(true);
+        },
+        init() {
+            const parts = this.splitCss(cfg.css || '');
+            const extra = this.splitExtraCss(parts.base);
+            this.css = extra.css;
+            this.tableSettings = extra.table;
+            this.overrides = parts.overrides;
+            // Tant que le tableau n'est pas repéré dans l'aperçu, on garde tel quel le CSS déjà enregistré.
+            this._rawExtra = parts.base.slice(extra.css.length).trim() ? parts.base.slice(extra.css.length) : '';
+            this.$refs.frame.addEventListener('load', () => this.bindFrame());
+            const match = cfg.layouts.find((l) => l.html.trim() === (this.html || '').trim());
+            this.layoutId = match ? match.id : null;
+            this.fit();
+            window.addEventListener('resize', () => this.fit());
+            window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
+            this.refresh(true);
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        fit() {
+            const stage = this.$refs.stage;
+            if (!stage) return;
+            this.scale = Math.max(0.35, Math.min(1, (stage.clientWidth - 48) / 794));
+        },
+        touch() { this.dirty = true; this.status = 'Modifications non enregistrées'; },
+        setVar(key, value) { this.defaults[key] = value; this.touch(); this.refresh(); },
+        applyLayout(layout) {
+            if (this.layoutId === null && this.html.trim() && !confirm('Remplacer la mise en page actuelle (HTML/CSS personnalisés) par cette disposition ? Vos textes et couleurs sont conservés.')) return;
+            this.html = layout.html;
+            this.css = layout.css;
+            this.layoutId = layout.id;
+            this.touch();
+            this.refresh(true);
+        },
+        indent(e) {
+            const el = e.target;
+            const start = el.selectionStart;
+            el.setRangeText('  ', start, el.selectionEnd, 'end');
+            el.dispatchEvent(new Event('input'));
+        },
+        insert(text) {
+            const el = this.$refs.html;
+            const start = el.selectionStart ?? el.value.length;
+            el.focus();
+            el.setRangeText(text, start, el.selectionEnd ?? start, 'end');
+            el.dispatchEvent(new Event('input'));
+        },
+        refresh(now) {
+            clearTimeout(this._t);
+            this._t = setTimeout(() => this.render(), now ? 0 : 350);
+        },
+        async render() {
+            const seq = (this._seq = (this._seq || 0) + 1);
+            const res = await fetch('{% url "templates_app:template-editor-preview" template.id %}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf() },
+                body: JSON.stringify({ html: this.html, css: this.fullCss(), defaults: this.defaults, font: this.font, document_type: this.docType, visual: this.mode === 'visual', schema: this.schema }),
+            }).catch(() => null);
+            if (seq !== this._seq) return;
+            const data = res ? await res.json().catch(() => ({})) : { error: 'Serveur injoignable.' };
+            if (!res || !res.ok || !data.ok) { this.error = data.error || 'Aperçu impossible.'; return; }
+            this.error = '';
+            this.$refs.frame.srcdoc = data.html;
+        },
+        async save() {
+            if (this.saving) return;
+            this.saving = true;
+            this.status = 'Enregistrement…';
+            try {
+                const res = await fetch('{% url "templates_app:template-editor-save" template.id %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf() },
+                    body: JSON.stringify({ name: this.name, html: this.html, css: this.fullCss(), schema: this.schema, defaults: this.defaults, font: this.font, is_default: this.isDefault }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.ok) { this.status = data.error || 'Enregistrement impossible.'; this.error = data.error || ''; return; }
+                this.dirty = false;
+                const t = new Date();
+                this.status = `Enregistré à ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+            } finally { this.saving = false; }
+        },
+    };
+}
+</script>
+{% endblock %}

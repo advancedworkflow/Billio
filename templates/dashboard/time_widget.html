@@ -1,0 +1,17 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono Billio</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700&display=swap" rel="stylesheet">
+    <link href="{% static 'css/time-widget.css' %}?v=1.0" rel="stylesheet">
+    <script src="{% static 'js/time-widget.js' %}?v=1.1" defer></script>
+</head>
+<body class="bt-standalone">
+    {% csrf_token %}
+    <div data-bt-mount data-bt-pin data-bt-external></div>
+    <p class="bt-hint">Gardez cette petite fenêtre ouverte à côté de votre travail : elle reste à jour même si vous changez de page dans Billio.</p>
+</body>
+</html>

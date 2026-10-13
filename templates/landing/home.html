@@ -1,0 +1,867 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billio — Du devis à la livraison, sans friction</title>
+    <meta name="description" content="Devis, projets, livrables, facturation et intégrations — pilotez toute votre activité freelance ou agence depuis une seule plateforme.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/landing.css' %}?v=2.6" rel="stylesheet">
+    <link href="{% static 'css/landing-motion.css' %}?v=2.9" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="landing-page">
+
+    <header id="header" class="landing-header">
+        <div class="max-w-6xl mx-auto px-5 sm:px-6 py-4 flex items-center justify-between gap-4">
+            <a href="/" class="flex items-center gap-2.5 shrink-0">
+                {% include "components/logo_mark.html" with class="w-7 h-7" %}
+                <span class="landing-logo text-lg">billio<span style="color: var(--billio-cta);">&bull;</span></span>
+            </a>
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="#feature-cards" class="landing-nav-link">Fonctionnalités</a>
+                <a href="#projects" class="landing-nav-link">Projets</a>
+                <a href="#showcase" class="landing-nav-link">Produit</a>
+                <a href="#automation" class="landing-nav-link">Automation</a>
+                <a href="#pricing" class="landing-nav-link">Tarifs</a>
+            </nav>
+            <div class="flex items-center gap-3 shrink-0">
+                {% include "components/language_switcher.html" %}
+                <a href="{% url 'accounts:login' %}" class="landing-nav-link hidden sm:inline">Connexion</a>
+                <a href="{% url 'accounts:register' %}" class="landing-btn-primary text-sm py-2.5 px-4">Commencer gratuitement</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 1. Hero -->
+    <section class="relative pt-28 pb-16 sm:pt-36 sm:pb-20 px-5 sm:px-6 overflow-hidden">
+        <div class="hero-gradient-flow"></div>
+        <div class="landing-aurora"></div>
+
+        <div class="hero-chat-bubble hero-chat-bubble--1">
+            <div class="hero-chat-bubble-float">
+                <span class="hero-chat-bubble-dot" style="background: var(--billio-gradient);"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+                Relance envoyée · Julie M.
+            </div>
+        </div>
+        <div class="hero-chat-bubble hero-chat-bubble--2">
+            <div class="hero-chat-bubble-float">
+                <span class="hero-chat-bubble-dot" style="background: linear-gradient(135deg, #eab308, #d97706);"><i data-lucide="pen-line" class="w-3.5 h-3.5"></i></span>
+                Brouillon devis · Studio Nova
+            </div>
+        </div>
+        <div class="hero-chat-bubble hero-chat-bubble--3">
+            <div class="hero-chat-bubble-float">
+                <span class="hero-chat-bubble-dot" style="background: linear-gradient(135deg, #22c55e, #16a34a);"><i data-lucide="check-check" class="w-3.5 h-3.5"></i></span>
+                Facture #042 payée
+            </div>
+        </div>
+        <div class="hero-chat-bubble hero-chat-bubble--4">
+            <div class="hero-chat-bubble-float">
+                <span class="hero-avatar-bubble-stack">
+                    <span class="hero-avatar-bubble-mini" style="background: var(--billio-gradient);">SN</span>
+                    <span class="hero-avatar-bubble-mini" style="background: linear-gradient(135deg, #eab308, #d97706);">AK</span>
+                    <span class="hero-avatar-bubble-mini" style="background: linear-gradient(135deg, #22c55e, #16a34a);">CP</span>
+                </span>
+                +12 clients actifs
+            </div>
+        </div>
+
+        <div class="max-w-4xl mx-auto relative z-10 text-center reveal">
+            <div class="hero-badge-avatars">
+                <div class="hero-avatar-stack">
+                    <span class="hero-avatar" style="background: var(--billio-gradient);">SN</span>
+                    <span class="hero-avatar" style="background: linear-gradient(135deg, #eab308, #d97706);">AK</span>
+                    <span class="hero-avatar" style="background: linear-gradient(135deg, #22c55e, #16a34a);">CP</span>
+                </div>
+                <span>Utilisé par des indépendants, agences et PME</span>
+            </div>
+            <h1 class="landing-display landing-display-hero mb-6">
+                Du devis à la livraison,<br>
+                <span class="hero-gradient-text">sans changer d'outil.</span>
+            </h1>
+            <p class="text-lg max-w-2xl mx-auto mb-8" style="color: var(--billio-text-muted);">
+                Devis, projets, livrables, facturation, portail client et intégrations (WhatsApp, Slack, Stripe…) — Billio devient le point central de votre activité, pas juste votre outil de facturation.
+            </p>
+            <div class="hero-stat-pills">
+                <span class="hero-stat-pill"><i data-lucide="kanban" class="w-3.5 h-3.5"></i> Projets &amp; jalons intégrés</span>
+                <span class="hero-stat-pill"><i data-lucide="git-branch" class="w-3.5 h-3.5"></i> Timeline, Schedule &amp; Gantt</span>
+                <span class="hero-stat-pill"><i data-lucide="plug" class="w-3.5 h-3.5"></i> Intégrations connectées</span>
+            </div>
+            <div class="flex flex-col items-center gap-3">
+                <a href="{% url 'accounts:register' %}" class="landing-btn-primary landing-btn-primary--lg">
+                    <span class="landing-btn-primary-label">Commencer gratuitement</span>
+                    <span class="hero-cta-arrow"><i data-lucide="arrow-right" class="w-4 h-4"></i></span>
+                </a>
+                <a href="{% url 'invoices:invoice-demo' %}" class="landing-nav-link text-sm">Voir une facture interactive →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Social Proof -->
+    <section id="social-proof" class="landing-section stats-section reveal-stagger">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center mb-14">
+                <div data-stagger>
+                    <p class="stat-ticker-value" data-count="80" data-suffix="%">0%</p>
+                    <p class="text-sm mt-1" style="color: var(--billio-muted);">Temps admin économisé</p>
+                </div>
+                <div data-stagger>
+                    <p class="stat-ticker-value">&lt; 2 min</p>
+                    <p class="text-sm mt-1" style="color: var(--billio-muted);">Pour une facture</p>
+                </div>
+                <div data-stagger>
+                    <p class="stat-ticker-value" data-count="98" data-suffix="%">0%</p>
+                    <p class="text-sm mt-1" style="color: var(--billio-muted);">Paiements à temps</p>
+                </div>
+                <div data-stagger>
+                    <p class="stat-ticker-value" data-count="24" data-suffix="/7">0</p>
+                    <p class="text-sm mt-1" style="color: var(--billio-muted);">Suivi en temps réel</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-2 mb-12" data-stagger>
+                <span class="landing-badge">Freelances</span>
+                <span class="landing-badge">Consultants</span>
+                <span class="landing-badge">Agences</span>
+                <span class="landing-badge">PME</span>
+                <span class="landing-badge">Startups</span>
+                <span class="landing-badge">Créateurs</span>
+            </div>
+
+            <div class="text-center max-w-2xl mx-auto mb-8" data-stagger>
+                <h2 class="landing-display text-3xl sm:text-4xl">Ils ont transformé leur facturation</h2>
+            </div>
+        </div>
+        <div class="testimonial-marquee" data-stagger>
+            <div class="testimonial-track">
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Nous avons réduit notre temps de facturation de 80%."</p><p class="testimonial-author">Jean</p><p class="testimonial-role">Freelance</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Les paiements arrivent beaucoup plus vite."</p><p class="testimonial-author">Sarah</p><p class="testimonial-role">Agence</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"La meilleure interface que nous ayons utilisée."</p><p class="testimonial-author">Lucas</p><p class="testimonial-role">Consultant</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Billio a simplifié toute notre trésorerie."</p><p class="testimonial-author">Marie</p><p class="testimonial-role">PME</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Nous avons réduit notre temps de facturation de 80%."</p><p class="testimonial-author">Jean</p><p class="testimonial-role">Freelance</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Les paiements arrivent beaucoup plus vite."</p><p class="testimonial-author">Sarah</p><p class="testimonial-role">Agence</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"La meilleure interface que nous ayons utilisée."</p><p class="testimonial-author">Lucas</p><p class="testimonial-role">Consultant</p></div>
+                <div class="testimonial-card"><p class="testimonial-stars">★★★★★</p><p class="testimonial-quote">"Billio a simplifié toute notre trésorerie."</p><p class="testimonial-author">Marie</p><p class="testimonial-role">PME</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Problem -->
+    <section id="problem" class="landing-section landing-section-alt">
+        <div class="max-w-3xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <p class="landing-label mb-3">Le problème</p>
+                <h2 class="landing-display text-4xl sm:text-5xl mb-4">La facturation manuelle vous coûte du temps</h2>
+                <p class="text-base" style="color: var(--billio-text-muted);">
+                    Entre les tableurs, les relances oubliées et les retards de paiement, gérer sa facturation à la main devient vite un frein à la croissance.
+                </p>
+            </div>
+            <div class="landing-workflow">
+                <div class="landing-workflow-step">
+                    <div class="landing-workflow-marker">
+                        <div class="landing-workflow-dot"><i data-lucide="file-x" class="w-4 h-4"></i></div>
+                        <div class="landing-workflow-line"></div>
+                    </div>
+                    <div class="landing-workflow-content">
+                        <h4>Factures créées à la main</h4>
+                        <p>Un tableur, un modèle Word, des calculs de TVA refaits à chaque fois — source d'erreurs et de temps perdu.</p>
+                    </div>
+                </div>
+                <div class="landing-workflow-step">
+                    <div class="landing-workflow-marker">
+                        <div class="landing-workflow-dot"><i data-lucide="bell-off" class="w-4 h-4"></i></div>
+                        <div class="landing-workflow-line"></div>
+                    </div>
+                    <div class="landing-workflow-content">
+                        <h4>Relances oubliées</h4>
+                        <p>Sans rappel automatique, les impayés s'accumulent et il faut penser à relancer soi-même chaque client.</p>
+                    </div>
+                </div>
+                <div class="landing-workflow-step">
+                    <div class="landing-workflow-marker">
+                        <div class="landing-workflow-dot"><i data-lucide="clock-alert" class="w-4 h-4"></i></div>
+                        <div class="landing-workflow-line"></div>
+                    </div>
+                    <div class="landing-workflow-content">
+                        <h4>Paiements en retard</h4>
+                        <p>Pas de suivi centralisé des échéances : la trésorerie souffre et les retards passent inaperçus trop longtemps.</p>
+                    </div>
+                </div>
+                <div class="landing-workflow-step">
+                    <div class="landing-workflow-marker">
+                        <div class="landing-workflow-dot"><i data-lucide="eye-off" class="w-4 h-4"></i></div>
+                    </div>
+                    <div class="landing-workflow-content">
+                        <h4>Aucune visibilité</h4>
+                        <p>Impossible de savoir en un coup d'œil qui doit quoi, ni comment évolue le chiffre d'affaires du mois.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Feature Cards -->
+    <section id="feature-cards" class="landing-section">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <p class="landing-label mb-3">Fonctionnalités</p>
+                <h2 class="landing-display text-4xl sm:text-5xl">Une plateforme complète, du devis à la livraison</h2>
+                <p class="text-base mt-4" style="color: var(--billio-text-muted);">Billio ne s'arrête plus à la facture : gérez vos projets, vos livrables et vos outils connectés au même endroit.</p>
+            </div>
+            <div class="bento-grid reveal-stagger">
+                <div class="bento-item bento-item--payment tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="wallet-cards" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Paiement intégré</h3>
+                    <p class="bento-desc">Stripe natif — vos clients paient en un clic, vous encaissez plus vite. Aucune configuration technique requise : tout est prêt dès l'inscription.</p>
+                    <div class="bento-payment-visual">
+                        <div class="bento-payment-row">
+                            <div class="bento-payment-icon"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
+                            <span class="bento-payment-label">Facture #042</span>
+                            <span class="bento-payment-amount">+450 €</span>
+                        </div>
+                        <div class="bento-payment-row">
+                            <div class="bento-payment-icon"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
+                            <span class="bento-payment-label">Facture #038</span>
+                            <span class="bento-payment-amount">+1 200 €</span>
+                        </div>
+                        <div class="bento-payment-row" data-payment-pending data-final-amount="+380 €">
+                            <div class="bento-payment-icon bento-payment-icon--pending">
+                                <i data-lucide="loader-circle" class="w-3.5 h-3.5 bento-payment-icon-spin"></i>
+                                <i data-lucide="check" class="w-3.5 h-3.5 bento-payment-icon-check"></i>
+                            </div>
+                            <span class="bento-payment-label">Facture #051</span>
+                            <span class="bento-payment-amount bento-payment-amount--pending">En cours…</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bento-item bento-item--analytics tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="chart-spline" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Analytics</h3>
+                    <p class="bento-desc">Visualisez revenus, croissance et tendances en temps réel — de quoi prendre des décisions éclairées sans ouvrir un tableur.</p>
+                    <div class="bento-stats-visual analytics-dashboard">
+                        <div>
+                            <p class="bento-stat-value"><span data-count="18" data-suffix="%">0%</span></p>
+                            <p class="bento-stat-label">Croissance ce mois</p>
+                        </div>
+                        <div>
+                            <p class="bento-stat-value"><span data-count="98" data-suffix="%">0%</span></p>
+                            <p class="bento-stat-label">Payé à temps</p>
+                        </div>
+                        <div>
+                            <p class="bento-stat-value"><span data-count="32" data-suffix="">0</span></p>
+                            <p class="bento-stat-label">Factures ce mois</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bento-item bento-item--ai tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="sparkles" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Billio AI</h3>
+                    <p class="bento-desc">Génération intelligente de factures à partir d'une simple description — bientôt disponible. L'IA structure vos prestations à votre place.</p>
+                    <div class="bento-ai-visual">
+                        <div class="bento-ai-line" style="width:100%;"></div>
+                        <div class="bento-ai-line" style="width:65%;"></div>
+                        <div class="bento-ai-dots"><span></span><span></span><span></span></div>
+                    </div>
+                </div>
+                <div class="bento-item bento-item--clients tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="users-round" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Clients</h3>
+                    <p class="bento-desc">Historique, contacts et factures centralisés — retrouvez en un clic tous les échanges et paiements liés à chaque client.</p>
+                    <div class="bento-clients-visual">
+                        <span class="bento-mini-avatar" style="background: linear-gradient(135deg, #6d28d9, #8b5cf6);">SN</span>
+                        <span class="bento-mini-avatar" style="background: linear-gradient(135deg, #eab308, #d97706);">AK</span>
+                        <span class="bento-mini-avatar" style="background: linear-gradient(135deg, #22c55e, #16a34a);">CP</span>
+                        <span class="bento-mini-avatar bento-mini-avatar--more">+12</span>
+                    </div>
+                </div>
+                <div class="bento-item bento-item--pdf tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">PDF</h3>
+                    <p class="bento-desc">Exports professionnels instantanés, prêts à être envoyés ou archivés.</p>
+                    <div class="bento-pdf-visual">
+                        <div class="bento-pdf-progress-fill"></div>
+                    </div>
+                </div>
+                <div class="bento-item bento-item--invoices tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="receipt-text" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Facturation professionnelle</h3>
+                    <p class="bento-desc">Devis, factures, notes de crédit — tout dans un seul espace, sans jongler entre plusieurs outils. Numérotation légale et mentions obligatoires gérées automatiquement.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Devis</span>
+                        <span class="bento-chip">Facture</span>
+                        <span class="bento-chip">Avoir</span>
+                    </div>
+                </div>
+                <div id="projects" class="bento-item bento-item--projects tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="kanban" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Projets, jalons &amp; tâches</h3>
+                    <p class="bento-desc">Créez vos propres phases sur un Kanban personnalisable, avec jalons, tâches assignables, réunions client planifiées et progression calculée automatiquement — visible aussi par vos clients.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Kanban</span>
+                        <span class="bento-chip">Milestones</span>
+                        <span class="bento-chip">Tâches</span>
+                        <span class="bento-chip">Réunions</span>
+                    </div>
+                </div>
+                <div id="files" class="bento-item bento-item--files tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="folder-open" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Fichiers &amp; stockage</h3>
+                    <p class="bento-desc">Centralisez les fichiers de chaque projet et jalon. Vos clients peuvent aussi déposer les leurs directement depuis leur espace — jusqu'à 500 GB selon votre offre.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Fichiers projet</span>
+                        <span class="bento-chip">Upload client</span>
+                    </div>
+                </div>
+                <div id="timeline" class="bento-item bento-item--timeline tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="git-branch" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Timeline unifiée</h3>
+                    <p class="bento-desc">Toute l'activité de votre organisation au même endroit — historique, planning à venir et Gantt léger par projet, avec deadlines mises en évidence.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Activity</span>
+                        <span class="bento-chip">Schedule</span>
+                        <span class="bento-chip">Gantt</span>
+                    </div>
+                </div>
+                <div id="integrations" class="bento-item bento-item--integrations tilt-card" data-stagger>
+                    <div class="bento-icon"><i data-lucide="plug" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Intégrations connectées</h3>
+                    <p class="bento-desc">Connectez WhatsApp, Slack, Stripe et vos autres outils : chaque événement reçu alimente automatiquement votre activité, avec un badge dédié.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413"/></svg>WhatsApp</span>
+                        <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>Slack</span>
+                        <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg>Stripe</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Interactive Demo -->
+    <section id="showcase" class="landing-section landing-section-alt">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <p class="landing-label mb-3">Démo interactive</p>
+                <h2 class="landing-display text-4xl sm:text-5xl mb-4">Tout ce dont vous avez besoin, un seul dashboard</h2>
+                <p class="text-base" style="color: var(--billio-text-muted);">
+                    De la création du document jusqu'à l'encaissement, chaque étape de votre cycle de facturation est centralisée dans une seule interface — plus besoin de jongler entre un tableur, votre boîte mail et votre outil de paiement.
+                </p>
+            </div>
+            <div class="hero-window">
+                <div class="hero-window-chrome">
+                    <span class="hero-window-dot hero-window-dot--red"></span>
+                    <span class="hero-window-dot hero-window-dot--yellow"></span>
+                    <span class="hero-window-dot hero-window-dot--green"></span>
+                    <span class="hero-window-title">billio.app/dashboard</span>
+                </div>
+                <div class="p-4 sm:p-6">
+                    <div class="showcase-layout is-embedded" id="product-showcase">
+                        <nav class="showcase-nav">
+                            <button type="button" class="showcase-tab is-active" data-showcase-tab="create">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Créer
+                            </button>
+                            <button type="button" class="showcase-tab" data-showcase-tab="send">
+                                <i data-lucide="send" class="w-4 h-4"></i> Envoyer
+                            </button>
+                            <button type="button" class="showcase-tab" data-showcase-tab="remind">
+                                <i data-lucide="bell-dot" class="w-4 h-4"></i> Relancer
+                            </button>
+                            <button type="button" class="showcase-tab" data-showcase-tab="analyze">
+                                <i data-lucide="chart-spline" class="w-4 h-4"></i> Analyser
+                            </button>
+                        </nav>
+                        <div class="showcase-panel-wrap">
+                            <div class="showcase-panel is-active" data-showcase-panel="create">
+                                <p class="showcase-panel-desc">Composez une facture ou un devis complet en moins de deux minutes : choisissez votre client, ajoutez vos prestations et laissez Billio calculer seul les totaux, la TVA et les remises applicables.</p>
+                                <ul class="showcase-panel-points">
+                                    <li><span class="landing-check">✓</span> Modèles personnalisables à l'image de votre marque</li>
+                                    <li><span class="landing-check">✓</span> Calcul automatique des totaux, remises et TVA</li>
+                                    <li><span class="landing-check">✓</span> Numérotation et mentions légales gérées pour vous</li>
+                                </ul>
+                                <div class="showcase-mock">
+                                    <div class="showcase-mock-bar"></div>
+                                    <p class="text-sm font-semibold mb-2">Nouvelle facture</p>
+                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">Client · Prestations · Montants</p>
+                                    <div class="space-y-2">
+                                        <div class="h-8 rounded-lg" style="background: var(--billio-primary-soft);"></div>
+                                        <div class="h-8 rounded-lg" style="background: var(--billio-bg); border: 1px solid var(--billio-border);"></div>
+                                        <div class="h-8 rounded-lg" style="background: var(--billio-bg); border: 1px solid var(--billio-border);"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="showcase-panel" data-showcase-panel="send">
+                                <p class="showcase-panel-desc">Partagez votre document en un clic par email, lien web public ou export PDF. Votre client le reçoit avec une présentation professionnelle et cohérente, sans que vous ayez à rédiger le moindre message.</p>
+                                <ul class="showcase-panel-points">
+                                    <li><span class="landing-check">✓</span> Envoi par email, lien partageable ou PDF téléchargeable</li>
+                                    <li><span class="landing-check">✓</span> Suivi d'ouverture en temps réel côté client</li>
+                                    <li><span class="landing-check">✓</span> Historique complet de chaque échange conservé</li>
+                                </ul>
+                                <div class="showcase-mock">
+                                    <div class="showcase-mock-bar"></div>
+                                    <p class="text-sm font-semibold mb-2">Envoi en cours</p>
+                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">Email · Lien web · PDF</p>
+                                    <div class="p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                                        <p class="text-xs font-medium">→ client@studionova.fr</p>
+                                        <p class="text-xs mt-2" style="color: var(--billio-success);">✓ Envoyé il y a 2 min</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="showcase-panel" data-showcase-panel="remind">
+                                <p class="showcase-panel-desc">Billio surveille vos échéances et relance automatiquement vos clients selon un calendrier progressif (J+7, J+14, J+30), avec un ton toujours courtois — vous n'avez plus jamais à envoyer de rappel manuel.</p>
+                                <ul class="showcase-panel-points">
+                                    <li><span class="landing-check">✓</span> Relances programmées à intervalles personnalisables</li>
+                                    <li><span class="landing-check">✓</span> Messages professionnels générés automatiquement</li>
+                                    <li><span class="landing-check">✓</span> Arrêt automatique dès qu'une facture est réglée</li>
+                                </ul>
+                                <div class="showcase-mock">
+                                    <div class="showcase-mock-bar"></div>
+                                    <p class="text-sm font-semibold mb-2">Relances automatiques</p>
+                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">J+7 · J+14 · J+30</p>
+                                    <div class="space-y-2 text-xs">
+                                        <div class="flex justify-between p-2 rounded-lg" style="background: var(--billio-cta-soft);"><span>Facture #042</span><span style="color: var(--billio-cta-hover);">Relance J+7</span></div>
+                                        <div class="flex justify-between p-2 rounded-lg" style="background: var(--billio-bg);"><span>Facture #038</span><span style="color: var(--billio-success);">Payée</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="showcase-panel" data-showcase-panel="analyze">
+                                <p class="showcase-panel-desc">Chaque paiement, chaque relance et chaque facture alimente automatiquement votre tableau de bord : chiffre d'affaires, factures en attente et croissance sont mis à jour en temps réel, sans ressaisie ni tableur.</p>
+                                <ul class="showcase-panel-points">
+                                    <li><span class="landing-check">✓</span> Chiffre d'affaires et encaissements consolidés</li>
+                                    <li><span class="landing-check">✓</span> Vue claire des factures en attente ou en retard</li>
+                                    <li><span class="landing-check">✓</span> Tendances de croissance mises à jour en temps réel</li>
+                                </ul>
+                                <div class="schema">
+                                    <div class="schema-sources">
+                                        <button type="button" class="schema-node" data-schema="invoices" data-detail="Chaque facture créée ou envoyée alimente aussitôt votre tableau de bord.">
+                                            <div class="schema-node-icon"><i data-lucide="receipt-text" class="w-4 h-4"></i></div>
+                                            <div><strong>Factures</strong><span>Créées &amp; envoyées</span></div>
+                                        </button>
+                                        <button type="button" class="schema-node" data-schema="payments" data-detail="Chaque paiement Stripe encaissé met à jour votre chiffre d'affaires en temps réel.">
+                                            <div class="schema-node-icon"><i data-lucide="credit-card" class="w-4 h-4"></i></div>
+                                            <div><strong>Paiements</strong><span>Encaissés via Stripe</span></div>
+                                        </button>
+                                        <button type="button" class="schema-node" data-schema="reminders" data-detail="Chaque relance envoyée est suivie jusqu'au règlement complet de la facture.">
+                                            <div class="schema-node-icon"><i data-lucide="bell-dot" class="w-4 h-4"></i></div>
+                                            <div><strong>Relances</strong><span>Envoyées automatiquement</span></div>
+                                        </button>
+                                    </div>
+                                    <svg class="schema-connectors" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                                        <path class="schema-line" data-schema-line="invoices" d="M0,10 C50,10 50,50 100,50" />
+                                        <path class="schema-line" data-schema-line="payments" d="M0,50 L100,50" />
+                                        <path class="schema-line" data-schema-line="reminders" d="M0,90 C50,90 50,50 100,50" />
+                                    </svg>
+                                    <div class="schema-target">
+                                        <div class="schema-node-icon schema-node-icon--target"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+                                        <strong>Tableau de bord</strong>
+                                        <p data-schema-detail>Survolez une source pour voir son impact en temps réel.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. AI -->
+    <section id="ai" class="landing-section ai-section-bg">
+        <div class="max-w-3xl mx-auto reveal" style="position:relative; z-index:1;">
+            <div class="text-center mb-10">
+                <p class="landing-label mb-3" style="color:#c4b5fd;">Intelligence artificielle</p>
+                <h2 class="landing-display text-4xl sm:text-5xl" style="color:#ffffff;">Billio AI</h2>
+                <p class="text-base mt-4 max-w-xl mx-auto" style="color: rgba(255,255,255,0.7);">Une conversation suffit pour générer votre proposition, votre contrat, votre facture — et l'envoyer.</p>
+            </div>
+            <div class="ai-terminal" id="ai-chat">
+                <div class="ai-terminal-header">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Billio AI — Très bientôt
+                </div>
+                <div class="ai-terminal-body">
+                    <div class="ai-line ai-line--user" data-ai-line>&gt; Crée une proposition pour Nova Studio — refonte de marque, 3 semaines</div>
+                    <div class="ai-line ai-line--ai" data-ai-line>✨ Analyse de la demande… Génération de la proposition, du contrat et de la facture…</div>
+                    <div class="ai-line ai-line--success" data-ai-line>✓ Proposition, contrat et facture générés — email prêt à envoyer</div>
+                </div>
+            </div>
+            <div class="ai-flow-steps" id="ai-flow">
+                <span class="ai-flow-step" data-ai-flow-step>Conversation</span>
+                <span class="ai-flow-arrow">→</span>
+                <span class="ai-flow-step" data-ai-flow-step>Proposition</span>
+                <span class="ai-flow-arrow">→</span>
+                <span class="ai-flow-step" data-ai-flow-step>Contrat</span>
+                <span class="ai-flow-arrow">→</span>
+                <span class="ai-flow-step" data-ai-flow-step>Facture</span>
+                <span class="ai-flow-arrow">→</span>
+                <span class="ai-flow-step" data-ai-flow-step>Email envoyé</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Templates -->
+    <section id="templates" class="landing-section">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <p class="landing-label mb-3">Templates</p>
+                <h2 class="landing-display text-4xl sm:text-5xl mb-4">Un style pour chaque activité</h2>
+                <p class="text-base" style="color: var(--billio-text-muted);">Choisissez un modèle de facture prêt à l'emploi et personnalisez-le à l'image de votre marque.</p>
+            </div>
+            <div class="templates-carousel" id="templates-carousel">
+                <div class="templates-track" data-templates-track>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#6d28d9,#8b5cf6);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Standard Pro</span>
+                        <span class="template-card-mock-tag">Business</span>
+                    </button>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#0f172a,#334155);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Minimal Noir</span>
+                        <span class="template-card-mock-tag">Minimal</span>
+                    </button>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#eab308,#d97706);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Studio Créatif</span>
+                        <span class="template-card-mock-tag">Créatif</span>
+                    </button>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#22c55e,#16a34a);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Agence Verte</span>
+                        <span class="template-card-mock-tag">Agence</span>
+                    </button>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#3b82f6,#1d4ed8);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Consulting Bleu</span>
+                        <span class="template-card-mock-tag">Consulting</span>
+                    </button>
+                    <button type="button" class="template-card-mock" style="--tpl-gradient: linear-gradient(135deg,#ec4899,#be185d);">
+                        <span class="template-card-mock-thumb"></span>
+                        <span class="template-card-mock-name">Créateur Rose</span>
+                        <span class="template-card-mock-tag">Créateur</span>
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center justify-center gap-3 mt-6">
+                <button type="button" class="carousel-nav-btn" data-carousel-prev aria-label="Précédent"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                <button type="button" class="carousel-nav-btn" data-carousel-next aria-label="Suivant"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. Client Portal -->
+    <section id="client-portal" class="landing-section landing-section-alt">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <p class="landing-label mb-3">Client Portal</p>
+                    <h2 class="landing-display text-4xl sm:text-5xl mb-4">Vos clients ont leur propre espace</h2>
+                    <p class="text-base mb-6" style="color: var(--billio-text-muted);">
+                        Chaque client dispose d'un accès dédié pour consulter ses factures, suivre l'avancement de son projet et régler en un clic — sans créer de compte Billio.
+                    </p>
+                    <ul class="showcase-panel-points">
+                        <li><span class="landing-check">✓</span> Historique complet des factures et devis</li>
+                        <li><span class="landing-check">✓</span> Étapes clés et jalons du projet en temps réel</li>
+                        <li><span class="landing-check">✓</span> Réunions planifiées visibles en un coup d'œil</li>
+                        <li><span class="landing-check">✓</span> Dépôt de fichiers directement depuis l'espace client</li>
+                        <li><span class="landing-check">✓</span> Paiement en ligne sécurisé via Stripe</li>
+                    </ul>
+                </div>
+                <div class="client-portal-mock">
+                    <div class="hero-window-chrome" style="border-radius: 1rem 1rem 0 0;">
+                        <span class="hero-window-dot hero-window-dot--red"></span>
+                        <span class="hero-window-dot hero-window-dot--yellow"></span>
+                        <span class="hero-window-dot hero-window-dot--green"></span>
+                        <span class="hero-window-title">portal.billio.app/studio-nova</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center gap-3 mb-5">
+                            <span class="hero-avatar" style="background: var(--billio-gradient);">SN</span>
+                            <div>
+                                <p class="text-sm font-semibold">Studio Nova</p>
+                                <p class="text-xs" style="color: var(--billio-muted);">Espace client</p>
+                            </div>
+                        </div>
+                        <div class="bento-payment-visual">
+                            <div class="bento-payment-row">
+                                <div class="bento-payment-icon"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
+                                <span class="bento-payment-label">Facture #042</span>
+                                <span class="bento-payment-amount">Payée</span>
+                            </div>
+                            <div class="bento-payment-row">
+                                <div class="bento-payment-icon bento-payment-icon--pending"><i data-lucide="clock" class="w-3.5 h-3.5"></i></div>
+                                <span class="bento-payment-label">Facture #051</span>
+                                <span class="bento-payment-amount bento-payment-amount--pending">Due le 12/09</span>
+                            </div>
+                        </div>
+                        <button type="button" class="landing-btn-primary w-full mt-5" disabled style="opacity:0.85; cursor:default;">
+                            <i data-lucide="credit-card" class="w-4 h-4"></i> Payer maintenant
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 9. Automation -->
+    <section id="automation" class="landing-section">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-14 reveal">
+                <p class="landing-label mb-3">Automation</p>
+                <h2 class="landing-display text-4xl sm:text-5xl mb-4">De la création au paiement, sans friction</h2>
+                <p class="text-base" style="color: var(--billio-text-muted);">
+                    Six étapes enchaînées automatiquement : vous créez le document, Billio l'envoie, le suit, relance si besoin et met à jour vos statistiques — sans intervention manuelle de votre part.
+                </p>
+            </div>
+            <div class="workflow-connector reveal">
+                <svg viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true"><path class="workflow-connector-path" d="M0,1 L100,1" /></svg>
+            </div>
+            <div class="workflow-grid reveal-stagger">
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">01</span>
+                        <div class="workflow-icon"><i data-lucide="file-signature" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Créer un devis</h3>
+                    <p>Choisissez un modèle, ajoutez vos prestations et vos montants : votre proposition commerciale est prête en quelques clics, sans avoir à rédiger un document depuis zéro.</p>
+                </div>
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">02</span>
+                        <div class="workflow-icon"><i data-lucide="send" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Envoyer</h3>
+                    <p>Partagez le document par email, lien web ou export PDF. Votre client le reçoit avec une présentation professionnelle, cohérente avec votre image de marque.</p>
+                </div>
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">03</span>
+                        <div class="workflow-icon"><i data-lucide="eye" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Le client ouvre</h3>
+                    <p>Vous êtes notifié en temps réel dès que votre client consulte le document, pour savoir exactement quand relancer ou simplement patienter.</p>
+                </div>
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">04</span>
+                        <div class="workflow-icon"><i data-lucide="credit-card" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Paiement Stripe</h3>
+                    <p>Le règlement se fait en un clic grâce à l'intégration Stripe native — paiement par carte, sans que votre client ait besoin de créer un compte.</p>
+                </div>
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">05</span>
+                        <div class="workflow-icon"><i data-lucide="badge-check" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Reçu automatique</h3>
+                    <p>Une confirmation de paiement est générée et envoyée instantanément, avec toutes les pièces justificatives nécessaires à votre comptabilité.</p>
+                </div>
+                <div class="workflow-card tilt-card" data-stagger>
+                    <div class="workflow-card-head">
+                        <span class="workflow-number">06</span>
+                        <div class="workflow-icon"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+                    </div>
+                    <h3>Tableau de bord</h3>
+                    <p>Vos statistiques, votre trésorerie et l'historique complet de vos échanges sont mis à jour automatiquement, sans aucune ressaisie.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10. Analytics -->
+    <section id="analytics" class="landing-section landing-section-alt">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="analytics-layout">
+                <div class="analytics-copy">
+                    <p class="landing-label mb-3">Analytics</p>
+                    <h2 class="landing-display text-4xl sm:text-5xl mb-4">Pilotez votre activité en un coup d'œil</h2>
+                    <p class="text-base mb-6" style="color: var(--billio-text-muted);">
+                        Fini les tableurs à mettre à jour manuellement. Billio agrège en temps réel vos revenus, vos délais de paiement et votre croissance pour vous donner une vision claire de la santé financière de votre activité.
+                    </p>
+                    <ul class="analytics-points">
+                        <li>
+                            <div class="analytics-point-icon"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
+                            <div><strong>Revenus mensuels</strong><span>Suivez votre chiffre d'affaires mois par mois et repérez les tendances avant qu'elles ne deviennent des problèmes.</span></div>
+                        </li>
+                        <li>
+                            <div class="analytics-point-icon"><i data-lucide="pie-chart" class="w-4 h-4"></i></div>
+                            <div><strong>Statut des paiements</strong><span>Visualisez en un instant la part de factures payées, en attente ou en retard.</span></div>
+                        </li>
+                        <li>
+                            <div class="analytics-point-icon"><i data-lucide="gauge" class="w-4 h-4"></i></div>
+                            <div><strong>Croissance & délais</strong><span>Mesurez votre taux de paiement à temps et votre progression d'un trimestre à l'autre.</span></div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="analytics-dashboard">
+                    <div class="analytics-card">
+                        <p class="text-xs font-semibold uppercase flex items-center gap-1.5" style="color: var(--billio-muted);"><span class="analytics-live-dot"></span> Revenus (30 jours)</p>
+                        <p class="text-2xl font-bold mt-1" data-count="12400" data-prefix="">0</p>
+                        <p class="analytics-trend">▲ +18% vs mois dernier</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="text-xs font-semibold uppercase" style="color: var(--billio-muted);">Paiements à temps</p>
+                        <p class="text-2xl font-bold mt-1" data-count="65" data-suffix="%">0%</p>
+                        <p class="analytics-caption">factures réglées avant échéance</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="text-xs font-semibold uppercase" style="color: var(--billio-muted);">Croissance</p>
+                        <p class="text-2xl font-bold mt-1" style="color: var(--billio-success);" data-count="24" data-prefix="+" data-suffix="%">+0%</p>
+                        <p class="analytics-caption">vs trimestre précédent</p>
+                    </div>
+                    <div class="analytics-card">
+                        <p class="text-xs font-semibold uppercase" style="color: var(--billio-muted);">Factures actives</p>
+                        <p class="text-2xl font-bold mt-1" data-count="32" data-prefix="">0</p>
+                        <p class="analytics-caption">ce mois-ci</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11. Pricing -->
+    <section id="pricing" class="landing-section">
+        <div class="max-w-7xl mx-auto reveal">
+            <div class="text-center mb-6 max-w-2xl mx-auto">
+                <p class="landing-label mb-3">Tarifs</p>
+                <h2 class="landing-display text-4xl sm:text-5xl mb-4">Transparent, sans surprise</h2>
+                <p class="text-sm sm:text-base" style="color: var(--billio-muted);">Commencez gratuitement, passez à un forfait payant quand votre activité grandit. Prix hors taxes.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
+                {% for card in plan_cards %}{% with plan=card.plan %}
+                <div class="pricing-card-premium {% if plan.is_popular %}is-featured relative{% else %}pricing-card-premium--tight{% endif %} tilt-card">
+                    {% if plan.is_popular %}<span class="pricing-most-popular">⭐ Le plus choisi</span>{% endif %}
+                    <p class="landing-label mb-2" translate="no"{% if plan.is_popular %} style="color: rgba(255,255,255,0.75);"{% endif %}>{{ plan.name }}</p>
+                    <p class="pricing-card-tagline" style="color: {% if plan.is_popular %}var(--billio-cta); opacity: 1{% elif plan.is_free %}var(--billio-muted){% else %}var(--billio-primary){% endif %};">{{ plan.tagline }}</p>
+                    <p class="landing-amount text-3xl mb-1"{% if plan.is_popular %} style="color:#fff;"{% endif %}>{{ plan.price_monthly|floatformat:"-2" }} €</p>
+                    <p class="text-xs mb-4" style="color: {% if plan.is_popular %}rgba(255,255,255,0.7){% else %}var(--billio-muted){% endif %};">HT / mois · sans engagement</p>
+                    <ul class="pricing-limits-list space-y-2 mb-3" style="color: {% if plan.is_popular %}rgba(255,255,255,0.85){% else %}var(--billio-muted){% endif %};">
+                        {% for line in card.limits %}<li><span {% if plan.is_popular %}style="color: var(--billio-cta);"{% else %}class="landing-check"{% endif %}>✓</span> {{ line }}</li>{% endfor %}
+                    </ul>
+                    <hr class="pricing-card-divider">
+                    <ul class="pricing-highlights-list space-y-2 mb-6 flex-1" style="color: {% if plan.is_popular %}rgba(255,255,255,0.85){% else %}var(--billio-muted){% endif %};">
+                        {% for line in card.highlights %}{% if forloop.first and not forloop.parentloop.first %}<li class="font-semibold">{{ line }}</li>{% else %}<li><span {% if plan.is_popular %}style="color: var(--billio-cta);"{% else %}class="landing-check"{% endif %}>✓</span> {{ line }}</li>{% endif %}{% endfor %}
+                    </ul>
+                    <a href="{% url 'accounts:register' %}{% if not plan.is_free %}?next={% url 'subscriptions:billing' %}{% endif %}" class="{% if plan.is_popular %}landing-btn-primary{% else %}landing-btn-secondary{% endif %} w-full">{% if plan.is_free %}Commencer gratuitement{% else %}Choisir {{ plan.name }}{% endif %}</a>
+                </div>
+                {% endwith %}{% endfor %}
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4 mt-8 text-xs text-center max-w-3xl mx-auto" style="color: var(--billio-muted);">
+                <p>💳 <strong style="color: var(--billio-text);">Paiements</strong> — l'abonnement Billio est séparé des frais de paiement en ligne : aucune commission sur vos transactions.</p>
+                <p>🔓 <strong style="color: var(--billio-text);">Sans engagement</strong> — changez de forfait au prorata ou résiliez à tout moment ; vos données restent exportables.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 12. FAQ -->
+    <section id="faq" class="landing-section landing-section-alt">
+        <div class="max-w-2xl mx-auto reveal">
+            <div class="text-center mb-10">
+                <p class="landing-label mb-3">FAQ</p>
+                <h2 class="landing-display text-3xl sm:text-4xl">Questions fréquentes</h2>
+            </div>
+            <div class="space-y-3">
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Faut-il des connaissances en comptabilité ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Non. Billio est conçu pour créer et envoyer des factures rapidement, sans jargon comptable.</p>
+                </div>
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Le client peut-il payer sans compte ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Oui. Un lien de paiement suffit — carte bancaire, sans inscription côté client.</p>
+                </div>
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Puis-je résilier à tout moment ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Absolument. Aucun engagement, aucun frais caché.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 13. CTA final -->
+    <section class="landing-section cta-final text-center">
+        <div class="cta-beams"></div>
+        <div class="cta-final-content max-w-3xl mx-auto reveal">
+            <h2 class="landing-display text-4xl sm:text-5xl mb-4" style="color: #ffffff;">
+                Consacrez votre temps à développer votre entreprise
+            </h2>
+            <p class="text-lg mb-4" style="color: rgba(255,255,255,0.85);">
+                Laissez Billio gérer votre facturation, vos paiements et vos relances.
+            </p>
+            <p class="mb-8" style="color: rgba(255,255,255,0.7);">
+                Rejoignez les indépendants, agences et PME qui choisissent une manière plus simple de gérer leur activité.
+            </p>
+            <a href="{% url 'accounts:register' %}" class="landing-btn-primary text-base px-8 py-3.5">Créer un compte gratuitement</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-saas">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid lg:grid-cols-7 gap-10 mb-12">
+                <div class="lg:col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        {% include "components/logo_mark.html" with class="w-7 h-7" %}
+                        <span class="landing-logo text-lg">billio<span style="color: var(--billio-cta);">&bull;</span></span>
+                    </div>
+                    <p class="text-sm mb-6" style="color: var(--billio-text-muted);">Le système d'exploitation financier des indépendants et des PME.</p>
+                    <form class="footer-newsletter" action="{% url 'accounts:register' %}" method="get">
+                        <input type="email" name="email" placeholder="Votre email" aria-label="Votre email" autocomplete="email">
+                        <button type="submit" class="landing-btn-primary text-sm py-2.5 px-4">Essayer</button>
+                    </form>
+                </div>
+                <div class="footer-link-col">
+                    <h4>Produit</h4>
+                    <a href="#feature-cards">Fonctionnalités</a>
+                    <a href="#showcase">Dashboard</a>
+                    <a href="#pricing">Tarifs</a>
+                    <a href="{% url 'invoices:invoice-demo' %}">Démo</a>
+                </div>
+                <div class="footer-link-col">
+                    <h4>Outils</h4>
+                    <a href="#projects">Projets &amp; Kanban</a>
+                    <a href="#timeline">Timeline &amp; Gantt</a>
+                    <a href="#automation">Automation</a>
+                    <a href="#integrations">Intégrations</a>
+                    <a href="#templates">Templates</a>
+                    <a href="#client-portal">Portail client</a>
+                </div>
+                <div class="footer-link-col">
+                    <h4>Ressources</h4>
+                    <a href="{% url 'api-docs' %}">API</a>
+                    <a href="{% url 'invoices:invoice-demo' %}">Facture interactive</a>
+                    <a href="{% url 'accounts:register' %}">Créer un compte</a>
+                </div>
+                <div class="footer-link-col">
+                    <h4>Légal</h4>
+                    <a href="{% url 'landing:legal-notice' %}">Mentions légales</a>
+                    <a href="{% url 'landing:terms' %}">CGU</a>
+                    <a href="{% url 'landing:privacy' %}">Confidentialité</a>
+                </div>
+                <div class="footer-link-col">
+                    <h4>Compte</h4>
+                    <a href="{% url 'accounts:login' %}">Connexion</a>
+                    <a href="{% url 'accounts:password-reset' %}">Mot de passe oublié</a>
+                </div>
+            </div>
+            <div class="pt-8 border-t text-sm text-center" style="border-color: var(--billio-border); color: var(--billio-text-muted);">
+                <p>© {% now "Y" %} Billio. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/landing.js' %}?v=1.2"></script>
+</body>
+</html>

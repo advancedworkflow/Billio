@@ -1,0 +1,226 @@
+{% load billio_format %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>{{ page_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        [x-cloak] { display: none !important; }
+        .num { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900" x-data="{ preview: false }">
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                {% if organization.logo %}
+                <img src="{{ organization.logo.url }}" alt="{{ organization.name }}" class="h-8 w-auto max-w-[140px] object-contain">
+                {% else %}
+                <span class="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center text-sm font-semibold">{{ organization.name|slice:":1"|upper }}</span>
+                {% endif %}
+                <span class="font-semibold truncate">{{ organization.name }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                {% include "components/language_switcher.html" %}
+                <button type="button" @click="preview = !preview" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <span x-text="preview ? 'Masquer le PDF' : 'Aperçu PDF'"></span>
+                </button>
+                <a href="{% url 'invoices:public-invoice-pdf' invoice.id %}?download=1" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+                    Télécharger le PDF
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+
+            <!-- ===================== Détail de la facture ===================== -->
+            <section class="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                <div class="p-6 sm:p-8 border-b border-gray-100">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Facture</p>
+                            <h1 class="text-2xl font-semibold mt-0.5">{{ invoice.invoice_number }}</h1>
+                            {% if invoice.title and invoice.title != 'Invoice' %}<p class="text-sm text-gray-600 mt-1">{{ invoice.title }}</p>{% endif %}
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+                            {% if invoice.status == 'paid' %}bg-green-50 text-green-700{% elif days_late %}bg-red-50 text-red-700{% elif paid_amount %}bg-blue-50 text-blue-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            {% if invoice.status == 'paid' %}Payée{% elif days_late %}En retard de {{ days_late }} jour{{ days_late|pluralize }}{% elif paid_amount %}Partiellement payée{% else %}À régler{% endif %}
+                        </span>
+                    </div>
+
+                    <dl class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 text-sm">
+                        <div><dt class="text-gray-500">Date d'émission</dt><dd class="font-medium mt-0.5">{{ invoice.issue_date|date:"d/m/Y" }}</dd></div>
+                        <div><dt class="text-gray-500">Échéance</dt><dd class="font-medium mt-0.5 {% if days_late %}text-red-600{% endif %}">{{ invoice.due_date|date:"d/m/Y" }}</dd></div>
+                        <div><dt class="text-gray-500">Conditions</dt><dd class="font-medium mt-0.5">{% if invoice.payment_terms %}{{ invoice.payment_terms }} jours{% else %}À réception{% endif %}</dd></div>
+                    </dl>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6 text-sm">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Émise par</p>
+                            <p class="font-medium">{{ organization.name }}</p>
+                            {% if organization.address %}<p class="text-gray-600">{{ organization.address }}</p>{% endif %}
+                            {% if organization.postal_code or organization.city %}<p class="text-gray-600">{{ organization.postal_code }} {{ organization.city }}</p>{% endif %}
+                            {% if organization.email %}<p class="text-gray-600">{{ organization.email }}</p>{% endif %}
+                            {% if organization.tax_id %}<p class="text-gray-500 text-xs mt-1">TVA {{ organization.tax_id }}</p>{% endif %}
+                            {% if organization.registration_number %}<p class="text-gray-500 text-xs">SIRET {{ organization.registration_number }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Facturée à</p>
+                            <p class="font-medium">{{ invoice.client.name }}</p>
+                            {% if invoice.client.company_name and invoice.client.company_name != invoice.client.name %}<p class="text-gray-600">{{ invoice.client.company_name }}</p>{% endif %}
+                            {% if invoice.client.address %}<p class="text-gray-600">{{ invoice.client.address }}</p>{% endif %}
+                            {% if invoice.client.postal_code or invoice.client.city %}<p class="text-gray-600">{{ invoice.client.postal_code|default:"" }} {{ invoice.client.city|default:"" }}</p>{% endif %}
+                            {% if invoice.client.email %}<p class="text-gray-600">{{ invoice.client.email }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lignes -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs uppercase tracking-wide text-gray-400 border-b border-gray-100">
+                                <th class="font-semibold px-6 sm:px-8 py-3">Désignation</th>
+                                <th class="font-semibold px-3 py-3 text-right">Qté</th>
+                                <th class="font-semibold px-3 py-3 text-right">Prix unit. HT</th>
+                                <th class="font-semibold px-3 py-3 text-right">TVA</th>
+                                <th class="font-semibold px-6 sm:px-8 py-3 text-right">Total HT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr class="border-b border-gray-50 align-top">
+                                <td class="px-6 sm:px-8 py-3">
+                                    <p class="font-medium">{{ item.name }}</p>
+                                    {% if item.description %}<p class="text-xs text-gray-500 mt-0.5 whitespace-pre-line">{{ item.description }}</p>{% endif %}
+                                </td>
+                                <td class="px-3 py-3 text-right num whitespace-nowrap">{{ item.quantity|qty }}{% if item.unit and item.unit != 'unit' %} {{ item.unit }}{% endif %}</td>
+                                <td class="px-3 py-3 text-right num whitespace-nowrap">{{ item.unit_price|money:invoice.currency }}</td>
+                                <td class="px-3 py-3 text-right num text-gray-500">{{ item.tax_rate|percent }}</td>
+                                <td class="px-6 sm:px-8 py-3 text-right num font-medium whitespace-nowrap">{{ item.total|money:invoice.currency }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="px-8 py-6 text-center text-gray-500">Détail des lignes non disponible — voir le PDF.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totaux -->
+                <div class="px-6 sm:px-8 py-5 flex justify-end">
+                    <dl class="w-full sm:w-72 text-sm space-y-1.5">
+                        <div class="flex justify-between"><dt class="text-gray-500">Total HT</dt><dd class="num">{{ invoice.subtotal|money:invoice.currency }}</dd></div>
+                        {% for rate, amount in tax_lines %}
+                        <div class="flex justify-between"><dt class="text-gray-500">TVA {{ rate|percent }}</dt><dd class="num">{{ amount|money:invoice.currency }}</dd></div>
+                        {% empty %}
+                        {% if invoice.tax_amount %}<div class="flex justify-between"><dt class="text-gray-500">TVA</dt><dd class="num">{{ invoice.tax_amount|money:invoice.currency }}</dd></div>{% endif %}
+                        {% endfor %}
+                        {% if invoice.discount_amount %}<div class="flex justify-between"><dt class="text-gray-500">Remise</dt><dd class="num">− {{ invoice.discount_amount|money:invoice.currency }}</dd></div>{% endif %}
+                        <div class="flex justify-between pt-2 mt-1 border-t border-gray-100 font-semibold text-base"><dt>Total TTC</dt><dd class="num">{{ invoice.total_amount|money:invoice.currency }}</dd></div>
+                        {% if paid_amount and invoice.status != 'paid' %}
+                        <div class="flex justify-between text-green-700"><dt>Déjà réglé</dt><dd class="num">− {{ paid_amount|money:invoice.currency }}</dd></div>
+                        <div class="flex justify-between font-semibold"><dt>Reste à payer</dt><dd class="num">{{ remaining|money:invoice.currency }}</dd></div>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                {% if invoice.notes %}
+                <div class="px-6 sm:px-8 py-5 border-t border-gray-100 text-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Notes</p>
+                    <p class="text-gray-600 whitespace-pre-line">{{ invoice.notes }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Aperçu du PDF -->
+                <div x-show="preview" x-cloak class="border-t border-gray-100 bg-gray-100 p-4">
+                    <template x-if="preview">
+                        <iframe src="{% url 'invoices:public-invoice-pdf' invoice.id %}#view=FitH" title="PDF de la facture" class="w-full rounded-lg bg-white border border-gray-200" style="height: 80vh;"></iframe>
+                    </template>
+                </div>
+            </section>
+
+            <!-- ===================== Paiement ===================== -->
+            <aside class="space-y-4 lg:sticky lg:top-6">
+                <div class="bg-white border border-gray-200 rounded-2xl p-6">
+                    {% if invoice.status == 'paid' %}
+                    <p class="text-sm text-gray-500">Facture réglée</p>
+                    <p class="text-3xl font-semibold mt-1 num">{{ invoice.total_amount|money:invoice.currency }}</p>
+                    {% if invoice.paid_at %}<p class="text-sm text-green-700 mt-1">Payée le {{ invoice.paid_at|date:"d/m/Y" }}</p>{% endif %}
+                    <a href="{% url 'invoices:public-invoice-receipt' invoice.id %}" class="mt-5 inline-flex items-center justify-center w-full px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black transition">Voir le reçu</a>
+                    {% else %}
+                    <p class="text-sm text-gray-500">{% if paid_amount %}Reste à payer{% else %}Montant à payer{% endif %}</p>
+                    <p class="text-3xl font-semibold mt-1 num">{{ remaining|money:invoice.currency }}</p>
+                    <p class="text-sm mt-1 {% if days_late %}text-red-600{% else %}text-gray-500{% endif %}">
+                        {% if days_late %}Échue depuis le {{ invoice.due_date|date:"d/m/Y" }}{% elif days_left == 0 %}À régler aujourd'hui{% else %}À régler avant le {{ invoice.due_date|date:"d/m/Y" }}{% endif %}
+                    </p>
+                    {% if messages %}{% for message in messages %}<p class="mt-4 text-sm rounded-lg px-3 py-2 {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-amber-50 text-amber-800{% endif %}">{{ message }}</p>{% endfor %}{% endif %}
+                    {% if payment_cancelled %}<p class="mt-4 text-sm rounded-lg px-3 py-2 bg-gray-50 text-gray-600">Paiement annulé : aucun montant n'a été débité.</p>{% endif %}
+                    {% if card_payment %}
+                    <form method="post" action="{% url 'invoices:public-invoice-pay' invoice.id %}" class="mt-5">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black transition">Payer par carte</button>
+                        <p class="text-xs text-gray-400 mt-2 text-center">Paiement sécurisé par Stripe</p>
+                    </form>
+                    {% elif organization.iban %}
+                    <p class="mt-4 text-sm text-gray-600">Réglez cette facture par virement avec les coordonnées ci-dessous.</p>
+                    {% else %}
+                    <p class="mt-4 text-sm text-gray-600">Contactez {{ organization.name }}{% if organization.email %} ({{ organization.email }}){% endif %} pour connaître les modalités de paiement.</p>
+                    {% endif %}
+                    {% endif %}
+                </div>
+
+                {% if invoice.status != 'paid' and organization.iban %}
+                <div class="bg-white border border-gray-200 rounded-2xl p-6 text-sm" x-data="{ copied: '' }">
+                    <p class="font-semibold">Payer par virement</p>
+                    <p class="text-gray-500 mt-0.5">Indiquez la référence <strong class="text-gray-800">{{ invoice.invoice_number }}</strong> dans le libellé.</p>
+                    <dl class="mt-4 space-y-3">
+                        <div>
+                            <dt class="text-xs text-gray-500">Titulaire</dt>
+                            <dd class="font-medium">{{ organization.name }}{% if organization.bank_name %} · {{ organization.bank_name }}{% endif %}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500">IBAN</dt>
+                            <dd class="flex items-center justify-between gap-2">
+                                <span class="font-mono text-[13px] break-all">{{ organization.iban }}</span>
+                                <button type="button" class="text-xs text-gray-500 hover:text-gray-900 shrink-0" @click="navigator.clipboard.writeText('{{ organization.iban|escapejs }}'); copied = 'iban'; setTimeout(() => copied = '', 1500)" x-text="copied === 'iban' ? 'Copié' : 'Copier'"></button>
+                            </dd>
+                        </div>
+                        {% if organization.bic_swift %}
+                        <div><dt class="text-xs text-gray-500">BIC</dt><dd class="font-mono text-[13px]">{{ organization.bic_swift }}</dd></div>
+                        {% endif %}
+                    </dl>
+                    {% if organization.payment_instructions %}<p class="text-gray-500 mt-4 whitespace-pre-line">{{ organization.payment_instructions }}</p>{% endif %}
+                </div>
+                {% endif %}
+
+                {% if payments %}
+                <div class="bg-white border border-gray-200 rounded-2xl p-6 text-sm">
+                    <p class="font-semibold mb-3">Paiements reçus</p>
+                    <ul class="space-y-2">
+                        {% for p in payments %}
+                        <li class="flex justify-between gap-3">
+                            <span class="text-gray-600">{{ p.payment_date|default:p.created_at|date:"d/m/Y" }}{% if p.payment_method %} · {{ p.payment_method.get_method_type_display }}{% endif %}</span>
+                            <span class="num font-medium">{{ p.amount|money:p.currency }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <p class="text-xs text-gray-400 px-1">Une question sur cette facture ? {% if organization.email %}<a href="mailto:{{ organization.email }}?subject=Facture%20{{ invoice.invoice_number }}" class="underline">Écrire à {{ organization.name }}</a>{% else %}Contactez {{ organization.name }}.{% endif %}</p>
+            </aside>
+        </div>
+    </main>
+</body>
+</html>

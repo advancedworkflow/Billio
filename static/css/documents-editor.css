@@ -1,0 +1,71 @@
+/* Galerie de modèles de documents (vignettes canvas réduites). */
+
+.doc-template-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 190px);
+    gap: 16px;
+}
+
+.doc-template-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--billio-border);
+    border-radius: 14px;
+    background: #fff;
+    overflow: hidden;
+    text-align: left;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+.doc-template-card:hover { border-color: var(--billio-primary-soft-border); box-shadow: 0 10px 28px rgba(0,0,0,.08); transform: translateY(-2px); }
+
+/* Zone vignette : fond gris, page blanche centrée avec une ombre légère. */
+.doc-thumb {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 11px 0;
+    background: #f4f4f5;
+    border-bottom: 1px solid var(--billio-border);
+    width: 100%;
+    cursor: pointer;
+}
+.doc-thumb-page {
+    display: block;
+    width: 168px;
+    overflow: hidden;
+    border-radius: 4px 4px 0 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.08);
+    background: #fff;
+    pointer-events: none;
+}
+.doc-thumb-scale { display: block; transform-origin: top left; }
+.doc-thumb-cta {
+    position: absolute; left: 50%; bottom: 18px; transform: translate(-50%, 6px);
+    padding: 7px 14px; border-radius: 999px; background: #18181b; color: #fff;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    opacity: 0; transition: opacity .15s ease, transform .15s ease;
+}
+.doc-template-card:hover .doc-thumb-cta { opacity: 1; transform: translate(-50%, 0); }
+
+.doc-thumb--blank { padding: 0; color: var(--billio-text); }
+.doc-thumb--blank:hover { background: #ede9fe; }
+.doc-template-blank-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: #fff; color: var(--billio-primary); box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.doc-template-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 11px;
+}
+.doc-template-card-footer p.font-semibold { font-size: 12.5px; }
+
+/* Les jetons de variables gardent leur aspect de pastille dans les vignettes. */
+.doc-thumb .doc-var-token { background: color-mix(in srgb, currentColor 14%, transparent); color: inherit; border-radius: 4px; padding: 0 3px; }

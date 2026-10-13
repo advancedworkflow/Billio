@@ -1,0 +1,211 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Devis - Billio{% endblock %}
+{% block page_title %}Devis{% endblock %}
+{% block page_subtitle %}Gerez vos devis et suivez leur statut{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">Liste des devis</h2>
+                <p class="text-sm text-gray-500 mt-1">Consultez, filtrez et creez vos devis.</p>
+            </div>
+            <a href="{% url 'invoices:quote-create' %}" class="btn-primary-black inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium hover:text-white">
+                <svg class="w-4 h-4 mr-2 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nouveau devis
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+        <form method="get" class="flex flex-col sm:flex-row gap-3">
+            <input
+                type="text"
+                name="search"
+                value="{{ search }}"
+                placeholder="Rechercher par numero, titre, client..."
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+            />
+            <select name="status" class="modern-select dropdown-custom creation-dropdown px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+                <option value="">Tous les statuts</option>
+                <option value="draft" {% if status == "draft" %}selected{% endif %}>Brouillon</option>
+                <option value="sent" {% if status == "sent" %}selected{% endif %}>Envoye</option>
+                <option value="viewed" {% if status == "viewed" %}selected{% endif %}>Vu</option>
+                <option value="accepted" {% if status == "accepted" %}selected{% endif %}>Accepte</option>
+                <option value="rejected" {% if status == "rejected" %}selected{% endif %}>Refuse</option>
+                <option value="expired" {% if status == "expired" %}selected{% endif %}>Expire</option>
+            </select>
+            <button type="submit" class="btn-secondary-yellow px-4 py-2 rounded-lg text-sm font-medium">Filtrer</button>
+        </form>
+    </div>
+
+    <div class="billio-table-wrap">
+        <table class="billio-table">
+            <thead>
+                <tr>
+                    <th>N° Devis</th>
+                    <th>Client</th>
+                    <th>Titre</th>
+                    <th>Émis le</th>
+                    <th>Validité</th>
+                    <th class="text-right">Montant</th>
+                    <th>Statut</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quote in quotes %}
+                <tr>
+                    <td><span class="text-sm font-medium">{{ quote.quote_number }}</span></td>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div class="billio-table-avatar">{{ quote.client.name|slice:":2"|upper }}</div>
+                            <span class="text-sm font-semibold truncate">{{ quote.client.name }}</span>
+                        </div>
+                    </td>
+                    <td><span class="text-sm" style="color: var(--billio-text-muted);">{{ quote.title }}</span></td>
+                    <td><span class="text-sm" style="color: var(--billio-text-muted);">{{ quote.issue_date|date:"d M Y" }}</span></td>
+                    <td>
+                        <span class="text-sm {% if quote.status == 'expired' %}text-red-600 font-medium{% else %}text-gray-600{% endif %}">
+                            {{ quote.expiry_date|date:"d M Y" }}
+                        </span>
+                    </td>
+                    <td class="text-right"><span class="text-sm font-semibold">{{ quote.total_amount|floatformat:2 }}{% if quote.currency == "EUR" %} €{% else %} {{ quote.currency }}{% endif %}</span></td>
+                    <td><span class="status-badge status-badge--{{ quote.status }}">{% if quote.status == 'draft' %}Brouillon{% elif quote.status == 'sent' %}Envoyé{% elif quote.status == 'viewed' %}Vu{% elif quote.status == 'accepted' %}Accepté{% elif quote.status == 'rejected' %}Refusé{% elif quote.status == 'expired' %}Expiré{% else %}{{ quote.get_status_display }}{% endif %}</span></td>
+                    <td class="text-right">
+                        <div class="relative inline-block" x-data="{ open: false }" @click.away="open = false">
+                            <button
+                                type="button"
+                                class="billio-table-action-btn"
+                                title="Actions"
+                                @click="open = !open"
+                            >
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="6" r="1.6"></circle>
+                                    <circle cx="12" cy="12" r="1.6"></circle>
+                                    <circle cx="12" cy="18" r="1.6"></circle>
+                                </svg>
+                            </button>
+                            <div
+                                x-show="open"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-150"
+                                x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                x-transition:leave="transition ease-in duration-100"
+                                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                                x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
+                                class="absolute right-0 mt-1 w-56 dropdown-panel z-20"
+                            >
+                                <div class="dropdown-section">
+                                    {% if quote.status == 'draft' %}
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="quoteAction('{% url 'invoices:quote-send' quote.id %}', this)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 12L3.269 3.126A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.874L6 12zm0 0h7.5"></path>
+                                        </svg>
+                                        Envoyer le devis
+                                    </button>
+                                    {% endif %}
+                                    {% if quote.status == 'sent' or quote.status == 'viewed' %}
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="quoteAction('{% url 'invoices:quote-mark-accepted' quote.id %}', this)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.5 12.75l6 6 9-13.5"></path>
+                                        </svg>
+                                        Marquer comme accepté
+                                    </button>
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="quoteAction('{% url 'invoices:quote-mark-rejected' quote.id %}', this)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        Marquer comme refusé
+                                    </button>
+                                    {% endif %}
+                                    {% if quote.status != 'draft' %}
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="copyShareLink('{% url 'invoices:public-quote-view' quote.id %}')">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.684 13.342C9.886 14.555 11.729 14.696 13.093 13.689L15.4 11.985m-7.48-1.97L5.613 8.31C4.25 7.303 2.407 7.444 1.205 8.658a3.357 3.357 0 000 4.72c1.202 1.213 3.045 1.354 4.408.347l2.307-1.704m4.374.004l2.307 1.704c1.363 1.007 3.206.866 4.408-.347a3.357 3.357 0 000-4.72c-1.202-1.214-3.045-1.355-4.408-.348L12.294 10.02"></path>
+                                        </svg>
+                                        Copier le lien
+                                    </button>
+                                    {% endif %}
+                                    <a href="{% url 'invoices:quote-preview' quote.id %}" class="dropdown-item">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                        Prévisualiser
+                                    </a>
+                                    <a href="{% url 'invoices:quote-edit' quote.id %}" class="dropdown-item">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Modifier
+                                    </a>
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="quoteAction('{% url 'invoices:quote-duplicate' quote.id %}', this)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                        </svg>
+                                        Dupliquer
+                                    </button>
+                                    {% if quote.status == 'accepted' and not quote.converted_to_invoice_id %}
+                                    <div class="dropdown-divider"></div>
+                                    <button type="button" class="dropdown-item" @click="open=false" onclick="quoteAction('{% url 'invoices:quote-convert-to-invoice' quote.id %}', this)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 8h10M7 12h10M7 16h6"></path>
+                                        </svg>
+                                        Convertir en facture
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="billio-table-empty">Aucun devis trouvé. Créez votre premier devis.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+}
+
+async function quoteAction(url, btn) {
+    btn.disabled = true;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCsrfToken() },
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.message || 'Une erreur est survenue.');
+        }
+        window.location.href = payload.redirect || window.location.href;
+    } catch (error) {
+        alert(error.message);
+        btn.disabled = false;
+    }
+}
+
+function copyShareLink(relativeUrl) {
+    const fullUrl = `${window.location.origin}${relativeUrl}`;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        alert('Lien du devis copié !');
+    }).catch(() => {
+        prompt('Copiez ce lien :', fullUrl);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,375 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Factures - Billio{% endblock %}
+{% block page_title %}Factures{% endblock %}
+{% block page_subtitle %}Gérez vos factures et suivez les paiements{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="invoiceList()" @invoice-calendar-create.window="window.location.href = '{% url 'invoices:invoice-create' %}?due=' + encodeURIComponent($event.detail.date)">
+    <!-- Header -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-gray-900">
+                <h1 class="text-3xl font-bold mb-2 flex items-center">
+                    <svg class="w-8 h-8 mr-3 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Factures
+                </h1>
+                <p class="text-gray-600 text-lg">Gérez vos factures et suivez les paiements</p>
+                {% if selected_organization %}
+                <p class="mt-2 inline-flex items-center gap-2 text-xs font-semibold rounded-full px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200">
+                    Organisation : {{ selected_organization.name }}
+                </p>
+                {% endif %}
+            </div>
+            <div class="mt-6 sm:mt-0 flex items-center gap-3">
+                {% include "components/export_menu.html" with table="invoices" %}
+                <a href="{% url 'invoices:invoice-create' %}"
+                    class="btn-primary-black inline-flex items-center px-6 py-3 rounded-lg shadow-sm text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200 hover:text-white"
+                >
+                    <svg class="-ml-1 mr-3 h-6 w-6 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Nouvelle facture
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search (same pattern as clients) -->
+    <div class="bg-white rounded-2xl border border-gray-200 mb-8">
+        <div class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+            <div class="flex flex-col gap-4">
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                    <button type="button" class="inline-flex items-center px-3 py-1.5 rounded-lg border font-medium transition-colors" :class="viewMode === 'table' ? 'border-gray-300 bg-white text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'" @click="viewMode = 'table'">Table</button>
+                    <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border font-medium transition-colors" :class="viewMode === 'calendar' ? 'border-gray-300 bg-white text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'" @click="viewMode = 'calendar'">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        Calendrier
+                    </button>
+                    <span class="ml-auto text-sm text-gray-600">Total <span class="font-semibold text-gray-900">{{ invoices_total_count }}</span> factures</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3" x-show="viewMode === 'table'">
+                    <div class="relative" @keydown.escape.window="typeOpen = false">
+                        <button type="button" class="dropdown-trigger min-w-[140px]" :class="typeOpen ? 'dropdown-trigger-active' : ''" @click="typeOpen = !typeOpen">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 5h18l-7 8v6l-4-2v-4L3 5z"></path>
+                                </svg>
+                                Type
+                                <span class="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold" x-text="invoiceTypeFilter === '' ? '0' : '1'"></span>
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="typeOpen" x-transition:enter="transition ease-out duration-180" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-120" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="typeOpen = false" class="absolute left-0 mt-2 w-56 dropdown-panel dropdown-panel-rich z-20">
+                            <div class="dropdown-section">
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="invoiceTypeFilter === '' ? 'dropdown-item-select-active' : ''" @click="invoiceTypeFilter=''; typeOpen=false; filterInvoices()"><span>Tous</span><svg x-show="invoiceTypeFilter === ''" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="invoiceTypeFilter === 'sale' ? 'dropdown-item-select-active' : ''" @click="invoiceTypeFilter='sale'; typeOpen=false; filterInvoices()"><span>Ventes</span><svg x-show="invoiceTypeFilter === 'sale'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="invoiceTypeFilter === 'purchase' ? 'dropdown-item-select-active' : ''" @click="invoiceTypeFilter='purchase'; typeOpen=false; filterInvoices()"><span>Achats</span><svg x-show="invoiceTypeFilter === 'purchase'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative" @keydown.escape.window="statusOpen = false">
+                        <button type="button" class="dropdown-trigger min-w-[140px]" :class="statusOpen ? 'dropdown-trigger-active' : ''" @click="statusOpen = !statusOpen">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M5 12h14M12 5l7 7-7 7"></path>
+                                </svg>
+                                Statut
+                                <span class="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold" x-text="statusFilter === '' ? '0' : '1'"></span>
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="statusOpen" x-transition:enter="transition ease-out duration-180" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-120" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="statusOpen = false" class="absolute left-0 mt-2 w-56 dropdown-panel dropdown-panel-rich z-20">
+                            <div class="dropdown-section">
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="statusFilter === '' ? 'dropdown-item-select-active' : ''" @click="statusFilter=''; statusOpen=false; filterInvoices()"><span>Tous</span><svg x-show="statusFilter === ''" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="statusFilter === 'draft' ? 'dropdown-item-select-active' : ''" @click="statusFilter='draft'; statusOpen=false; filterInvoices()"><span>Brouillon</span><svg x-show="statusFilter === 'draft'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="statusFilter === 'sent' ? 'dropdown-item-select-active' : ''" @click="statusFilter='sent'; statusOpen=false; filterInvoices()"><span>Envoyée</span><svg x-show="statusFilter === 'sent'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="statusFilter === 'paid' ? 'dropdown-item-select-active' : ''" @click="statusFilter='paid'; statusOpen=false; filterInvoices()"><span>Payée</span><svg x-show="statusFilter === 'paid'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                                <button type="button" class="dropdown-item dropdown-item-select justify-between" :class="statusFilter === 'overdue' ? 'dropdown-item-select-active' : ''" @click="statusFilter='overdue'; statusOpen=false; filterInvoices()"><span>En retard</span><svg x-show="statusFilter === 'overdue'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative" @keydown.escape.window="dateOpen = false">
+                        <button type="button" class="dropdown-trigger min-w-[170px]" @click="dateOpen = !dateOpen">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                Periode
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="dateOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="dateOpen = false" class="absolute left-0 mt-2 w-64 dropdown-panel z-20">
+                            <div class="dropdown-section">
+                                <button type="button" class="dropdown-item" @click="dateRange=''; dateOpen=false; filterInvoices()">Toutes les periodes</button>
+                                <button type="button" class="dropdown-item" @click="dateRange='7'; dateOpen=false; filterInvoices()">7 derniers jours</button>
+                                <button type="button" class="dropdown-item" @click="dateRange='30'; dateOpen=false; filterInvoices()">30 derniers jours</button>
+                                <button type="button" class="dropdown-item" @click="dateRange='90'; dateOpen=false; filterInvoices()">3 derniers mois</button>
+                                <button type="button" class="dropdown-item" @click="dateRange='365'; dateOpen=false; filterInvoices()">Cette annee</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative" @keydown.escape.window="sortOpen = false">
+                        <button type="button" class="dropdown-trigger min-w-[128px]" @click="sortOpen = !sortOpen">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 7l4-4 4 4M16 17l-4 4-4-4M12 4v16"></path>
+                                </svg>
+                                Sort
+                            </span>
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="sortOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="sortOpen = false" class="absolute left-0 mt-2 w-56 dropdown-panel z-20">
+                            <div class="dropdown-section">
+                                <button type="button" class="dropdown-item" @click="sortBy='date_desc'; sortOpen=false; filterInvoices()">Date (recent)</button>
+                                <button type="button" class="dropdown-item" @click="sortBy='date_asc'; sortOpen=false; filterInvoices()">Date (ancien)</button>
+                                <button type="button" class="dropdown-item" @click="sortBy='amount_desc'; sortOpen=false; filterInvoices()">Montant (desc)</button>
+                                <button type="button" class="dropdown-item" @click="sortBy='client_asc'; sortOpen=false; filterInvoices()">Client (A-Z)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative ml-auto">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-4 w-4 text-gray-400 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            x-model="searchQuery"
+                            @input.debounce.300ms="filterInvoices"
+                            class="block w-72 pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                            placeholder="Numero de facture, client..."
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoices List -->
+    <div x-show="viewMode === 'table'">
+        <div
+            id="invoices-list"
+            hx-get="{% url 'invoices:invoice-list-api' %}?status={{ request.GET.status|default:'' }}&invoice_type={{ request.GET.invoice_type|default:'' }}&date_range={{ request.GET.date_range|default:'' }}&organization={{ selected_organization_id|default:'' }}"
+            hx-trigger="load, invoiceListUpdated from:body"
+            hx-target="this"
+            hx-swap="innerHTML"
+            class="min-h-96"
+        >
+            <!-- Loading state -->
+            <div class="billio-table-wrap p-12 text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 mx-auto mb-6" style="border-color: var(--billio-primary); border-top-color: transparent;"></div>
+                <h3 class="text-lg font-medium mb-2" style="color: var(--billio-text);">Chargement des factures...</h3>
+                <p style="color: var(--billio-text-muted);">Veuillez patienter pendant que nous récupérons vos données.</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="flex items-center justify-between">
+            <!-- Pagination will be loaded via HTMX -->
+        </div>
+    </div>
+
+    <!-- Calendrier des échéances -->
+    {{ calendar_invoices|json_script:"invoice-calendar-data" }}
+    <div x-show="viewMode === 'calendar'" x-cloak x-data="invoiceCalendar('invoice-calendar-data')" x-init="init()">
+        <div class="dash-panel">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <button type="button" class="billio-table-action-btn" @click="prevMonth()" aria-label="Mois précédent">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h2 class="dash-panel-title capitalize" x-text="monthLabel"></h2>
+                    <button type="button" class="billio-table-action-btn" @click="nextMonth()" aria-label="Mois suivant">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+                <button type="button" class="text-sm font-medium" style="color: var(--billio-primary);" @click="goToday()">Aujourd'hui</button>
+            </div>
+
+            <div class="invoice-calendar-weekdays">
+                <span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span>
+            </div>
+            <div class="invoice-calendar-grid">
+                <template x-for="cell in cells" :key="cell.key">
+                    <div
+                        class="invoice-calendar-cell"
+                        :class="{ 'is-outside': !cell.inMonth, 'is-today': cell.isToday }"
+                        @contextmenu.prevent.stop="openMenu($event, cell)"
+                    >
+                        <span class="invoice-calendar-daynum" x-text="cell.day"></span>
+                        <div class="invoice-calendar-items">
+                            <template x-for="inv in cell.invoices.slice(0, 3)" :key="inv.id">
+                                <a :href="inv.preview_url" class="invoice-calendar-item" :class="'status-badge--' + inv.status" :title="inv.client_name + ' — ' + inv.amount_formatted">
+                                    <span x-text="inv.number"></span>
+                                </a>
+                            </template>
+                            <span x-show="cell.invoices.length > 3" class="invoice-calendar-more" x-text="'+' + (cell.invoices.length - 3)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Menu contextuel (clic droit sur un jour) -->
+        <div
+            x-show="menu.open"
+            x-cloak
+            x-transition:enter="transition ease-out duration-120"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-90"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            @click.away="closeMenu()"
+            @contextmenu.window.prevent="closeMenu()"
+            @keydown.escape.window="closeMenu()"
+            :style="`position: fixed; top: ${menu.y}px; left: ${menu.x}px;`"
+            class="w-64 dropdown-panel dropdown-panel-rich z-50"
+        >
+            <div class="dropdown-section">
+                <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase capitalize" x-text="menu.dateLabel"></div>
+                <template x-for="inv in menu.invoices" :key="inv.id">
+                    <a :href="inv.preview_url" class="dropdown-item justify-between">
+                        <span x-text="inv.number"></span>
+                        <span class="text-xs text-gray-500 truncate ml-2" x-text="inv.client_name"></span>
+                    </a>
+                </template>
+                <div x-show="menu.invoices.length === 0" class="px-3 py-2 text-sm text-gray-400">Aucune facture ce jour</div>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item" @click="createForDay()">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Nouvelle facture ce jour
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+if (!window.invoiceCalendar) {
+    window.invoiceCalendar = function (jsonScriptId) {
+        return {
+            invoices: [],
+            current: new Date(),
+            cells: [],
+            monthLabel: '',
+            init() {
+                const el = document.getElementById(jsonScriptId);
+                try { this.invoices = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { this.invoices = []; }
+                this.build();
+            },
+            prevMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() - 1, 1); this.build(); },
+            nextMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() + 1, 1); this.build(); },
+            goToday() { this.current = new Date(); this.build(); },
+            build() {
+                const year = this.current.getFullYear();
+                const month = this.current.getMonth();
+                this.monthLabel = this.current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+                const byDate = {};
+                this.invoices.forEach((inv) => {
+                    (byDate[inv.due_date] ||= []).push(inv);
+                });
+
+                const firstOfMonth = new Date(year, month, 1);
+                const startOffset = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
+                const gridStart = new Date(year, month, 1 - startOffset);
+                const todayStr = new Date().toISOString().slice(0, 10);
+
+                const cells = [];
+                for (let i = 0; i < 42; i++) {
+                    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+                    const key = d.toISOString().slice(0, 10);
+                    cells.push({
+                        key,
+                        day: d.getDate(),
+                        inMonth: d.getMonth() === month,
+                        isToday: key === todayStr,
+                        invoices: byDate[key] || [],
+                    });
+                }
+                this.cells = cells;
+            },
+            menu: { open: false, x: 0, y: 0, date: '', dateLabel: '', invoices: [] },
+            openMenu(event, cell) {
+                const menuWidth = 260;
+                const menuHeight = 60 + cell.invoices.length * 40;
+                this.menu.x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
+                this.menu.y = Math.min(event.clientY, window.innerHeight - menuHeight - 8);
+                this.menu.date = cell.key;
+                this.menu.dateLabel = new Date(cell.key + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                this.menu.invoices = cell.invoices;
+                this.menu.open = true;
+            },
+            closeMenu() { this.menu.open = false; },
+            createForDay() {
+                const date = this.menu.date;
+                this.closeMenu();
+                window.dispatchEvent(new CustomEvent('invoice-calendar-create', { detail: { date } }));
+            },
+        };
+    };
+}
+</script>
+
+<script>
+function invoiceList() {
+    return {
+        searchQuery: '',
+        statusFilter: '{{ request.GET.status|default:"" }}',
+        dateRange: '{{ request.GET.date_range|default:"" }}',
+        invoiceTypeFilter: '{{ request.GET.invoice_type|default:"" }}',
+        organizationFilter: '{{ selected_organization_id|default:"" }}',
+        viewMode: 'table',
+        sortOpen: false,
+        sortBy: 'date_desc',
+        typeOpen: false,
+        statusOpen: false,
+        dateOpen: false,
+
+        filterInvoices() {
+            const params = new URLSearchParams({
+                search: this.searchQuery,
+                status: this.statusFilter,
+                date_range: this.dateRange,
+                invoice_type: this.invoiceTypeFilter,
+                organization: this.organizationFilter,
+                sort: this.sortBy
+            });
+
+            htmx.ajax('GET', `{% url 'invoices:invoice-list-api' %}?${params}`, {
+                target: '#invoices-list',
+                swap: 'innerHTML'
+            });
+        }
+    }
+}
+
+// HTMX configuration
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Invoice list page loaded');
+
+    // Listen for HTMX errors
+    document.addEventListener('htmx:responseError', function(evt) {
+        console.error('HTMX Error:', evt.detail.xhr.status, evt.detail.xhr.responseText);
+    });
+});
+</script>
+{% endblock %}

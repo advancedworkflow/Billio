@@ -1,0 +1,243 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}{{ client.name }} - Billio{% endblock %}
+{% block page_title %}Clients{% endblock %}
+{% block page_subtitle %}{{ client.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/client-detail.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="cd" x-data="{ tab: '{{ tab }}', go(t) { this.tab = t; history.replaceState(null, '', '?tab=' + t); $nextTick(() => window.lucide && lucide.createIcons()); } }">
+
+    <!-- ===================== En-tête ===================== -->
+    <header class="cd-head">
+        <a href="{% url 'clients:client-list' %}" class="cd-back"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Clients</a>
+        <div class="cd-head-row">
+            <div class="cd-identity">
+                <span class="cd-avatar">{{ client.name|slice:":2"|upper }}</span>
+                <div class="min-w-0">
+                    <h1>{{ client.name }}</h1>
+                    <p class="cd-sub">
+                        {% if client.company_name and client.company_name != client.name %}<span>{{ client.company_name }}</span>{% endif %}
+                        {% if client.email %}<a href="mailto:{{ client.email }}"><i data-lucide="mail" class="w-3.5 h-3.5"></i> {{ client.email }}</a>{% endif %}
+                        {% if client.phone %}<a href="tel:{{ client.phone }}"><i data-lucide="phone" class="w-3.5 h-3.5"></i> {{ client.phone }}</a>{% endif %}
+                        <span class="cd-badge{% if not client.is_active %} is-off{% endif %}">{% if client.is_active %}Actif{% else %}Inactif{% endif %}</span>
+                    </p>
+                </div>
+            </div>
+            <div class="cd-actions">
+                <a href="{% url 'dashboard:public-portal-overview' client.portal_token %}" target="_blank" rel="noopener" class="cd-btn"><i data-lucide="door-open" class="w-4 h-4"></i> Son espace client</a>
+                <a href="{% url 'dashboard:documents-list' %}?tab=modeles&client={{ client.id }}" class="cd-btn"><i data-lucide="file-plus-2" class="w-4 h-4"></i> Document</a>
+                <a href="{% url 'invoices:quote-create' %}?client={{ client.id }}" class="cd-btn"><i data-lucide="file-pen-line" class="w-4 h-4"></i> Devis</a>
+                <a href="{% url 'invoices:invoice-create' %}?client={{ client.id }}" class="cd-btn cd-btn--primary"><i data-lucide="receipt" class="w-4 h-4"></i> Facture</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Chiffres clés -->
+    <section class="cd-stats">
+        <div class="cd-stat"><span>Facturé</span><strong>{{ stats.invoiced|money }}</strong><small>{{ invoices|length }} facture{{ invoices|length|pluralize }}</small></div>
+        <div class="cd-stat"><span>Encaissé</span><strong class="is-ok">{{ stats.collected|money }}</strong><small>paiements reçus</small></div>
+        <div class="cd-stat"><span>Reste dû</span><strong{% if stats.due %} class="is-warn"{% endif %}>{{ stats.due|money }}</strong><small>{% if stats.late_count %}<b class="is-danger">{{ stats.late_count }} en retard</b>{% else %}aucun retard{% endif %}</small></div>
+        <div class="cd-stat"><span>Devis en attente</span><strong>{{ stats.open_quotes_total|money }}</strong><small>{{ stats.open_quotes_count }} devis · {{ stats.accepted_quotes }} accepté{{ stats.accepted_quotes|pluralize }}</small></div>
+    </section>
+
+    <nav class="cd-tabs">
+        <button type="button" :class="tab === 'apercu' ? 'is-active' : ''" @click="go('apercu')"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Aperçu</button>
+        <button type="button" :class="tab === 'projets' ? 'is-active' : ''" @click="go('projets')"><i data-lucide="folder-kanban" class="w-4 h-4"></i> Projets <span>{{ projects|length }}</span></button>
+        <button type="button" :class="tab === 'devis' ? 'is-active' : ''" @click="go('devis')"><i data-lucide="file-pen-line" class="w-4 h-4"></i> Devis <span>{{ quotes|length }}</span></button>
+        <button type="button" :class="tab === 'factures' ? 'is-active' : ''" @click="go('factures')"><i data-lucide="receipt" class="w-4 h-4"></i> Factures <span>{{ invoices|length }}</span></button>
+        <button type="button" :class="tab === 'documents' ? 'is-active' : ''" @click="go('documents')"><i data-lucide="files" class="w-4 h-4"></i> Documents &amp; formulaires <span>{{ documents|length }}</span></button>
+        <button type="button" :class="tab === 'fichiers' ? 'is-active' : ''" @click="go('fichiers')"><i data-lucide="paperclip" class="w-4 h-4"></i> Fichiers <span>{{ assets|length }}</span></button>
+    </nav>
+
+    <!-- ===================== Aperçu ===================== -->
+    <div class="cd-grid" x-show="tab === 'apercu'">
+        <div class="cd-col">
+            {% if responses or forms %}
+            <section class="cd-card">
+                <div class="cd-card-head"><h2>Dernières réponses du client</h2><button type="button" class="cd-link" @click="go('documents')">Tout voir</button></div>
+                {% with r=responses.0 %}{% if r %}
+                <p class="cd-meta">« {{ r.document.title }} » · le {{ r.updated_at|date:"d/m/Y à H:i" }}</p>
+                <dl class="cd-answers">
+                    {% for label, value in r.rows|slice:":6" %}<div><dt>{{ label }}</dt><dd>{{ value|default:"—" }}</dd></div>{% endfor %}
+                </dl>
+                {% endif %}{% endwith %}
+            </section>
+            {% endif %}
+
+            <section class="cd-card">
+                <div class="cd-card-head"><h2>Historique</h2></div>
+                <ul class="cd-events">
+                    {% for e in events %}
+                    <li><span class="cd-event-icon"><i data-lucide="{{ e.icon }}" class="w-3.5 h-3.5"></i></span>
+                        <a href="{{ e.url }}"{% if e.url|slice:":1" == "#" %} @click.prevent="go('documents')"{% endif %}>{{ e.text }}</a>
+                        <time>{{ e.date|date:"d/m/Y" }}</time></li>
+                    {% empty %}
+                    <li class="cd-empty-line">Rien pour l'instant : créez un devis ou envoyez un document à ce client.</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+        <aside class="cd-col">
+            <section class="cd-card">
+                <div class="cd-card-head"><h2>Coordonnées</h2></div>
+                <dl class="cd-facts">
+                    {% if client.contact_person %}<div><dt>Contact</dt><dd>{{ client.contact_person }}{% if client.contact_phone %}<small>{{ client.contact_phone }}</small>{% endif %}</dd></div>{% endif %}
+                    <div><dt>Email</dt><dd>{{ client.email|default:"—" }}</dd></div>
+                    <div><dt>Téléphone</dt><dd>{{ client.phone|default:"—" }}</dd></div>
+                    <div><dt>Adresse</dt><dd>{{ address|default:"—" }}</dd></div>
+                    {% if client.registration_number %}<div><dt>SIRET</dt><dd>{{ client.registration_number }}</dd></div>{% endif %}
+                    {% if client.tax_id %}<div><dt>N° TVA</dt><dd>{{ client.tax_id }}</dd></div>{% endif %}
+                    {% if client.payment_terms %}<div><dt>Délai de paiement</dt><dd>{{ client.payment_terms }} jours</dd></div>{% endif %}
+                    <div><dt>Client depuis</dt><dd>{{ client.created_at|date:"d/m/Y" }}</dd></div>
+                </dl>
+                {% if contacts %}
+                <p class="cd-label">Autres contacts</p>
+                {% for ct in contacts %}<p class="cd-contact"><strong>{{ ct.name }}</strong>{% if ct.position %} · {{ ct.position }}{% endif %}<small>{{ ct.email }}{% if ct.phone %} · {{ ct.phone }}{% endif %}</small></p>{% endfor %}
+                {% endif %}
+                {% if client.notes %}<p class="cd-label">Notes</p><p class="cd-notes">{{ client.notes|linebreaksbr }}</p>{% endif %}
+            </section>
+            <section class="cd-card">
+                <div class="cd-card-head"><h2>Projets en cours</h2><button type="button" class="cd-link" @click="go('projets')">Tous</button></div>
+                {% for p in projects|slice:":3" %}
+                <a href="{% url 'dashboard:project-detail' p.id %}" class="cd-project-mini">
+                    <span class="truncate">{{ p.name }}</span><small>{{ p.progress_percent }} %</small>
+                    <span class="cd-bar"><i style="width: {{ p.progress_percent }}%"></i></span>
+                </a>
+                {% empty %}
+                <p class="cd-empty-line">Aucun projet. <a class="cd-link" href="{% url 'dashboard:project-create' %}">Démarrer un projet</a></p>
+                {% endfor %}
+            </section>
+        </aside>
+    </div>
+
+    <!-- ===================== Projets ===================== -->
+    <section class="cd-card" x-show="tab === 'projets'" x-cloak>
+        <div class="cd-card-head"><h2>Projets</h2><a class="cd-btn" href="{% url 'dashboard:project-create' %}"><i data-lucide="plus" class="w-4 h-4"></i> Nouveau projet</a></div>
+        <div class="cd-rows">
+            {% for p in projects %}
+            <a href="{% url 'dashboard:project-detail' p.id %}" class="cd-row">
+                <span class="cd-row-icon"><i data-lucide="folder-kanban" class="w-4 h-4"></i></span>
+                <span class="cd-row-main"><strong>{{ p.name }}</strong><small>{% if p.delivery_date %}Livraison le {{ p.delivery_date|date:"d/m/Y" }}{% else %}Sans date de livraison{% endif %}</small></span>
+                <span class="cd-row-progress"><span class="cd-bar"><i style="width: {{ p.progress_percent }}%"></i></span><small>{{ p.progress_percent }} %</small></span>
+                <i data-lucide="chevron-right" class="w-4 h-4 cd-chev"></i>
+            </a>
+            {% empty %}
+            <p class="cd-empty">Aucun projet pour ce client.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ===================== Devis ===================== -->
+    <section class="cd-card" x-show="tab === 'devis'" x-cloak>
+        <div class="cd-card-head"><h2>Devis</h2><a class="cd-btn" href="{% url 'invoices:quote-create' %}?client={{ client.id }}"><i data-lucide="plus" class="w-4 h-4"></i> Nouveau devis</a></div>
+        <table class="cd-table">
+            <thead><tr><th>Numéro</th><th>Date</th><th>Statut</th><th class="text-right">Montant TTC</th><th></th></tr></thead>
+            <tbody>
+                {% for q in quotes %}
+                <tr>
+                    <td><a href="{% url 'invoices:quote-preview' q.id %}" class="cd-strong">{{ q.quote_number }}</a></td>
+                    <td>{{ q.created_at|date:"d/m/Y" }}</td>
+                    <td><span class="status-badge status-badge--{{ q.status }}">{{ q.status_fr }}</span></td>
+                    <td class="text-right cd-num">{{ q.total_amount|money }}</td>
+                    <td class="text-right"><a href="{% url 'invoices:quote-edit' q.id %}" class="cd-link">Modifier</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="cd-empty">Aucun devis.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ===================== Factures ===================== -->
+    <section class="cd-card" x-show="tab === 'factures'" x-cloak>
+        <div class="cd-card-head"><h2>Factures</h2><a class="cd-btn" href="{% url 'invoices:invoice-create' %}?client={{ client.id }}"><i data-lucide="plus" class="w-4 h-4"></i> Nouvelle facture</a></div>
+        <table class="cd-table">
+            <thead><tr><th>Numéro</th><th>Émise le</th><th>Échéance</th><th>Statut</th><th class="text-right">Total</th><th class="text-right">Reste dû</th><th></th></tr></thead>
+            <tbody>
+                {% for i in invoices %}
+                <tr>
+                    <td><a href="{% url 'invoices:invoice-preview' i.id %}" class="cd-strong">{{ i.invoice_number }}</a>{% if i.invoice_type == 'purchase' %} <small class="cd-meta">achat</small>{% endif %}</td>
+                    <td>{{ i.issue_date|date:"d/m/Y" }}</td>
+                    <td{% if i.is_late %} class="is-danger"{% endif %}>{{ i.due_date|date:"d/m/Y" }}</td>
+                    <td><span class="status-badge status-badge--{{ i.status }}">{{ i.status_fr }}</span></td>
+                    <td class="text-right cd-num">{{ i.total_amount|money }}</td>
+                    <td class="text-right cd-num">{% if i.remaining %}<strong>{{ i.remaining|money }}</strong>{% else %}—{% endif %}</td>
+                    <td class="text-right"><a href="{% url 'invoices:public-invoice-payment' i.id %}" target="_blank" rel="noopener" class="cd-link">Page de paiement</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="cd-empty">Aucune facture.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ===================== Documents & formulaires ===================== -->
+    <div class="cd-stack" x-show="tab === 'documents'" x-cloak>
+        <section class="cd-card">
+            <div class="cd-card-head">
+                <div><h2>Documents</h2><p class="cd-meta">Contrats, propositions, formulaires… envoyés à ce client. Un document « Envoyé » est visible dans son espace.</p></div>
+                <a class="cd-btn" href="{% url 'dashboard:documents-list' %}?tab=modeles&client={{ client.id }}"><i data-lucide="plus" class="w-4 h-4"></i> Nouveau document</a>
+            </div>
+            <div class="cd-rows">
+                {% for d in documents %}
+                <div class="cd-row">
+                    <span class="cd-row-icon"><i data-lucide="{% if d.document_type == 'inquiry' %}clipboard-list{% elif d.document_type == 'contract' %}file-signature{% else %}file-text{% endif %}" class="w-4 h-4"></i></span>
+                    <span class="cd-row-main"><strong>{{ d.title }}</strong><small>{{ d.get_document_type_display }} · {{ d.number }} · {{ d.created_at|date:"d/m/Y" }}</small></span>
+                    <span class="cd-pill cd-pill--{{ d.status }}">{{ d.get_status_display }}</span>
+                    <span class="cd-row-links">
+                        <a href="{% url 'documents:document-editor' d.id %}" class="cd-link">Ouvrir</a>
+                        <a href="{% url 'documents:document-pdf' d.id %}" target="_blank" rel="noopener" class="cd-link">PDF</a>
+                    </span>
+                </div>
+                {% empty %}
+                <p class="cd-empty">Aucun document. Partez d'un modèle (proposition, contrat, formulaire de brief…) : il se remplit avec les infos du client.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="cd-card">
+            <div class="cd-card-head"><div><h2>Réponses aux formulaires</h2><p class="cd-meta">Ce que le client a rempli depuis son espace.</p></div></div>
+            {% for r in responses %}
+            <article class="cd-response" id="reponse-{{ r.id }}">
+                <header><strong>{{ r.document.title }}</strong><span class="cd-meta">Reçu le {{ r.updated_at|date:"d/m/Y à H:i" }}</span>
+                    <a href="{% url 'documents:document-editor' r.document.id %}" class="cd-link">Voir le document</a></header>
+                <dl class="cd-answers">
+                    {% for label, value in r.rows %}<div><dt>{{ label }}</dt><dd>{{ value|default:"—"|linebreaksbr }}</dd></div>{% endfor %}
+                </dl>
+            </article>
+            {% endfor %}
+            {% for f in forms %}
+            <article class="cd-response" id="form-{{ f.id }}">
+                <header><strong>{{ f.title }}</strong><span class="cd-meta">{% if f.submitted_at %}Reçu le {{ f.submitted_at|date:"d/m/Y à H:i" }}{% else %}En attente de réponse{% endif %}</span></header>
+                {% if f.submitted_at %}
+                <dl class="cd-answers">{% for a in f.answered_fields %}<div><dt>{{ a.label }}</dt><dd>{{ a.value|default:"—" }}</dd></div>{% endfor %}</dl>
+                {% endif %}
+            </article>
+            {% endfor %}
+            {% if not responses and not forms %}<p class="cd-empty">Aucune réponse pour l'instant.</p>{% endif %}
+        </section>
+    </div>
+
+    <!-- ===================== Fichiers ===================== -->
+    <section class="cd-card" x-show="tab === 'fichiers'" x-cloak>
+        <div class="cd-card-head"><div><h2>Fichiers échangés</h2><p class="cd-meta">Fichiers des projets et des livrables de ce client, y compris ceux qu'il a déposés.</p></div></div>
+        <div class="cd-rows">
+            {% for a in assets %}
+            <a href="{{ a.url }}" target="_blank" rel="noopener" class="cd-row">
+                <span class="cd-row-icon"><i data-lucide="file" class="w-4 h-4"></i></span>
+                <span class="cd-row-main"><strong>{{ a.name }}</strong><small>{{ a.source }}{% if a.date %} · {{ a.date|date:"d/m/Y" }}{% endif %}</small></span>
+                {% if a.by_client %}<span class="cd-pill">Déposé par le client</span>{% endif %}
+                <i data-lucide="download" class="w-4 h-4 cd-chev"></i>
+            </a>
+            {% empty %}
+            <p class="cd-empty">Aucun fichier échangé.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

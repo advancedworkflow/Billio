@@ -1,0 +1,8 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Mot de passe modifié{% endblock %}
+{% block content %}
+<div class="auth-icon"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
+<h2 class="auth-title">Mot de passe modifié</h2>
+<p class="auth-lead">C'est fait. Vous pouvez vous connecter avec votre nouveau mot de passe.</p>
+<a href="{% url 'accounts:login' %}" class="auth-submit-btn">Se connecter</a>
+{% endblock %}

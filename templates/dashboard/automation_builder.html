@@ -1,0 +1,129 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Automatisations - Billio{% endblock %}
+{% block page_title %}Automatisations{% endblock %}
+{% block page_subtitle %}Des workflows qui travaillent pour vous : déclencheurs, conditions, attentes et actions reliés sur un board{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/automation-workflow.css' %}?v=2.0">
+<style>{{ canvas_css|safe }}</style>
+<script src="{% static 'js/automation-workflow.js' %}?v=2.5" defer></script>
+{% endblock %}
+
+{% block header_finance_chip %}
+{% include "components/focus_mode_button.html" %}
+<a href="{% url 'organizations:automation-settings' %}" class="landing-btn-secondary text-sm py-2 px-3">Réglages de relances</a>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="wf-app" data-wf-app>
+
+    <!-- ===================== Vue liste ===================== -->
+    <section class="wf-list-view" data-wf-view="list">
+        <div class="wf-list-head">
+            <div class="wf-stats">
+                <div class="wf-stat"><span class="wf-stat-value" data-wf-count>{{ workflow_count }}</span><span class="wf-stat-label">Workflows</span></div>
+                <div class="wf-stat"><span class="wf-stat-value" data-wf-active-count>{{ active_count }}</span><span class="wf-stat-label">Actifs</span></div>
+                <div class="wf-stat"><span class="wf-stat-value" data-wf-total-runs>0</span><span class="wf-stat-label">Exécutions</span></div>
+            </div>
+            <button type="button" class="wf-btn wf-btn--primary" data-wf-new><i data-lucide="plus" class="w-4 h-4"></i> Nouveau workflow</button>
+        </div>
+
+        <div class="wf-card">
+            <div class="wf-card-head"><h2>Mes workflows</h2></div>
+            <div data-wf-list></div>
+        </div>
+
+        <div class="wf-card">
+            <div class="wf-card-head"><h2>Partir d'un modèle</h2><p>Des workflows complets, prêts à ajuster.</p></div>
+            <div class="wf-template-grid" data-wf-templates></div>
+        </div>
+    </section>
+
+    <!-- ===================== Vue éditeur ===================== -->
+    <section class="wf-editor" data-wf-view="editor" hidden>
+        <header class="wf-topbar">
+            <button type="button" class="wf-icon-btn" data-wf-back title="Retour aux workflows"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+            <div class="wf-title-block">
+                <input type="text" class="wf-title-input" data-wf-name placeholder="Workflow sans titre" maxlength="200">
+                <span class="wf-dirty" data-wf-dirty></span>
+            </div>
+            <div class="wf-topbar-spacer"></div>
+            <label class="wf-switch" title="Activer / désactiver le workflow">
+                <input type="checkbox" data-wf-active checked>
+                <span class="wf-switch-track"></span>
+                <span class="wf-switch-label" data-wf-active-label>Actif</span>
+            </label>
+            <button type="button" class="wf-btn wf-sim-btn" data-wf-test title="Simuler le workflow"><i data-lucide="play" class="w-4 h-4"></i> Simuler<span class="wf-live-dot">Live</span></button>
+            <button type="button" class="wf-btn wf-btn--primary" data-wf-save><i data-lucide="check" class="w-4 h-4"></i> Enregistrer</button>
+        </header>
+
+        <div class="wf-body">
+            <aside class="wf-library">
+                <div class="wf-search"><i data-lucide="search" class="w-3.5 h-3.5"></i><input type="search" placeholder="Rechercher un bloc" data-wf-library-search></div>
+                <div class="wf-library-list" data-wf-library></div>
+            </aside>
+
+            <div class="wf-board" data-wf-board tabindex="0">
+                <div class="wf-board-inner" data-wf-board-inner>
+                    <div class="wf-groups" data-wf-groups></div>
+                    <svg class="wf-edges" data-wf-edges></svg>
+                    <div class="wf-nodes" data-wf-nodes></div>
+                </div>
+                <div class="wf-board-empty" data-wf-board-empty hidden>
+                    <i data-lucide="mouse-pointer-click" class="w-5 h-5"></i>
+                    <p>Glissez un <strong>déclencheur</strong> depuis la gauche pour commencer.</p>
+                </div>
+                <div class="wf-sim-alerts" data-wf-sim-alerts aria-live="polite"></div>
+                <div class="wf-board-controls">
+                    <button type="button" class="wf-icon-btn" data-wf-zoom-out title="Zoom arrière"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                    <button type="button" class="wf-zoom-label" data-wf-zoom-reset title="100 %">100%</button>
+                    <button type="button" class="wf-icon-btn" data-wf-zoom-in title="Zoom avant"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                    <span class="wf-controls-sep"></span>
+                    <button type="button" class="wf-icon-btn" data-wf-fit title="Tout afficher"><i data-lucide="scan" class="w-4 h-4"></i></button>
+                    <button type="button" class="wf-icon-btn" data-wf-layout title="Ranger automatiquement"><i data-lucide="network" class="w-4 h-4"></i></button>
+                    <button type="button" class="wf-icon-btn" data-wf-group-add title="Grouper (G) — entoure le bloc sélectionné"><i data-lucide="group" class="w-4 h-4"></i></button>
+                    <button type="button" class="wf-icon-btn" data-wf-fullscreen title="Plein écran (F)"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
+                    <span class="wf-controls-sep"></span>
+                    <button type="button" class="wf-icon-btn" data-wf-undo title="Annuler (Ctrl+Z)"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+                    <button type="button" class="wf-icon-btn" data-wf-redo title="Rétablir (Ctrl+Maj+Z)"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+                </div>
+                <div class="wf-board-hint">Glisser le fond pour se déplacer · Ctrl + molette pour zoomer · tirer depuis un port pour relier</div>
+            </div>
+
+            <aside class="wf-inspector" data-wf-inspector></aside>
+        </div>
+    </section>
+</div>
+
+<!-- Ajout rapide d'un bloc (lâcher un lien dans le vide, ou « + » sur un port) -->
+<div class="wf-quick" data-wf-quick hidden>
+    <div class="wf-search"><i data-lucide="search" class="w-3.5 h-3.5"></i><input type="search" placeholder="Ajouter un bloc…" data-wf-quick-search></div>
+    <div class="wf-quick-list" data-wf-quick-list></div>
+</div>
+
+<!-- Paramètres du test -->
+<div class="wf-test-pop" data-wf-test-pop hidden>
+    <p class="wf-test-title">Simuler un événement</p>
+    <p class="wf-test-hint">Aucune action n'est réellement exécutée : le board rejoue le chemin étape par étape, avec une alerte par bloc.</p>
+    <label class="wf-field"><span>Montant (€)</span><input type="number" step="0.01" data-wf-test-amount placeholder="1200"></label>
+    <label class="wf-field"><span>Client</span><select data-wf-test-client><option value="">—</option></select></label>
+    <div class="wf-grid-2">
+        <label class="wf-field"><span>Projet</span><input type="text" data-wf-test-projet placeholder="Refonte site"></label>
+        <label class="wf-field"><span>Produit</span><input type="text" data-wf-test-produit placeholder="Logo"></label>
+    </div>
+    <label class="wf-field"><span>Formulaire</span><input type="text" data-wf-test-formulaire placeholder="Questionnaire de démarrage"></label>
+    <label class="wf-check wf-live-toggle"><input type="checkbox" data-wf-test-live> <span><strong>Simulation en direct</strong><small>Rejoue la logique à chaque modification du board et signale les erreurs.</small></span></label>
+    <div class="wf-test-actions">
+        <button type="button" class="wf-btn" data-wf-test-cancel>Annuler</button>
+        <button type="button" class="wf-btn wf-btn--primary" data-wf-test-run><i data-lucide="play" class="w-3.5 h-3.5"></i> Lancer la simulation</button>
+    </div>
+</div>
+
+<div class="wf-toast" data-wf-toast hidden></div>
+
+{{ workflows_json|json_script:"wf-workflows" }}
+{{ automation_config_json|json_script:"wf-config" }}
+{% endblock %}

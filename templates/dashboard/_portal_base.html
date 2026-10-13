@@ -1,0 +1,61 @@
+{% load static portal_tags %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{% static 'css/portal.css' %}?v=1.3">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="pt-body">
+    <header class="pt-header">
+        <div class="pt-container pt-header-inner">
+            <a href="{% url 'dashboard:public-portal-overview' client.portal_token %}" class="pt-brand">
+                {% if client.organization.logo %}
+                <img src="{{ client.organization.logo.url }}" alt="" class="pt-brand-logo">
+                {% else %}
+                <span class="pt-brand-mark">{{ client.organization.name|slice:":1"|upper }}</span>
+                {% endif %}
+                <span class="pt-brand-name">{{ client.organization.name }}</span>
+                <span class="pt-brand-sep">Espace client</span>
+            </a>
+            <div class="pt-user">
+                {% include "components/language_switcher.html" %}
+                {% portal_notifications client %}
+                <span class="pt-user-name">{{ client.get_display_name }}</span>
+                <span class="pt-avatar">{{ client.get_display_name|slice:":2"|upper }}</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="pt-container pt-main">
+        {% if messages %}{% for message in messages %}<p class="pt-flash pt-flash--{{ message.tags|default:'info' }}">{{ message }}</p>{% endfor %}{% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="pt-container pt-footer">
+        {{ client.organization.name }}{% if client.organization.email %} · <a href="mailto:{{ client.organization.email }}">{{ client.organization.email }}</a>{% endif %}
+    </footer>
+
+    <script>lucide.createIcons();</script>
+    <script>
+        // Cloche : à l'ouverture, les notifications sont marquées comme lues.
+        (function () {
+            var bell = document.querySelector('[data-portal-notif]');
+            if (!bell) return;
+            bell.addEventListener('toggle', function () {
+                var count = bell.querySelector('[data-notif-count]');
+                if (!bell.open || !count) return;
+                fetch(bell.dataset.readUrl, { method: 'POST', headers: { 'X-CSRFToken': bell.dataset.csrf } })
+                    .then(function (r) { if (r.ok) count.remove(); });
+            });
+            document.addEventListener('click', function (e) { if (bell.open && !bell.contains(e.target)) bell.open = false; });
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

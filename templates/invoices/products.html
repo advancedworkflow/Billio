@@ -1,0 +1,252 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}Produits & prestations - Billio{% endblock %}
+{% block page_title %}Produits & prestations{% endblock %}
+{% block page_subtitle %}Votre catalogue, réutilisable en un clic dans les factures et les devis{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/products.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+{{ products_data|json_script:"products-data" }}
+<div class="pr" x-data="productsPage()" x-init="init()" @keydown.escape.window="drawer = null; form = null">
+    <form x-ref="csrf" class="hidden">{% csrf_token %}</form>
+
+    <!-- Synthèse -->
+    <section class="pr-kpis">
+        <div><p class="pr-kpi-label">Au catalogue</p><p class="pr-kpi-value">{{ summary.active }}</p><p class="pr-kpi-sub">{% if summary.inactive %}{{ summary.inactive }} archivé{{ summary.inactive|pluralize }}{% else %}actifs{% endif %}</p></div>
+        <div><p class="pr-kpi-label">Facturé via le catalogue · 12 mois</p><p class="pr-kpi-value">{{ summary.revenue|money }}</p><p class="pr-kpi-sub">HT, factures envoyées</p></div>
+        <div><p class="pr-kpi-label">Le plus vendu</p><p class="pr-kpi-value pr-kpi-value--text">{% if summary.top %}{{ summary.top.name }}{% else %}—{% endif %}</p><p class="pr-kpi-sub">{% if summary.top %}{{ summary.top.revenue|money }}{% else %}Pas encore de vente{% endif %}</p></div>
+        <div><p class="pr-kpi-label">Jamais utilisés</p><p class="pr-kpi-value">{{ summary.unused }}</p><p class="pr-kpi-sub">ni facturés, ni dans un devis</p></div>
+    </section>
+
+    <!-- Barre d'outils -->
+    <div class="pr-toolbar">
+        <div class="pr-seg">
+            <button type="button" :class="filter === 'all' && 'is-active'" @click="filter = 'all'">Tous <span x-text="count('all')"></span></button>
+            <button type="button" :class="filter === 'service' && 'is-active'" @click="filter = 'service'">Prestations <span x-text="count('service')"></span></button>
+            <button type="button" :class="filter === 'product' && 'is-active'" @click="filter = 'product'">Produits <span x-text="count('product')"></span></button>
+            <button type="button" :class="filter === 'archived' && 'is-active'" @click="filter = 'archived'">Archivés <span x-text="count('archived')"></span></button>
+        </div>
+        <div class="pr-tools">
+            <label class="pr-search"><i data-lucide="search" class="w-4 h-4"></i><input type="search" x-model="q" placeholder="Nom, référence, catégorie…"></label>
+            <select class="pr-select" x-model="category" x-show="categories.length">
+                <option value="">Toutes catégories</option>
+                <template x-for="c in categories" :key="c"><option :value="c" x-text="c"></option></template>
+            </select>
+            <select class="pr-select" x-model="sort">
+                <option value="name">Trier : nom</option>
+                <option value="revenue">Trier : CA généré</option>
+                <option value="usage">Trier : utilisation</option>
+                <option value="price">Trier : prix</option>
+            </select>
+            <button type="button" class="pr-btn pr-btn--primary" @click="openForm()"><i data-lucide="plus" class="w-4 h-4"></i> Nouveau</button>
+        </div>
+    </div>
+
+    <!-- Liste -->
+    <section class="pr-table-wrap">
+        <table class="pr-table" x-show="rows.length">
+            <thead>
+                <tr><th>Produit / prestation</th><th>Catégorie</th><th class="num">Prix HT</th><th class="num">TTC</th><th class="num">Marge</th><th class="num">Utilisation</th><th class="num">CA 12 mois</th><th></th></tr>
+            </thead>
+            <tbody>
+                <template x-for="p in rows" :key="p.id">
+                    <tr :class="!p.is_active && 'is-archived'" @click="drawer = p">
+                        <td>
+                            <div class="pr-name">
+                                <span class="pr-kind" :class="'pr-kind--' + p.kind" :title="p.kind === 'product' ? 'Produit' : 'Prestation'"><i :data-lucide="p.kind === 'product' ? 'package' : 'briefcase'" class="w-3.5 h-3.5"></i></span>
+                                <span class="pr-name-main">
+                                    <strong x-text="p.name"></strong>
+                                    <small x-text="[p.reference, p.description].filter(Boolean).join(' · ') || (p.kind === 'product' ? 'Produit' : 'Prestation')"></small>
+                                </span>
+                            </div>
+                        </td>
+                        <td><span class="pr-chip" x-show="p.category" x-text="p.category"></span></td>
+                        <td class="num"><strong x-text="eur(p.unit_price)"></strong><small x-text="'/ ' + unitLabel(p.unit)"></small></td>
+                        <td class="num" x-text="eur(p.price_ttc)"></td>
+                        <td class="num"><span x-show="p.margin_pct !== null" class="pr-margin" :class="p.margin_pct < 30 ? 'is-low' : ''" x-text="p.margin_pct !== null ? String(p.margin_pct).replace('.', ',') + ' %' : ''"></span><span x-show="p.margin_pct === null" class="pr-muted">—</span></td>
+                        <td class="num"><span x-text="usageLabel(p)"></span><small x-show="p.last_used" x-text="'dernière : ' + p.last_used"></small></td>
+                        <td class="num" x-text="Number(p.revenue) ? eur(p.revenue) : '—'"></td>
+                        <td class="pr-actions" @click.stop>
+                            <button type="button" class="pr-icon-btn" title="Modifier" @click="openForm(p)"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+        <div class="pr-empty" x-show="!rows.length">
+            <span class="pr-empty-icon"><i data-lucide="package-open" class="w-5 h-5"></i></span>
+            <p x-text="all.length ? 'Aucun résultat pour ces filtres.' : 'Votre catalogue est vide.'"></p>
+            <small x-show="!all.length">Ajoutez vos prestations récurrentes (jour de conseil, forfait, abonnement…) pour les insérer en un clic dans vos factures.</small>
+            <button type="button" class="pr-btn pr-btn--primary" x-show="!all.length" @click="openForm()"><i data-lucide="plus" class="w-4 h-4"></i> Ajouter un produit</button>
+        </div>
+    </section>
+
+    <!-- Fiche détaillée -->
+    <div class="pr-overlay" x-show="drawer" x-cloak x-transition.opacity @click="drawer = null"></div>
+    <aside class="pr-drawer" x-show="drawer" x-cloak x-transition:enter="pr-slide" x-transition:leave="pr-slide">
+        <template x-if="drawer">
+            <div class="pr-drawer-inner">
+                <div class="pr-drawer-head">
+                    <div>
+                        <p class="pr-eyebrow" x-text="(drawer.kind === 'product' ? 'Produit' : 'Prestation') + (drawer.category ? ' · ' + drawer.category : '')"></p>
+                        <h2 x-text="drawer.name"></h2>
+                        <p class="pr-muted" x-show="drawer.reference" x-text="'Réf. ' + drawer.reference"></p>
+                    </div>
+                    <button type="button" class="pr-icon-btn" @click="drawer = null" aria-label="Fermer">✕</button>
+                </div>
+                <p class="pr-desc" x-show="drawer.description" x-text="drawer.description"></p>
+                <dl class="pr-facts">
+                    <div><dt>Prix HT</dt><dd x-text="eur(drawer.unit_price) + ' / ' + unitLabel(drawer.unit)"></dd></div>
+                    <div><dt>TVA</dt><dd x-text="String(Number(drawer.tax_rate)).replace('.', ',') + ' %'"></dd></div>
+                    <div><dt>Prix TTC</dt><dd x-text="eur(drawer.price_ttc)"></dd></div>
+                    <div><dt>Coût de revient</dt><dd x-text="drawer.cost_price ? eur(drawer.cost_price) : 'Non renseigné'"></dd></div>
+                    <div><dt>Marge</dt><dd x-text="drawer.margin_pct !== null ? eur(drawer.unit_price - drawer.cost_price) + ' (' + String(drawer.margin_pct).replace('.', ',') + ' %)' : '—'"></dd></div>
+                    <div><dt>Statut</dt><dd x-text="drawer.is_active ? 'Au catalogue' : 'Archivé'"></dd></div>
+                </dl>
+                <p class="pr-drawer-title">Sur les 12 derniers mois</p>
+                <div class="pr-mini-stats">
+                    <div><strong x-text="eur(drawer.revenue)"></strong><span>facturés HT</span></div>
+                    <div><strong x-text="Number(drawer.quantity).toLocaleString('fr-FR')"></strong><span x-text="unitLabel(drawer.unit).toLowerCase() + '(s) vendu(e)s'"></span></div>
+                    <div><strong x-text="drawer.invoices"></strong><span>facture(s)</span></div>
+                    <div><strong x-text="drawer.quotes"></strong><span>devis</span></div>
+                </div>
+                <p class="pr-drawer-title" x-show="drawer.recent.length">Dernières factures</p>
+                <div class="pr-recent">
+                    <template x-for="r in drawer.recent" :key="r.label">
+                        <a :href="r.url" class="pr-recent-row"><span><strong x-text="r.label"></strong><small x-text="r.client + ' · ' + r.date"></small></span><span x-text="eur(r.amount)"></span></a>
+                    </template>
+                    <p class="pr-muted" x-show="!drawer.recent.length">Pas encore facturé sur la période.</p>
+                </div>
+                <div class="pr-drawer-actions">
+                    <button type="button" class="pr-btn pr-btn--primary" @click="openForm(drawer)"><i data-lucide="pencil" class="w-4 h-4"></i> Modifier</button>
+                    <button type="button" class="pr-btn" @click="duplicate(drawer)"><i data-lucide="copy" class="w-4 h-4"></i> Dupliquer</button>
+                    <button type="button" class="pr-btn" @click="toggle(drawer)" x-text="drawer.is_active ? 'Archiver' : 'Remettre au catalogue'"></button>
+                    <button type="button" class="pr-btn pr-btn--danger" @click="remove(drawer)"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+        </template>
+    </aside>
+
+    <!-- Formulaire -->
+    <div class="pr-modal" x-show="form" x-cloak x-transition.opacity>
+        <div class="pr-modal-backdrop" @click="form = null"></div>
+        <template x-if="form">
+            <form class="pr-modal-panel" @submit.prevent="submit()">
+                <div class="pr-modal-head"><h3 x-text="form.id ? 'Modifier' : 'Nouveau produit ou prestation'"></h3><button type="button" class="pr-icon-btn" @click="form = null">✕</button></div>
+                <div class="pr-modal-body">
+                    <div class="pr-seg pr-seg--block">
+                        <button type="button" :class="form.kind === 'service' && 'is-active'" @click="form.kind = 'service'; if (form.unit === 'unit') form.unit = 'jour'"><i data-lucide="briefcase" class="w-3.5 h-3.5"></i> Prestation</button>
+                        <button type="button" :class="form.kind === 'product' && 'is-active'" @click="form.kind = 'product'; if (['jour','heure'].includes(form.unit)) form.unit = 'unit'"><i data-lucide="package" class="w-3.5 h-3.5"></i> Produit</button>
+                    </div>
+                    <label class="pr-field"><span>Nom <em>*</em></span><input x-model="form.name" required maxlength="200" placeholder="Ex. Journée de conseil"></label>
+                    <label class="pr-field"><span>Description <small>(reprise sur la facture)</small></span><textarea x-model="form.description" rows="2" placeholder="Ce que comprend la prestation…"></textarea></label>
+                    <div class="pr-grid-2">
+                        <label class="pr-field"><span>Référence</span><input x-model="form.reference" maxlength="60" placeholder="CONS-J"></label>
+                        <label class="pr-field"><span>Catégorie</span><input x-model="form.category" list="pr-categories" maxlength="80" placeholder="Conseil, Design…"></label>
+                    </div>
+                    <datalist id="pr-categories"><template x-for="c in categories" :key="c"><option :value="c"></option></template></datalist>
+                    <div class="pr-grid-3">
+                        <label class="pr-field"><span>Prix HT <em>*</em></span><div class="pr-input"><input type="number" min="0" step="0.01" x-model="form.unit_price" required><b>€</b></div></label>
+                        <label class="pr-field"><span>Par</span><select x-model="form.unit">{% for value, label in units %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+                        <label class="pr-field"><span>TVA</span><select x-model="form.tax_rate"><option value="20">20 %</option><option value="10">10 %</option><option value="5.5">5,5 %</option><option value="2.1">2,1 %</option><option value="0">0 %</option></select></label>
+                    </div>
+                    <label class="pr-field"><span>Coût de revient HT <small>(privé : sert à calculer la marge)</small></span><div class="pr-input"><input type="number" min="0" step="0.01" x-model="form.cost_price" placeholder="Optionnel"><b>€</b></div></label>
+                    <div class="pr-calc">
+                        <div><span>Prix TTC</span><strong x-text="eur(formTtc)"></strong></div>
+                        <div><span>Marge</span><strong :class="formMargin !== null && formMargin < 0 && 'is-neg'" x-text="formMargin === null ? '—' : eur(form.unit_price - form.cost_price) + ' · ' + formMargin.toFixed(1).replace('.', ',') + ' %'"></strong></div>
+                    </div>
+                    <p class="pr-error" x-show="error" x-text="error"></p>
+                </div>
+                <div class="pr-modal-foot">
+                    <button type="button" class="pr-btn" @click="form = null">Annuler</button>
+                    <button type="submit" class="pr-btn pr-btn--primary" :disabled="!!saving" x-text="form.id ? 'Enregistrer' : 'Ajouter au catalogue'"></button>
+                </div>
+            </form>
+        </template>
+    </div>
+</div>
+
+<script>
+function productsPage() {
+    const UNITS = Object.fromEntries([{% for value, label in units %}['{{ value }}', '{{ label|escapejs }}'],{% endfor %}]);
+    return {
+        all: JSON.parse(document.getElementById('products-data').textContent),
+        filter: 'all', q: '', category: '', sort: 'name',
+        drawer: null, form: null, error: '', saving: false,
+        get categories() { return [...new Set(this.all.map((p) => p.category).filter(Boolean))].sort(); },
+        init() { this.$watch('rows', () => this.icons()); this.$watch('drawer', () => this.icons()); this.$watch('form', () => this.icons()); this.icons(); },
+        icons() { this.$nextTick(() => window.lucide && lucide.createIcons()); },
+        csrf() { const i = this.$refs.csrf.querySelector('input'); return i ? i.value : ''; },
+        eur(v) { return Number(v || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }); },
+        unitLabel(u) { return UNITS[u] || u || 'Unité'; },
+        usageLabel(p) { return p.invoices || p.quotes ? `${p.invoices} fact. · ${p.quotes} devis` : 'Jamais utilisé'; },
+        count(f) { return this.all.filter((p) => this.matchesFilter(p, f)).length; },
+        matchesFilter(p, f) {
+            if (f === 'archived') return !p.is_active;
+            if (!p.is_active) return false;
+            return f === 'all' || p.kind === f;
+        },
+        get rows() {
+            const q = this.q.trim().toLowerCase();
+            const rows = this.all.filter((p) => this.matchesFilter(p, this.filter)
+                && (!this.category || p.category === this.category)
+                && (!q || [p.name, p.reference, p.category, p.description].join(' ').toLowerCase().includes(q)));
+            const by = {
+                name: (a, b) => a.name.localeCompare(b.name, 'fr'),
+                revenue: (a, b) => Number(b.revenue) - Number(a.revenue),
+                usage: (a, b) => (b.invoices + b.quotes) - (a.invoices + a.quotes),
+                price: (a, b) => Number(b.unit_price) - Number(a.unit_price),
+            };
+            return rows.sort(by[this.sort]);
+        },
+        openForm(p) {
+            this.error = '';
+            this.drawer = null;
+            this.form = p
+                ? { id: p.id, kind: p.kind, name: p.name, description: p.description, reference: p.reference, category: p.category, unit_price: p.unit_price, unit: p.unit, tax_rate: String(Number(p.tax_rate)), cost_price: p.cost_price, is_active: p.is_active }
+                : { id: null, kind: 'service', name: '', description: '', reference: '', category: this.category || '', unit_price: '', unit: 'jour', tax_rate: '20', cost_price: '', is_active: true };
+        },
+        get formTtc() { return this.form ? Number(this.form.unit_price || 0) * (1 + Number(this.form.tax_rate || 0) / 100) : 0; },
+        get formMargin() {
+            if (!this.form || this.form.cost_price === '' || this.form.cost_price === null || !Number(this.form.unit_price)) return null;
+            return (Number(this.form.unit_price) - Number(this.form.cost_price)) / Number(this.form.unit_price) * 100;
+        },
+        async post(url, data) {
+            const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body: new URLSearchParams(data) });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok || !body.ok) throw new Error(body.error || 'Action impossible.');
+            return body;
+        },
+        async submit() {
+            this.saving = true; this.error = '';
+            const data = { ...this.form, is_active: this.form.is_active ? 'true' : 'false' };
+            delete data.id;
+            try {
+                await this.post(this.form.id ? `{% url 'invoices:product-quick-update' 0 %}`.replace('/0/', `/${this.form.id}/`) : '{% url "invoices:product-quick-create" %}', data);
+                window.location.reload();
+            } catch (e) { this.error = e.message; } finally { this.saving = false; }
+        },
+        duplicate(p) { this.openForm(p); this.form.id = null; this.form.name = `${p.name} (copie)`; },
+        async toggle(p) {
+            try {
+                await this.post(`{% url 'invoices:product-quick-toggle' 0 %}`.replace('/0/', `/${p.id}/`), { is_active: p.is_active ? 'false' : 'true' });
+                p.is_active = !p.is_active;
+            } catch (e) { alert(e.message); }
+        },
+        async remove(p) {
+            const used = p.invoices || p.quotes;
+            if (!confirm(`Supprimer « ${p.name} » du catalogue ?${used ? '\nLes factures et devis existants ne sont pas modifiés.' : ''}`)) return;
+            try {
+                await this.post(`{% url 'invoices:product-quick-delete' 0 %}`.replace('/0/', `/${p.id}/`), {});
+                this.all = this.all.filter((x) => x.id !== p.id);
+                this.drawer = null;
+            } catch (e) { alert(e.message); }
+        },
+    };
+}
+</script>
+{% endblock %}

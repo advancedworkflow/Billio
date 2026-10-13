@@ -1,0 +1,378 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}Centre de ressources - Billio{% endblock %}
+{% block page_title %}Centre de ressources{% endblock %}
+{% block page_subtitle %}Calculateurs et repères pour fixer vos prix et facturer juste{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/resources.css' %}?v=1.1">
+{% endblock %}
+
+{% block content %}
+{{ billing_prefs|json_script:"rs-billing" }}
+<div class="rs" x-data="resourcesCenter()" x-init="init()">
+    {% csrf_token %}
+
+    <!-- Réglages repris dans les factures -->
+    <section class="rs-billing">
+        <div class="rs-billing-head">
+            <p class="rs-billing-title"><i data-lucide="receipt" class="w-4 h-4"></i> Utilisé dans vos factures</p>
+            <p class="rs-billing-sub">Enregistrez un résultat ici : il est repris automatiquement dans l'éditeur de facture et les mentions légales.</p>
+        </div>
+        <div class="rs-billing-items">
+            <button type="button" @click="open('tjm')"><span>TJM</span><strong x-text="billing.tjm ? eur(Number(billing.tjm), 0) : 'Non défini'"></strong></button>
+            <button type="button" @click="open('deadlines')"><span>Délai de paiement</span><strong x-text="(billing.payment_days || 30) + ' jours'"></strong></button>
+            <button type="button" @click="open('deadlines')"><span>Pénalités de retard</span><strong x-text="billing.penalty_rate ? String(billing.penalty_rate).replace('.', ',') + ' % / an' : 'Non défini'"></strong></button>
+            <button type="button" @click="open('vat')"><span>TVA</span><strong x-text="billing.vat_exempt ? 'Franchise (293 B)' : 'Assujetti'"></strong></button>
+        </div>
+    </section>
+
+    {% if figures and figures.count %}
+    <!-- Vos repères -->
+    <section class="rs-figures">
+        <div><p class="rs-fig-label">CA facturé HT · 12 mois</p><p class="rs-fig-value">{{ figures.revenue|money }}</p></div>
+        <div><p class="rs-fig-label">Factures émises</p><p class="rs-fig-value">{{ figures.count }}</p></div>
+        <div><p class="rs-fig-label">Facture moyenne HT</p><p class="rs-fig-value">{{ figures.average|money }}</p></div>
+        <div><p class="rs-fig-label">Délai moyen de paiement</p><p class="rs-fig-value">{% if figures.avg_delay is not None %}{{ figures.avg_delay }} jours{% else %}—{% endif %}</p></div>
+    </section>
+    {% endif %}
+
+    <div class="rs-layout">
+        <!-- Menu des outils -->
+        <nav class="rs-nav" aria-label="Outils">
+            <template x-for="group in groups" :key="group.label">
+                <div class="rs-nav-group">
+                    <p class="rs-nav-title" x-text="group.label"></p>
+                    <template x-for="item in group.items" :key="item.id">
+                        <button type="button" class="rs-nav-item" :class="tool === item.id && 'is-active'" @click="open(item.id)">
+                            <i :data-lucide="item.icon" class="w-4 h-4"></i>
+                            <span><strong x-text="item.label"></strong><small x-text="item.hint"></small></span>
+                        </button>
+                    </template>
+                </div>
+            </template>
+        </nav>
+
+        <div class="rs-content">
+            <!-- ============ TJM ============ -->
+            <section class="rs-tool" x-show="tool === 'tjm'">
+                <header class="rs-tool-head">
+                    <h2>Calculateur de TJM</h2>
+                    <p>Le taux journalier qu'il faut facturer pour atteindre le revenu net que vous visez, une fois les charges payées.</p>
+                </header>
+                <div class="rs-split">
+                    <div class="rs-form">
+                        <label class="rs-field"><span>Revenu net annuel visé</span><div class="rs-input"><input type="number" min="0" step="1000" x-model.number="tjmCalc.net"><em>€</em></div></label>
+                        <label class="rs-field"><span>Charges & cotisations</span><div class="rs-input"><input type="number" min="0" max="90" step="1" x-model.number="tjmCalc.charges"><em>%</em></div>
+                            <small>Micro-entreprise BNC ≈ 23 à 26 %, société ≈ 40 à 50 % du chiffre d'affaires.</small></label>
+                        <label class="rs-field"><span>Frais annuels (logiciels, matériel, assurance…)</span><div class="rs-input"><input type="number" min="0" step="100" x-model.number="tjmCalc.expenses"><em>€</em></div></label>
+                        <label class="rs-field"><span>Jours facturables par an</span><div class="rs-input"><input type="number" min="1" max="260" step="1" x-model.number="tjmCalc.days"><em>j</em></div>
+                            <small>≈ 218 jours ouvrés − congés, prospection, administratif : 160 à 200 jours est réaliste.</small></label>
+                    </div>
+                    <div class="rs-result">
+                        <p class="rs-result-label">TJM à facturer (HT)</p>
+                        <p class="rs-result-value" x-text="eur(tjmValue, 0)"></p>
+                        <dl class="rs-breakdown">
+                            <div><dt>Chiffre d'affaires nécessaire</dt><dd x-text="eur(tjmRevenue, 0)"></dd></div>
+                            <div><dt>dont charges & cotisations</dt><dd x-text="eur(tjmRevenue * tjmCalc.charges / 100, 0)"></dd></div>
+                            <div><dt>dont frais</dt><dd x-text="eur(tjmCalc.expenses || 0, 0)"></dd></div>
+                            <div><dt>Revenu net</dt><dd x-text="eur(tjmCalc.net || 0, 0)"></dd></div>
+                            <div><dt>Soit un taux horaire (7 h)</dt><dd x-text="eur(tjmValue / 7, 0)"></dd></div>
+                        </dl>
+                        <div class="rs-save-row">
+                            <button type="button" class="rs-save-btn" @click="saveBilling({ tjm: Math.round(tjmValue), hours_per_day: 7 }, 'TJM enregistré : les lignes « Jour / Heure » sont disponibles dans vos factures.')"><i data-lucide="check" class="w-4 h-4"></i> Utiliser ce TJM dans mes factures</button>
+                        </div>
+                        <button type="button" class="rs-link-btn" @click="revenue.tjm = Math.round(tjmValue); open('revenue')">Simuler mes revenus avec ce TJM →</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ Revenus ============ -->
+            <section class="rs-tool" x-show="tool === 'revenue'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Simulateur de revenus</h2>
+                    <p>Ce que rapporte votre rythme de facturation, avant et après charges.</p>
+                </header>
+                <div class="rs-split">
+                    <div class="rs-form">
+                        <label class="rs-field"><span>TJM (HT)</span><div class="rs-input"><input type="number" min="0" step="10" x-model.number="revenue.tjm"><em>€</em></div></label>
+                        <label class="rs-field"><span>Jours facturés par mois : <strong x-text="revenue.days"></strong></span>
+                            <input type="range" min="1" max="22" step="1" x-model.number="revenue.days" class="rs-range"></label>
+                        <label class="rs-field"><span>Mois travaillés par an</span><div class="rs-input"><input type="number" min="1" max="12" step="1" x-model.number="revenue.months"><em>mois</em></div></label>
+                        <label class="rs-field"><span>Charges & cotisations</span><div class="rs-input"><input type="number" min="0" max="90" step="1" x-model.number="revenue.charges"><em>%</em></div></label>
+                    </div>
+                    <div class="rs-result">
+                        <div class="rs-result-grid">
+                            <div><p class="rs-result-label">CA mensuel</p><p class="rs-result-value rs-result-value--sm" x-text="eur(revenueMonthly, 0)"></p></div>
+                            <div><p class="rs-result-label">CA annuel</p><p class="rs-result-value rs-result-value--sm" x-text="eur(revenueMonthly * revenue.months, 0)"></p></div>
+                        </div>
+                        <dl class="rs-breakdown">
+                            <div><dt>Net mensuel moyen (après charges, sur 12 mois)</dt><dd x-text="eur(revenueMonthly * revenue.months * (1 - revenue.charges / 100) / 12, 0)"></dd></div>
+                            <div><dt>Taux d'occupation</dt><dd x-text="Math.round(revenue.days / 22 * 100) + ' %'"></dd></div>
+                        </dl>
+                        <div class="rs-meter"><span :style="`width:${Math.min(100, revenue.days / 22 * 100)}%`"></span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ TVA ============ -->
+            <section class="rs-tool" x-show="tool === 'vat'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Convertisseur HT / TTC</h2>
+                    <p>Passez d'un montant hors taxes au montant TTC, ou l'inverse.</p>
+                </header>
+                <div class="rs-split">
+                    <div class="rs-form">
+                        <div class="rs-seg">
+                            <button type="button" :class="vat.mode === 'ht' && 'is-active'" @click="vat.mode = 'ht'">J'ai un montant HT</button>
+                            <button type="button" :class="vat.mode === 'ttc' && 'is-active'" @click="vat.mode = 'ttc'">J'ai un montant TTC</button>
+                        </div>
+                        <label class="rs-field"><span x-text="vat.mode === 'ht' ? 'Montant HT' : 'Montant TTC'"></span><div class="rs-input"><input type="number" min="0" step="10" x-model.number="vat.amount"><em>€</em></div></label>
+                        <div class="rs-field"><span>Taux de TVA</span>
+                            <div class="rs-chips">
+                                <template x-for="r in [20, 10, 5.5, 2.1, 0]" :key="r">
+                                    <button type="button" :class="Number(vat.rate) === r && 'is-active'" @click="vat.rate = r" x-text="String(r).replace('.', ',') + ' %'"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rs-result">
+                        <p class="rs-result-label" x-text="vat.mode === 'ht' ? 'Montant TTC' : 'Montant HT'"></p>
+                        <p class="rs-result-value" x-text="eur(vatResult.other)"></p>
+                        <dl class="rs-breakdown">
+                            <div><dt>Hors taxes</dt><dd x-text="eur(vatResult.ht)"></dd></div>
+                            <div><dt>TVA</dt><dd x-text="eur(vatResult.tva)"></dd></div>
+                            <div><dt>Toutes taxes comprises</dt><dd x-text="eur(vatResult.ttc)"></dd></div>
+                        </dl>
+                        <p class="rs-note" x-show="Number(vat.rate) === 0">Franchise en base : mentionnez « TVA non applicable, art. 293 B du CGI » sur vos factures.</p>
+                        <label class="rs-toggle"><input type="checkbox" :checked="!!billing.vat_exempt" @change="saveBilling({ vat_exempt: $event.target.checked }, $event.target.checked ? 'Franchise de TVA activée : nouvelles lignes à 0 % et mention 293 B ajoutée.' : 'Franchise de TVA désactivée.')">
+                            <span><strong>Je suis en franchise en base de TVA</strong><small>Les nouvelles lignes de facture passent à 0 % et la mention « art. 293 B du CGI » est ajoutée automatiquement.</small></span></label>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ Acompte & échéancier ============ -->
+            <section class="rs-tool" x-show="tool === 'deposit'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Acompte & échéancier</h2>
+                    <p>Répartissez le montant d'un devis entre un acompte et des échéances.</p>
+                </header>
+                <div class="rs-split">
+                    <div class="rs-form">
+                        <label class="rs-field"><span>Montant total TTC</span><div class="rs-input"><input type="number" min="0" step="100" x-model.number="deposit.total"><em>€</em></div></label>
+                        <label class="rs-field"><span>Acompte à la commande</span><div class="rs-input"><input type="number" min="0" max="100" step="5" x-model.number="deposit.pct"><em>%</em></div></label>
+                        <label class="rs-field"><span>Nombre d'échéances pour le solde</span><div class="rs-input"><input type="number" min="1" max="12" step="1" x-model.number="deposit.count"><em>×</em></div></label>
+                        <label class="rs-field"><span>Intervalle entre échéances</span><div class="rs-input"><input type="number" min="1" max="180" step="1" x-model.number="deposit.every"><em>jours</em></div></label>
+                    </div>
+                    <div class="rs-result">
+                        <p class="rs-result-label">Échéancier</p>
+                        <ol class="rs-schedule">
+                            <template x-for="(row, i) in schedule" :key="i">
+                                <li><span><strong x-text="row.label"></strong><small x-text="row.when"></small></span><span x-text="eur(row.amount)"></span></li>
+                            </template>
+                        </ol>
+                        <p class="rs-note">Astuce : dans un devis, l'onglet « Échéances » crée cet échéancier et génère les factures au bon moment.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ Remise ============ -->
+            <section class="rs-tool" x-show="tool === 'discount'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Remise & marge</h2>
+                    <p>L'effet d'une remise sur votre prix et sur ce qu'il vous reste.</p>
+                </header>
+                <div class="rs-split">
+                    <div class="rs-form">
+                        <label class="rs-field"><span>Prix initial HT</span><div class="rs-input"><input type="number" min="0" step="50" x-model.number="discount.price"><em>€</em></div></label>
+                        <label class="rs-field"><span>Remise accordée</span><div class="rs-input"><input type="number" min="0" max="100" step="1" x-model.number="discount.pct"><em>%</em></div></label>
+                        <label class="rs-field"><span>Coût de revient (temps, sous-traitance…)</span><div class="rs-input"><input type="number" min="0" step="50" x-model.number="discount.cost"><em>€</em></div></label>
+                    </div>
+                    <div class="rs-result">
+                        <p class="rs-result-label">Prix remisé HT</p>
+                        <p class="rs-result-value" x-text="eur(discountedPrice)"></p>
+                        <dl class="rs-breakdown">
+                            <div><dt>Montant de la remise</dt><dd x-text="'− ' + eur(discount.price - discountedPrice)"></dd></div>
+                            <div><dt>Marge avant remise</dt><dd x-text="eur(discount.price - discount.cost)"></dd></div>
+                            <div><dt>Marge après remise</dt><dd :class="discountedPrice - discount.cost < 0 && 'is-neg'" x-text="eur(discountedPrice - discount.cost)"></dd></div>
+                        </dl>
+                        <p class="rs-note" x-show="discount.price > discount.cost && discount.pct > 0"
+                           x-text="`Cette remise réduit votre marge de ${Math.round((discount.price - discountedPrice) / (discount.price - discount.cost) * 100)} %.`"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ Guide : mentions obligatoires ============ -->
+            <section class="rs-tool" x-show="tool === 'mentions'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Mentions obligatoires d'une facture</h2>
+                    <p>Ce qui doit figurer sur une facture émise en France. Billio en remplit la plupart automatiquement : cochez pour vérifier vos réglages.</p>
+                </header>
+                <div class="rs-checklist">
+                    <template x-for="(item, i) in mentions" :key="i">
+                        <label class="rs-check"><input type="checkbox" x-model="item.done" @change="saveChecks()"><span><strong x-text="item.label"></strong><small x-text="item.detail"></small></span></label>
+                    </template>
+                </div>
+                <p class="rs-note">Vos informations légales (SIRET, TVA, adresse) se règlent dans <a href="{% url 'organizations:organization-list' %}" class="underline">Organisation</a>.</p>
+            </section>
+
+            <!-- ============ Guide : délais de paiement ============ -->
+            <section class="rs-tool" x-show="tool === 'deadlines'" x-cloak>
+                <header class="rs-tool-head">
+                    <h2>Délais de paiement & retards</h2>
+                    <p>Les règles à connaître entre professionnels, et l'outil pour chiffrer un retard.</p>
+                </header>
+                <div class="rs-guide">
+                    <div class="rs-guide-card"><strong>30 jours</strong><p>Délai par défaut après réception de la prestation, si rien n'est prévu.</p></div>
+                    <div class="rs-guide-card"><strong>60 jours</strong><p>Maximum à compter de la date d'émission de la facture (ou 45 jours fin de mois si c'est convenu).</p></div>
+                    <div class="rs-guide-card"><strong>40 €</strong><p>Indemnité forfaitaire pour frais de recouvrement, due pour chaque facture payée en retard.</p></div>
+                </div>
+                <div class="rs-split mt-6">
+                    <div class="rs-form">
+                        <p class="rs-form-title">Chiffrer un retard</p>
+                        <label class="rs-field"><span>Montant TTC impayé</span><div class="rs-input"><input type="number" min="0" step="100" x-model.number="late.amount"><em>€</em></div></label>
+                        <label class="rs-field"><span>Jours de retard</span><div class="rs-input"><input type="number" min="0" step="1" x-model.number="late.days"><em>j</em></div></label>
+                        <label class="rs-field"><span>Taux annuel des pénalités (indiqué sur vos factures)</span><div class="rs-input"><input type="number" min="0" step="0.1" x-model.number="late.rate"><em>%</em></div>
+                            <small>Au minimum 3 fois le taux d'intérêt légal ; à défaut de mention, le taux de refinancement BCE majoré de 10 points.</small></label>
+                    </div>
+                    <div class="rs-result">
+                        <p class="rs-result-label">Total exigible</p>
+                        <p class="rs-result-value" x-text="eur(lateTotal)"></p>
+                        <dl class="rs-breakdown">
+                            <div><dt>Pénalités de retard</dt><dd x-text="eur(latePenalty)"></dd></div>
+                            <div><dt>Indemnité forfaitaire</dt><dd x-text="eur(late.days > 0 ? 40 : 0)"></dd></div>
+                        </dl>
+                        <div class="rs-apply">
+                            <p class="rs-form-title">Appliquer à mes factures</p>
+                            <label class="rs-field"><span>Délai de paiement par défaut</span>
+                                <div class="rs-chips">
+                                    <template x-for="d in [0, 15, 30, 45, 60]" :key="d">
+                                        <button type="button" :class="Number(late.paymentDays) === d && 'is-active'" @click="late.paymentDays = d" x-text="d === 0 ? 'À réception' : d + ' jours'"></button>
+                                    </template>
+                                </div></label>
+                            <p class="rs-note" x-text="legalPreview"></p>
+                            <button type="button" class="rs-save-btn" @click="saveBilling({ penalty_rate: late.rate, payment_days: late.paymentDays }, 'Conditions enregistrées : échéance et mentions légales mises à jour sur vos factures.')"><i data-lucide="check" class="w-4 h-4"></i> Utiliser ces conditions</button>
+                        </div>
+                        <a href="{% url 'payments:payments-page' %}" class="rs-link-btn">Voir mes factures en retard →</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    <div class="rs-toast" x-show="toast" x-cloak x-transition x-text="toast"></div>
+</div>
+
+<script>
+function resourcesCenter() {
+    const VALID = ['tjm', 'revenue', 'vat', 'deposit', 'discount', 'mentions', 'deadlines'];
+    return {
+        tool: 'tjm',
+        groups: [
+            { label: 'Tarifs & revenus', items: [
+                { id: 'tjm', icon: 'calculator', label: 'Calculateur de TJM', hint: 'Votre prix à la journée' },
+                { id: 'revenue', icon: 'trending-up', label: 'Simulateur de revenus', hint: 'Mois, année, net' },
+                { id: 'discount', icon: 'percent', label: 'Remise & marge', hint: "Effet d'une remise" },
+            ] },
+            { label: 'Facturation', items: [
+                { id: 'vat', icon: 'receipt', label: 'Convertisseur HT / TTC', hint: 'Tous les taux français' },
+                { id: 'deposit', icon: 'calendar-range', label: 'Acompte & échéancier', hint: 'Répartir un devis' },
+            ] },
+            { label: 'Guides', items: [
+                { id: 'mentions', icon: 'list-checks', label: 'Mentions obligatoires', hint: 'Check-list facture' },
+                { id: 'deadlines', icon: 'clock', label: 'Délais & retards', hint: 'Règles et pénalités' },
+            ] },
+        ],
+        tjmCalc: { net: 45000, charges: 25, expenses: 3000, days: 190 },
+        revenue: { tjm: 400, days: 15, months: 11, charges: 25 },
+        vat: { mode: 'ht', amount: 1000, rate: Number('{{ default_tax_rate|default:"20" }}') || 20 },
+        deposit: { total: 6000, pct: 30, count: 2, every: 30 },
+        discount: { price: 2000, pct: 10, cost: 1200 },
+        late: { amount: 2400, days: 30, rate: 12, paymentDays: 30 },
+        billing: JSON.parse(document.getElementById('rs-billing').textContent || '{}'),
+        toast: '',
+        mentions: [
+            { label: 'Numéro de facture unique et chronologique', detail: 'Attribué automatiquement par Billio (préfixe réglable).' },
+            { label: "Date d'émission et date d'échéance", detail: 'Plus la date de la vente ou de la prestation si elle diffère.' },
+            { label: 'Identité du vendeur', detail: 'Dénomination, adresse, SIREN/SIRET, forme juridique et capital pour une société.' },
+            { label: 'Identité du client', detail: 'Nom ou raison sociale, adresse de facturation, SIREN du client professionnel.' },
+            { label: 'Numéro de TVA intracommunautaire', detail: "Le vôtre et celui du client professionnel, si vous êtes assujetti." },
+            { label: 'Détail des prestations', detail: 'Désignation, quantité, prix unitaire HT, taux de TVA de chaque ligne.' },
+            { label: 'Totaux HT, TVA et TTC', detail: 'Ou la mention « TVA non applicable, art. 293 B du CGI » en franchise.' },
+            { label: 'Conditions de paiement', detail: "Date d'échéance, escompte éventuel (ou « pas d'escompte »)." },
+            { label: 'Pénalités de retard', detail: 'Taux applicable et indemnité forfaitaire de 40 € pour frais de recouvrement.' },
+        ].map((m) => ({ ...m, done: false })),
+
+        init() {
+            if (this.billing.tjm) this.revenue.tjm = Math.round(Number(this.billing.tjm));
+            if (this.billing.penalty_rate) this.late.rate = Number(this.billing.penalty_rate);
+            this.late.paymentDays = Number(this.billing.payment_days ?? 30);
+            const fromHash = location.hash.slice(1);
+            if (VALID.includes(fromHash)) this.tool = fromHash;
+            try {
+                const checks = JSON.parse(localStorage.getItem('billio-mentions') || '[]');
+                this.mentions.forEach((m, i) => { m.done = !!checks[i]; });
+            } catch (e) { /* stockage indisponible */ }
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        open(id) {
+            this.tool = id;
+            history.replaceState(null, '', `#${id}`);
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        get legalPreview() {
+            const rate = String(this.late.rate || '').replace('.', ',');
+            const days = Number(this.late.paymentDays);
+            return `Sur vos factures : « Paiement ${days ? `à ${days} jours` : 'à réception'}. ${rate ? `Pénalités au taux annuel de ${rate} %` : 'Pénalités de retard'} et indemnité forfaitaire de 40 € pour frais de recouvrement. »`;
+        },
+        async saveBilling(values, message) {
+            const csrf = document.querySelector('.rs [name=csrfmiddlewaretoken]').value;
+            const res = await fetch('{% url "dashboard:resources-save-billing" %}', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf }, body: JSON.stringify(values),
+            });
+            const data = await res.json().catch(() => ({}));
+            this.flash(res.ok && data.ok ? message : (data.error || 'Enregistrement impossible.'));
+            if (res.ok && data.ok) this.billing = data.prefs;
+        },
+        flash(text) { this.toast = text; clearTimeout(this._t); this._t = setTimeout(() => { this.toast = ''; }, 3500); },
+        saveChecks() {
+            try { localStorage.setItem('billio-mentions', JSON.stringify(this.mentions.map((m) => m.done))); } catch (e) { /* ignore */ }
+        },
+        eur(v, digits = 2) {
+            return (Number.isFinite(v) ? v : 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: digits, maximumFractionDigits: digits });
+        },
+        // CA nécessaire = (net + frais) / (1 − charges) : les charges sont prélevées sur le CA.
+        get tjmRevenue() {
+            const rate = Math.min(0.95, (Number(this.tjmCalc.charges) || 0) / 100);
+            return ((Number(this.tjmCalc.net) || 0) + (Number(this.tjmCalc.expenses) || 0)) / (1 - rate);
+        },
+        get tjmValue() { return this.tjmRevenue / Math.max(1, Number(this.tjmCalc.days) || 1); },
+        get revenueMonthly() { return (Number(this.revenue.tjm) || 0) * (Number(this.revenue.days) || 0); },
+        get vatResult() {
+            const a = Number(this.vat.amount) || 0;
+            const r = (Number(this.vat.rate) || 0) / 100;
+            const ht = this.vat.mode === 'ht' ? a : a / (1 + r);
+            const ttc = this.vat.mode === 'ht' ? a * (1 + r) : a;
+            return { ht, ttc, tva: ttc - ht, other: this.vat.mode === 'ht' ? ttc : ht };
+        },
+        get schedule() {
+            const total = Number(this.deposit.total) || 0;
+            const depositAmount = Math.round(total * (Number(this.deposit.pct) || 0)) / 100;
+            const count = Math.max(1, Math.min(12, Number(this.deposit.count) || 1));
+            const rest = total - depositAmount;
+            const share = Math.floor(rest / count * 100) / 100;
+            const rows = [];
+            if (depositAmount > 0) rows.push({ label: `Acompte (${this.deposit.pct} %)`, when: 'À la signature', amount: depositAmount });
+            for (let i = 1; i <= count; i += 1) {
+                const amount = i === count ? Math.round((rest - share * (count - 1)) * 100) / 100 : share;
+                rows.push({ label: count === 1 ? 'Solde' : `Échéance ${i}/${count}`, when: `J+${i * (Number(this.deposit.every) || 30)}`, amount });
+            }
+            return rows;
+        },
+        get discountedPrice() { return (Number(this.discount.price) || 0) * (1 - (Number(this.discount.pct) || 0) / 100); },
+        get latePenalty() { return (Number(this.late.amount) || 0) * ((Number(this.late.rate) || 0) / 100) * ((Number(this.late.days) || 0) / 365); },
+        get lateTotal() { return (Number(this.late.amount) || 0) + this.latePenalty + ((Number(this.late.days) || 0) > 0 ? 40 : 0); },
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,950 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ project.name }} - Billio{% endblock %}
+{% block page_title %}Projets{% endblock %}
+{% block page_subtitle %}{{ project.client.name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/project-detail.css' %}?v=1.5">
+{% endblock %}
+
+{% block content %}
+<div class="pd" x-data="projectDetail()" @click="if (!$event.target.closest('[data-menu-root]')) openMenu = null">
+
+    <!-- ===================== En-tête ===================== -->
+    <header class="pd-head">
+        <div class="pd-head-main">
+            <a href="{% url 'dashboard:project-board' %}" class="pd-back"><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Projets</a>
+            <h1>{{ project.name }}</h1>
+            <p class="pd-sub">
+                <a href="{% url 'clients:client-detail' project.client.id %}" class="pd-client-link"><i data-lucide="user-round" class="w-3.5 h-3.5"></i> {{ project.client.name }}</a>
+                {% if project.reference %}<span>· {{ project.reference }}</span>{% endif %}
+                {% if current_phase %}<span class="pd-phase-chip" style="--phase: {{ current_phase.color }};">{{ current_phase.label }}</span>{% endif %}
+                {% if project.is_late %}<span class="pd-flag pd-flag--danger">En retard</span>{% elif project.is_due_soon %}<span class="pd-flag pd-flag--warning">Livraison proche</span>{% endif %}
+            </p>
+        </div>
+        <div class="pd-head-actions">
+            <a href="{% url 'dashboard:project-gantt' project.id %}" class="pd-btn"><i data-lucide="chart-gantt" class="w-4 h-4"></i> Planning</a>
+            <a href="{% url 'dashboard:milestones-board' %}?project_id={{ project.id }}" class="pd-btn"><i data-lucide="columns-3" class="w-4 h-4"></i> Kanban</a>
+            <button type="button" class="pd-btn" @click="saveAsTemplate()" title="Réutiliser ce découpage (jalons, tâches, livrables) pour vos prochains projets"><i data-lucide="layout-template" class="w-4 h-4"></i> Enregistrer comme modèle</button>
+        </div>
+    </header>
+
+    <!-- Chiffres clés -->
+    <section class="pd-stats">
+        <div class="pd-stat">
+            <span class="pd-stat-label">Avancement</span>
+            <strong>{{ project.progress_percent }} %</strong>
+            <span class="pd-bar"><i style="width: {{ project.progress_percent }}%"></i></span>
+        </div>
+        <div class="pd-stat">
+            <span class="pd-stat-label">Tâches</span>
+            <strong>{{ summary.tasks_done }}<small>/{{ summary.tasks_total }}</small></strong>
+            <span class="pd-stat-hint">{% if summary.tasks_late %}<b class="is-danger">{{ summary.tasks_late }} en retard</b>{% elif summary.tasks_total %}terminées{% else %}aucune pour l'instant{% endif %}</span>
+        </div>
+        <div class="pd-stat">
+            <span class="pd-stat-label">Livrables validés</span>
+            <strong>{{ summary.deliverables_approved }}<small>/{{ summary.deliverables_total }}</small></strong>
+            <span class="pd-stat-hint">{% if summary.deliverables_waiting %}{{ summary.deliverables_waiting }} chez le client{% else %}par le client{% endif %}</span>
+        </div>
+        <div class="pd-stat">
+            <span class="pd-stat-label">Livraison</span>
+            {% if project.delivery_date %}
+            <strong>{{ project.delivery_date|date:"d M Y" }}</strong>
+            <span class="pd-stat-hint">{% if project.is_late %}<b class="is-danger">dépassée de {{ summary.days_left|stringformat:"d"|slice:"1:" }} j</b>{% elif summary.days_left == 0 %}aujourd'hui{% else %}dans {{ summary.days_left }} jour{{ summary.days_left|pluralize }}{% endif %}</span>
+            {% else %}
+            <strong class="is-muted">Non fixée</strong>
+            <span class="pd-stat-hint">{% if project.start_date %}début le {{ project.start_date|date:"d/m/Y" }}{% else %}à définir{% endif %}</span>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="pd-layout">
+        <div class="pd-main">
+
+            <!-- Phases du projet -->
+            <section class="pd-card">
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Étape du projet</h2>
+                        <p>Cliquez sur une étape pour faire avancer le projet. Le client voit l'étape en cours dans son espace.</p>
+                    </div>
+                </div>
+                <ol class="pd-steps">
+                    {% for p in phases %}
+                    <li>
+                        <button type="button" class="pd-step" style="--phase: {{ p.color }};" @click="setPhase('{{ p.value }}')"
+                                :class="{ 'is-current': status === '{{ p.value }}', 'is-done': phaseIndex('{{ p.value }}') < phaseIndex(status) }">
+                            <span class="pd-step-dot"><i data-lucide="check" class="w-3 h-3"></i><em>{{ forloop.counter }}</em></span>
+                            <span class="pd-step-label">{{ p.label }}</span>
+                            <small>{% if p.count %}{{ p.count }} jalon{{ p.count|pluralize }}{% else %}—{% endif %}</small>
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </section>
+
+            <!-- Onglets -->
+            <nav class="pd-tabs" role="tablist">
+                <button type="button" :class="tab === 'plan' ? 'is-active' : ''" @click="go('plan')"><i data-lucide="list-checks" class="w-4 h-4"></i> Plan <span>{{ milestones|length }}</span></button>
+                <button type="button" :class="tab === 'livrables' ? 'is-active' : ''" @click="go('livrables')"><i data-lucide="package-check" class="w-4 h-4"></i> Livrables <span>{{ deliverables|length }}</span></button>
+                <button type="button" :class="tab === 'reunions' ? 'is-active' : ''" @click="go('reunions')"><i data-lucide="video" class="w-4 h-4"></i> Réunions <span>{{ meetings|length }}</span></button>
+                <button type="button" :class="tab === 'cadrage' ? 'is-active' : ''" @click="go('cadrage')"><i data-lucide="clipboard-list" class="w-4 h-4"></i> Cadrage</button>
+                <button type="button" :class="tab === 'temps' ? 'is-active' : ''" @click="go('temps')"><i data-lucide="timer" class="w-4 h-4"></i> Temps{% if time.total_minutes %} <span>{{ time.total_label }}</span>{% endif %}</button>
+                <button type="button" :class="tab === 'fichiers' ? 'is-active' : ''" @click="go('fichiers')"><i data-lucide="paperclip" class="w-4 h-4"></i> Fichiers <span>{{ files|length }}</span></button>
+            </nav>
+
+            <!-- ===================== Plan : jalons & tâches ===================== -->
+            <section class="pd-card" x-show="tab === 'plan'">
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Jalons &amp; tâches</h2>
+                        <p>Un <strong>jalon</strong> est une étape clé visible par le client ; les <strong>tâches</strong> sont le travail interne pour l'atteindre. Cochez un jalon quand il est atteint.</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        <button type="button" class="pd-btn" @click="addingTask = !addingTask; addingMilestone = false"><i data-lucide="square-check" class="w-4 h-4"></i> Tâche</button>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingMilestone = !addingMilestone; addingTask = false"><i data-lucide="flag" class="w-4 h-4"></i> Jalon</button>
+                    </div>
+                </div>
+
+                <div class="pd-filter">
+                    <span>Afficher</span>
+                    <button type="button" :class="viewPhase === '' ? 'is-active' : ''" @click="viewPhase = ''">Toutes les étapes</button>
+                    {% for p in phases %}{% if p.count %}
+                    <button type="button" style="--phase: {{ p.color }};" :class="viewPhase === '{{ p.value }}' ? 'is-active' : ''" @click="viewPhase = '{{ p.value }}'">{{ p.label }}</button>
+                    {% endif %}{% endfor %}
+                </div>
+
+                <div x-show="addingMilestone" x-cloak class="pd-form">
+                    <label class="pd-field pd-field--grow"><span>Nom du jalon</span><input type="text" x-model="newMilestoneTitle" placeholder="Ex. Maquettes validées"></label>
+                    <label class="pd-field"><span>Début</span><input type="date" x-model="newMilestoneStartDate"></label>
+                    <label class="pd-field"><span>Échéance</span><input type="date" x-model="newMilestoneDate"></label>
+                    <label class="pd-field" x-show="billingMode === 'per_milestone'"><span>Montant (€)</span><input type="number" min="0" step="0.01" x-model="newMilestoneAmount" placeholder="0,00" class="w-28"></label>
+                    <div class="pd-form-actions">
+                        <button type="button" class="pd-btn pd-btn--ghost" @click="addingMilestone = false">Annuler</button>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="createMilestone()">Ajouter le jalon</button>
+                    </div>
+                    <p class="pd-help">Le jalon est ajouté à l'étape en cours ({{ current_phase.label|default:"phase actuelle" }}).</p>
+                </div>
+
+                <div x-show="addingTask" x-cloak class="pd-form">
+                    <label class="pd-field pd-field--grow"><span>Tâche</span><input type="text" x-model="newTaskTitle" placeholder="Ex. Intégrer la maquette"></label>
+                    <label class="pd-field"><span>Jalon</span>
+                        <select x-model="newTaskMilestone"><option value="">Aucun</option>{% for m in milestones %}<option value="{{ m.id }}">{{ m.title }}</option>{% endfor %}</select>
+                    </label>
+                    {% if org_members %}
+                    <label class="pd-field"><span>Responsable</span>
+                        <select x-model="newTaskAssignee"><option value="">—</option>{% for member in org_members %}<option value="{{ member.id }}">{{ member.name }}</option>{% endfor %}</select>
+                    </label>
+                    {% endif %}
+                    <label class="pd-field"><span>Début</span><input type="date" x-model="newTaskStartDate"></label>
+                    <label class="pd-field"><span>Échéance</span><input type="date" x-model="newTaskDate"></label>
+                    <div class="pd-form-actions">
+                        <button type="button" class="pd-btn pd-btn--ghost" @click="addingTask = false">Annuler</button>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="createTask()">Ajouter la tâche</button>
+                    </div>
+                </div>
+
+                <div class="pd-milestones">
+                    {% for g in phase_groups %}
+                    <section class="pd-phase-group{% if g.is_current %} is-current{% endif %}" style="--phase: {{ g.color }};" x-show="!viewPhase || viewPhase === '{{ g.value }}'">
+                    <header class="pd-phase-group-head">
+                        <span class="pd-dot"></span>
+                        <h3>{{ g.label }}</h3>
+                        {% if g.is_current %}<span class="pd-phase-chip">Étape en cours</span>{% endif %}
+                        <span class="pd-phase-group-count">{{ g.milestones_done }}/{{ g.milestones|length }} jalon{{ g.milestones|length|pluralize }}{% if g.tasks_total %} · {{ g.tasks_done }}/{{ g.tasks_total }} tâche{{ g.tasks_total|pluralize }}{% endif %}</span>
+                    </header>
+                    {% for m in g.milestones %}
+                    <article class="pd-milestone">
+                        <div class="milestone-item" x-show="editingMilestoneId !== {{ m.id }}">
+                            <button type="button" class="milestone-marker{% if m.is_completed %} is-done{% endif %}" @click="toggleMilestone({{ m.id }}, {{ m.is_completed|yesno:'true,false' }})" title="{% if m.is_completed %}Marquer comme non atteint{% else %}Marquer comme atteint{% endif %}"></button>
+                            <div class="min-w-0 flex-1">
+                                <p class="pd-milestone-title{% if m.is_completed %} is-done{% endif %}">{{ m.title }}</p>
+                                <p class="pd-meta">
+                                    {% for p in phases %}{% if p.value == m.phase %}<span class="pd-dot" style="--phase: {{ p.color }};"></span>{{ p.label }}{% endif %}{% endfor %}
+                                    {% if m.due_date %}<span>· {% if m.start_date %}{{ m.start_date|date:"d M" }} → {% endif %}{{ m.due_date|date:"d M Y" }}</span>{% endif %}
+                                    {% if m.tasks_total %}<span>· {{ m.tasks_done }}/{{ m.tasks_total }} tâche{{ m.tasks_total|pluralize }}</span>{% endif %}
+                                    {% if project.billing_mode == 'per_milestone' and m.amount %}
+                                    <span>· {{ m.amount }} €</span>{% if m.is_paid %}<span class="pd-flag pd-flag--success">Payé</span>{% else %}<span class="pd-flag">À encaisser</span>{% endif %}
+                                    {% endif %}
+                                    {% if m.form_fields %}<span>· formulaire ({{ m.form_fields|length }})</span>{% endif %}
+                                </p>
+                                {% if m.tasks_total %}<span class="pd-bar pd-bar--sm"><i style="width: {{ m.progress_percent }}%"></i></span>{% endif %}
+                            </div>
+                            <div class="relative" data-menu-root>
+                                <button type="button" class="detail-item-delete" @click="openMenu = openMenu === 'm{{ m.id }}' ? null : 'm{{ m.id }}'" aria-label="Actions du jalon">
+                                    <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+                                </button>
+                                <div x-show="openMenu === 'm{{ m.id }}'" x-cloak x-transition class="pd-menu dropdown-panel right-0">
+                                    <button type="button" @click="openMenu = null; startEditMilestone({{ m.id }}, '{{ m.title|escapejs }}', '{{ m.due_date|date:'Y-m-d' }}', '{{ m.start_date|date:'Y-m-d' }}', '{{ m.amount|default:'' }}')"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Modifier</button>
+                                    <button type="button" @click="openMenu = null; toggleForm({{ m.id }}, {{ m.form_fields_json|safe }})"><i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i> Questions au client{% if m.form_fields %} ({{ m.form_fields|length }}){% endif %}</button>
+                                    <button type="button" class="is-danger" @click="openMenu = null; deleteMilestone({{ m.id }})"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="formMilestoneId === {{ m.id }}" x-cloak class="pd-form pd-form--stack" @click.stop>
+                            <p class="pd-help">Questions posées au client à ce jalon (il répond depuis son espace).</p>
+                            <template x-for="(f, idx) in formFields" :key="idx">
+                                <div class="pd-qa">
+                                    <div class="flex-1 space-y-1">
+                                        <input type="text" x-model="f.label" placeholder="Question">
+                                        <textarea x-model="f.answer" placeholder="Réponse" rows="1"></textarea>
+                                    </div>
+                                    <button type="button" class="pd-icon-btn" @click="formFields.splice(idx, 1)" aria-label="Retirer"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </template>
+                            <div class="pd-form-actions pd-form-actions--split">
+                                <button type="button" class="pd-link" @click="formFields.push({ label: '', answer: '' }); $nextTick(() => lucide && lucide.createIcons());">+ Question</button>
+                                <span><button type="button" class="pd-btn pd-btn--ghost" @click="formMilestoneId = null">Annuler</button>
+                                <button type="button" class="pd-btn pd-btn--primary" @click="saveForm({{ m.id }})">Enregistrer</button></span>
+                            </div>
+                        </div>
+
+                        <div x-show="editingMilestoneId === {{ m.id }}" x-cloak class="pd-form">
+                            <label class="pd-field pd-field--grow"><span>Nom</span><input type="text" x-model="editMilestoneTitle"></label>
+                            <label class="pd-field"><span>Début</span><input type="date" x-model="editMilestoneStartDate"></label>
+                            <label class="pd-field"><span>Échéance</span><input type="date" x-model="editMilestoneDate"></label>
+                            <label class="pd-field" x-show="billingMode === 'per_milestone'"><span>Montant (€)</span><input type="number" min="0" step="0.01" x-model="editMilestoneAmount" class="w-28"></label>
+                            <div class="pd-form-actions">
+                                <button type="button" class="pd-btn pd-btn--ghost" @click="editingMilestoneId = null">Annuler</button>
+                                <button type="button" class="pd-btn pd-btn--primary" @click="saveMilestone()">Enregistrer</button>
+                            </div>
+                        </div>
+
+                        <div class="pd-tasks">
+                            {% for t in m.grouped_tasks %}
+                            {% include 'dashboard/_project_task_item.html' with t=t %}
+                            {% empty %}
+                            <p class="pd-empty-line">Aucune tâche. <button type="button" class="pd-link" @click="addingTask = true; newTaskMilestone = '{{ m.id }}'; window.scrollTo({ top: 0, behavior: 'smooth' })">Ajouter une tâche</button></p>
+                            {% endfor %}
+                        </div>
+                    </article>
+                    {% endfor %}
+                    </section>
+                    {% empty %}
+                    <div class="pd-empty">
+                        <i data-lucide="flag" class="w-6 h-6"></i>
+                        <p><strong>Aucun jalon pour l'instant.</strong> Découpez le projet en 3 à 5 étapes clés (ex. « Brief validé », « Maquettes », « Livraison ») : vous suivrez l'avancement et le client aussi.</p>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingMilestone = true"><i data-lucide="plus" class="w-4 h-4"></i> Créer le premier jalon</button>
+                    </div>
+                    {% endfor %}
+                    {% if milestones %}
+                    <p class="pd-empty-line" x-show="viewPhase && ![{% for m in milestones %}'{{ m.phase }}',{% endfor %}].includes(viewPhase)">Aucun jalon dans cette étape.</p>
+                    {% endif %}
+
+                    {% if orphan_tasks %}
+                    <article class="pd-milestone pd-milestone--orphan">
+                        <p class="pd-group-title">Tâches sans jalon</p>
+                        <div class="pd-tasks">
+                            {% for t in orphan_tasks %}
+                            {% include 'dashboard/_project_task_item.html' with t=t %}
+                            {% endfor %}
+                        </div>
+                    </article>
+                    {% endif %}
+                </div>
+                <p class="pd-help pd-help--foot"><i data-lucide="info" class="w-3.5 h-3.5"></i> Cliquez sur le rond d'une tâche pour la faire passer de « À faire » à « En cours » puis « Terminée ».</p>
+            </section>
+
+            <!-- ===================== Livrables ===================== -->
+            <section class="pd-card" x-show="tab === 'livrables'" x-cloak>
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Livrables</h2>
+                        <p>Ce que vous remettez au client. Joignez un fichier puis <strong>envoyez-le</strong> : le client le valide ou demande des modifications depuis son espace.</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingDeliverable = !addingDeliverable"><i data-lucide="plus" class="w-4 h-4"></i> Livrable</button>
+                    </div>
+                </div>
+
+                <div x-show="addingDeliverable" x-cloak class="pd-form">
+                    <label class="pd-field pd-field--grow"><span>Nom du livrable</span><input type="text" x-model="newDeliverableTitle" placeholder="Ex. Logo — version finale"></label>
+                    <label class="pd-field"><span>Jalon</span>
+                        <select x-model="newDeliverableMilestone"><option value="">Aucun</option>{% for m in milestones %}<option value="{{ m.id }}">{{ m.title }}</option>{% endfor %}</select>
+                    </label>
+                    <div class="pd-form-actions">
+                        <button type="button" class="pd-btn pd-btn--ghost" @click="addingDeliverable = false">Annuler</button>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="createDeliverable()">Ajouter</button>
+                    </div>
+                </div>
+
+                <ol class="pd-flow">
+                    <li><b>1</b> En cours</li><li><b>2</b> Envoyé au client</li><li><b>3</b> Validé ou modifications demandées</li>
+                </ol>
+
+                <div class="pd-deliverables">
+                    {% for d in deliverables %}
+                    <article class="pd-deliverable is-{{ d.status }}">
+                        <div class="pd-deliverable-head">
+                            <div class="min-w-0">
+                                <p class="pd-deliverable-title">{{ d.title }}</p>
+                                <p class="pd-meta">{% if d.milestone_id %}Jalon « {{ d.milestone.title }} » · {% endif %}{{ d.files.all|length }} fichier{{ d.files.all|length|pluralize }} · {{ d.comments.all|length }} commentaire{{ d.comments.all|length|pluralize }}</p>
+                            </div>
+                            <span class="pd-status pd-status--{{ d.status }}">{{ d.get_status_display }}</span>
+                            <div class="pd-deliverable-actions">
+                                {% if d.status == 'in_progress' or d.status == 'changes_requested' %}
+                                <label class="pd-btn pd-btn--sm"><i data-lucide="paperclip" class="w-3.5 h-3.5"></i> Fichier<input type="file" class="hidden" onchange="uploadDeliverableFile({{ d.id }}, this)"></label>
+                                <button type="button" class="pd-btn pd-btn--sm pd-btn--primary" onclick="submitDeliverable({{ d.id }})"{% if not d.files.all %} disabled title="Ajoutez d'abord un fichier"{% endif %}><i data-lucide="send" class="w-3.5 h-3.5"></i> Envoyer</button>
+                                {% else %}
+                                <label class="pd-btn pd-btn--sm"><i data-lucide="paperclip" class="w-3.5 h-3.5"></i> Fichier<input type="file" class="hidden" onchange="uploadDeliverableFile({{ d.id }}, this)"></label>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if d.description %}<p class="pd-text">{{ d.description }}</p>{% endif %}
+                        {% if d.status == 'changes_requested' and d.change_request_reason %}
+                        <p class="pd-quote"><i data-lucide="message-square-warning" class="w-3.5 h-3.5"></i> « {{ d.change_request_reason }} »</p>
+                        {% endif %}
+                        {% if d.files.all %}
+                        <div class="pd-files">
+                            {% for f in d.files.all %}<a href="{{ f.file.url }}" target="_blank" rel="noopener"><i data-lucide="file" class="w-3.5 h-3.5"></i> {{ f.name }}</a>{% endfor %}
+                        </div>
+                        {% endif %}
+                        <details class="pd-comments"{% if d.comments.all %} open{% endif %}>
+                            <summary>Échanges avec le client</summary>
+                            {% for c in d.comments.all %}
+                            <div class="pd-comment{% if c.author_type == 'client' %} is-client{% endif %}">
+                                <span class="pd-comment-author">{{ c.author_name }} <em>{% if c.author_type == 'client' %}client{% else %}équipe{% endif %}</em></span>
+                                <p>{{ c.body }}</p>
+                            </div>
+                            {% endfor %}
+                            <form onsubmit="return submitComment(event, {{ d.id }})" class="pd-comment-form">
+                                <input type="text" name="body" placeholder="Écrire au client…">
+                                <button type="submit" class="pd-btn pd-btn--sm">Envoyer</button>
+                            </form>
+                        </details>
+                    </article>
+                    {% empty %}
+                    <div class="pd-empty">
+                        <i data-lucide="package-check" class="w-6 h-6"></i>
+                        <p><strong>Aucun livrable.</strong> Ajoutez ce que vous allez remettre (fichiers, maquettes, rapport) pour le faire valider par le client.</p>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingDeliverable = true"><i data-lucide="plus" class="w-4 h-4"></i> Ajouter un livrable</button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- ===================== Réunions ===================== -->
+            <section class="pd-card" x-show="tab === 'reunions'" x-cloak>
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Réunions client</h2>
+                        <p>Planifiez les points avec le client ; ils apparaissent dans son espace et dans votre planning.</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingMeeting = !addingMeeting"><i data-lucide="calendar-plus" class="w-4 h-4"></i> Planifier</button>
+                    </div>
+                </div>
+
+                <div x-show="addingMeeting" x-cloak class="pd-form">
+                    <label class="pd-field pd-field--grow"><span>Objet</span><input type="text" x-model="newMeetingTitle" placeholder="Ex. Point d'avancement"></label>
+                    <label class="pd-field"><span>Date et heure</span><input type="datetime-local" x-model="newMeetingDate"></label>
+                    <label class="pd-field"><span>Durée (min)</span><input type="number" min="5" step="5" x-model="newMeetingDuration" class="w-24"></label>
+                    <label class="pd-field pd-field--grow"><span>Lieu ou lien visio</span><input type="text" x-model="newMeetingLocation" placeholder="https://meet.google.com/…"></label>
+                    <div class="pd-form-actions">
+                        <button type="button" class="pd-btn pd-btn--ghost" @click="addingMeeting = false">Annuler</button>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="createMeeting()">Planifier</button>
+                    </div>
+                </div>
+
+                <div class="pd-meetings">
+                    {% for meeting in meetings %}
+                    <div class="pd-meeting{% if meeting.status != 'scheduled' or meeting.is_past_display %} is-past{% endif %}" x-show="editingMeetingId !== {{ meeting.id }}">
+                        <span class="pd-date-tile"><b>{{ meeting.scheduled_at|date:"d" }}</b><small>{{ meeting.scheduled_at|date:"M" }}</small></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="pd-meeting-title{% if meeting.status == 'cancelled' %} line-through{% endif %}">{{ meeting.title }}</p>
+                            <p class="pd-meta">
+                                {{ meeting.scheduled_at|date:"l H:i" }} · {{ meeting.duration_minutes }} min
+                                {% if meeting.location %}· <a href="{{ meeting.location }}" target="_blank" rel="noopener" class="pd-link">Rejoindre / lieu</a>{% endif %}
+                                {% if meeting.status == 'completed' %}<span class="pd-flag pd-flag--success">Terminée</span>{% elif meeting.status == 'cancelled' %}<span class="pd-flag pd-flag--danger">Annulée</span>{% elif meeting.is_past_display %}<span class="pd-flag pd-flag--warning">Passée — à clôturer</span>{% endif %}
+                            </p>
+                        </div>
+                        <div class="relative" data-menu-root>
+                            <button type="button" class="detail-item-delete" @click="openMenu = openMenu === 'mt{{ meeting.id }}' ? null : 'mt{{ meeting.id }}'" aria-label="Actions de la réunion"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+                            <div x-show="openMenu === 'mt{{ meeting.id }}'" x-cloak x-transition class="pd-menu dropdown-panel right-0">
+                                <button type="button" @click="openMenu = null; startEditMeeting({{ meeting.id }}, '{{ meeting.title|escapejs }}', '{{ meeting.scheduled_at|date:'Y-m-d\TH:i' }}', {{ meeting.duration_minutes }}, '{{ meeting.location|escapejs }}')"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Modifier</button>
+                                {% if meeting.status == 'scheduled' %}
+                                <button type="button" @click="openMenu = null; updateMeetingStatus({{ meeting.id }}, 'completed')"><i data-lucide="check" class="w-3.5 h-3.5"></i> Marquer terminée</button>
+                                <button type="button" @click="openMenu = null; updateMeetingStatus({{ meeting.id }}, 'cancelled')"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Annuler</button>
+                                {% endif %}
+                                <button type="button" class="is-danger" @click="openMenu = null; deleteMeeting({{ meeting.id }})"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="editingMeetingId === {{ meeting.id }}" x-cloak class="pd-form">
+                        <label class="pd-field pd-field--grow"><span>Objet</span><input type="text" x-model="editMeetingTitle"></label>
+                        <label class="pd-field"><span>Date et heure</span><input type="datetime-local" x-model="editMeetingDate"></label>
+                        <label class="pd-field"><span>Durée</span><input type="number" min="5" step="5" x-model="editMeetingDuration" class="w-24"></label>
+                        <label class="pd-field pd-field--grow"><span>Lieu / lien</span><input type="text" x-model="editMeetingLocation"></label>
+                        <div class="pd-form-actions">
+                            <button type="button" class="pd-btn pd-btn--ghost" @click="editingMeetingId = null">Annuler</button>
+                            <button type="button" class="pd-btn pd-btn--primary" @click="saveMeeting()">Enregistrer</button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="pd-empty">
+                        <i data-lucide="video" class="w-6 h-6"></i>
+                        <p><strong>Aucune réunion planifiée.</strong> Un point régulier (ex. toutes les deux semaines) rassure le client et évite les surprises.</p>
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingMeeting = true"><i data-lucide="calendar-plus" class="w-4 h-4"></i> Planifier une réunion</button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- ===================== Cadrage (spécifications client) ===================== -->
+            <section class="pd-card" x-show="tab === 'cadrage'" x-cloak id="specifications-client">
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Cadrage — <span x-text="phaseLabel(briefPhase)"></span></h2>
+                        <p>Les questions à poser au client pour cette étape (objectifs, contraintes, contenus…). Il y répond depuis son espace ; vous pouvez aussi noter ses réponses ici.</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        <select x-model="briefPhase" @change="editingBrief = false" class="pd-select" aria-label="Étape">
+                            {% for p in phases %}<option value="{{ p.value }}">{{ p.label }}</option>{% endfor %}
+                        </select>
+                        <button type="button" class="pd-btn" x-show="currentBriefFields.length" @click="toggleBrief()"><span x-text="editingBrief ? 'Fermer' : 'Modifier'"></span></button>
+                    </div>
+                </div>
+
+                <template x-if="!editingBrief">
+                    <div>
+                        <template x-if="!currentBriefFields.length">
+                            <div class="pd-empty">
+                                <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                                <p><strong>Pas encore de questions pour cette étape.</strong> Ex. « Quel est l'objectif principal ? », « Avez-vous une charte graphique ? », « Date de lancement souhaitée ? »</p>
+                                <button type="button" class="pd-btn pd-btn--primary" @click="editingBrief = true; briefFields = [{ label: '', answer: '' }];"><i data-lucide="plus" class="w-4 h-4"></i> Écrire les questions</button>
+                            </div>
+                        </template>
+                        <dl class="pd-brief">
+                            <template x-for="f in currentBriefFields" :key="f.label">
+                                <div>
+                                    <dt x-text="f.label"></dt>
+                                    <dd :class="f.answer ? '' : 'is-empty'" x-text="f.answer || 'En attente de réponse'"></dd>
+                                </div>
+                            </template>
+                        </dl>
+                    </div>
+                </template>
+
+                <template x-if="editingBrief">
+                    <div class="pd-form pd-form--stack" @click.stop>
+                        <template x-for="(f, idx) in briefFields" :key="idx">
+                            <div class="pd-qa">
+                                <div class="flex-1 space-y-1">
+                                    <input type="text" x-model="f.label" placeholder="Question">
+                                    <textarea x-model="f.answer" placeholder="Réponse (facultatif)" rows="2"></textarea>
+                                </div>
+                                <button type="button" class="pd-icon-btn" @click="briefFields.splice(idx, 1)" aria-label="Retirer"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            </div>
+                        </template>
+                        <div class="pd-form-actions pd-form-actions--split">
+                            <button type="button" class="pd-link" @click="briefFields.push({ label: '', answer: '' }); $nextTick(() => lucide && lucide.createIcons());">+ Question</button>
+                            <span><button type="button" class="pd-btn pd-btn--ghost" @click="editingBrief = false">Annuler</button>
+                            <button type="button" class="pd-btn pd-btn--primary" @click="saveBrief()">Enregistrer</button></span>
+                        </div>
+                    </div>
+                </template>
+            </section>
+
+            <!-- ===================== Fichiers ===================== -->
+            <!-- ===================== Temps passé ===================== -->
+            <section class="pd-card" x-show="tab === 'temps'" x-cloak>
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Temps passé</h2>
+                        <p>Chronométrez ou saisissez votre temps, puis facturez le temps facturable en un clic (une ligne par tâche, en heures).</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        {% if time.running %}
+                        <button type="button" class="pd-btn pd-btn--danger" @click="stopTimer({{ time.running.id }})"><i data-lucide="square" class="w-4 h-4"></i> Arrêter <span class="pd-timer" data-started="{{ time.running.started_at|date:'c' }}">…</span></button>
+                        {% else %}
+                        <button type="button" class="pd-btn" @click="startTimer()"><i data-lucide="play" class="w-4 h-4"></i> Démarrer le chrono</button>
+                        {% endif %}
+                        <button type="button" class="pd-btn pd-btn--primary" @click="addingTime = !addingTime"><i data-lucide="plus" class="w-4 h-4"></i> Saisir</button>
+                    </div>
+                </div>
+
+                {% if not time_access.tracking %}
+                <p class="pd-plan-note"><i data-lucide="lock" class="w-4 h-4"></i> Le suivi du temps est disponible à partir du forfait {{ time_access.plan_name }}. <a href="{% url 'subscriptions:billing' %}">Voir les forfaits</a></p>
+                {% elif not time_access.billing %}
+                <p class="pd-plan-note"><i data-lucide="lock" class="w-4 h-4"></i> Chronométrez librement ; la facturation du temps passé est disponible à partir du forfait {{ time_access.plan_name }}. <a href="{% url 'subscriptions:billing' %}">Voir les forfaits</a></p>
+                {% endif %}
+                <div class="pd-time-stats">
+                    <div><span>Total</span><strong>{{ time.total_label }}</strong></div>
+                    <div><span>Facturable</span><strong>{{ time.billable_label }}</strong></div>
+                    <div><span>À facturer</span><strong>{{ time.pending_label }}{% if time.pending_amount %} · {{ time.pending_amount }} €{% endif %}</strong></div>
+                    <div>
+                        <span>Taux horaire</span>
+                        <form class="pd-rate" @submit.prevent="saveRate($event)"><input type="text" name="hourly_rate" inputmode="decimal" value="{{ project.hourly_rate|default:'' }}" placeholder="{{ time.rate|default:'—' }}"> €/h <button type="submit" class="pd-link">OK</button></form>
+                    </div>
+                </div>
+
+                <form x-show="addingTime" x-cloak class="pd-form" @submit.prevent="addTime($event)">
+                    <label class="pd-field"><span>Durée</span><input type="text" name="duration" placeholder="1h30" required class="w-24"></label>
+                    <label class="pd-field"><span>Date</span><input type="date" name="date" value="{% now 'Y-m-d' %}"></label>
+                    <label class="pd-field"><span>Tâche</span><select name="task_id"><option value="">—</option>{% for t in tasks %}<option value="{{ t.id }}">{{ t.title }}</option>{% endfor %}</select></label>
+                    <label class="pd-field pd-field--grow"><span>Description</span><input type="text" name="description" maxlength="255" placeholder="Ex. montage V2"></label>
+                    <label class="pd-check"><input type="checkbox" name="billable" checked> Facturable</label>
+                    <div class="pd-form-actions"><button type="button" class="pd-btn pd-btn--ghost" @click="addingTime = false">Annuler</button><button type="submit" class="pd-btn pd-btn--primary">Ajouter</button></div>
+                </form>
+
+                <div class="pd-time-list" translate="no">
+                    {% for e in time.entries %}{% if not e.started_at %}
+                    <div class="pd-time-row">
+                        <span class="pd-time-date">{{ e.date|date:"d/m" }}</span>
+                        <span class="flex-1 min-w-0"><strong>{{ e.hours_label }}</strong>{% if e.task %} · {{ e.task.title }}{% endif %}{% if e.description %} <small>— {{ e.description }}</small>{% endif %}</span>
+                        {% if e.invoice_id %}<a class="pd-flag pd-flag--success" href="{% url 'invoices:invoice-preview' e.invoice_id %}">Facturé</a>{% elif not e.billable %}<span class="pd-flag">Non facturable</span>{% endif %}
+                        {% if not e.invoice_id %}<button type="button" class="pd-icon-btn" @click="deleteTime({{ e.id }})" aria-label="Supprimer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>{% endif %}
+                    </div>
+                    {% endif %}{% empty %}
+                    <p class="pd-empty-line">Aucun temps saisi. Démarrez le chrono quand vous travaillez sur ce projet.</p>
+                    {% endfor %}
+                </div>
+                {% if time.pending_minutes %}
+                <div class="pd-form-actions pd-form-actions--split">
+                    <span class="pd-help">{{ time.pending_label }} facturables pas encore facturées{% if time.rate %} à {{ time.rate }} €/h{% endif %}.</span>
+                    <button type="button" class="pd-btn pd-btn--primary" @click="invoiceTime()"><i data-lucide="receipt" class="w-4 h-4"></i> Facturer ce temps</button>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="pd-card" x-show="tab === 'fichiers'" x-cloak>
+                <div class="pd-card-head">
+                    <div>
+                        <h2>Fichiers du projet</h2>
+                        <p>Documents de travail partagés avec le client (brief, contenus, sources). Le client peut aussi en déposer depuis son espace.</p>
+                    </div>
+                    <div class="pd-card-actions">
+                        {% if 'google-drive' in connected_plugins %}<button type="button" class="pd-btn" onclick="billioPlugins.driveImport({{ project.id }})"><i data-lucide="hard-drive-download" class="w-4 h-4"></i> Depuis Drive</button>{% endif %}
+                        <label class="pd-btn pd-btn--primary"><i data-lucide="upload" class="w-4 h-4"></i> Ajouter<input type="file" class="hidden" onchange="uploadProjectFile(this)"></label>
+                    </div>
+                </div>
+                <div class="pd-file-list">
+                    {% for f in files %}
+                    <a href="{{ f.file.url }}" target="_blank" rel="noopener" class="pd-file">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span class="flex-1 min-w-0 truncate">{{ f.name }}</span>
+                        {% if f.uploaded_by_client %}<span class="pd-flag">Déposé par le client</span>{% endif %}
+                        <i data-lucide="download" class="w-3.5 h-3.5 pd-file-dl"></i>
+                    </a>
+                    {% empty %}
+                    <div class="pd-empty">
+                        <i data-lucide="paperclip" class="w-6 h-6"></i>
+                        <p><strong>Aucun fichier.</strong> Déposez ici les éléments utiles au projet pour les retrouver au même endroit que le client.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <!-- ===================== Colonne latérale ===================== -->
+        <aside class="pd-side">
+            <section class="pd-card pd-next">
+                <h2><i data-lucide="sparkles" class="w-4 h-4"></i> À faire maintenant</h2>
+                <ul>
+                    {% for step in next_steps %}
+                    <li class="pd-next-item is-{{ step.tone }}">
+                        <i data-lucide="{{ step.icon }}" class="w-4 h-4"></i>
+                        <span>{{ step.text }}</span>
+                        {% if step.tab %}<button type="button" @click="go('{{ step.tab }}')" aria-label="Voir"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>{% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="pd-card">
+                <h2 class="pd-side-title">Infos du projet</h2>
+                <dl class="pd-facts">
+                    <div><dt>Client</dt><dd><a href="{% url 'clients:client-detail' project.client.id %}" class="pd-link">{{ project.client.name }}</a></dd></div>
+                    <div><dt>Début</dt><dd>{{ project.start_date|date:"d/m/Y"|default:"—" }}</dd></div>
+                    <div><dt>Livraison</dt><dd>{{ project.delivery_date|date:"d/m/Y"|default:"—" }}</dd></div>
+                    {% if summary.next_meeting %}<div><dt>Prochaine réunion</dt><dd>{{ summary.next_meeting.scheduled_at|date:"d/m à H:i" }}</dd></div>{% endif %}
+                    <div><dt>Jalons atteints</dt><dd>{{ summary.milestones_done }} / {{ summary.milestones_total }}</dd></div>
+                </dl>
+                {% if project.description %}<p class="pd-desc">{{ project.description }}</p>{% endif %}
+            </section>
+
+            <section class="pd-card">
+                <h2 class="pd-side-title">Facturation</h2>
+                <div class="pd-billing">
+                    <label class="pd-radio" :class="billingMode === 'global' ? 'is-active' : ''">
+                        <input type="radio" value="global" x-model="billingMode" @change="updateBillingMode()">
+                        <span><strong>Globale</strong><small>Une facture (ou devis) pour tout le projet.</small></span>
+                    </label>
+                    <label class="pd-radio" :class="billingMode === 'per_milestone' ? 'is-active' : ''">
+                        <input type="radio" value="per_milestone" x-model="billingMode" @change="updateBillingMode()">
+                        <span><strong>Par jalon</strong><small>Un montant par jalon : le client paie chaque étape depuis son espace.</small></span>
+                    </label>
+                </div>
+                {% if project.billing_mode == 'per_milestone' and summary.unpaid_amount %}
+                <p class="pd-help">Reste à encaisser : <strong>{{ summary.unpaid_amount }} €</strong></p>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function projectDetail() {
+    const TABS = ['plan', 'livrables', 'reunions', 'cadrage', 'temps', 'fichiers'];
+    const hash = window.location.hash.replace('#', '');
+    return {
+        tab: hash === 'specifications-client' ? 'cadrage' : (TABS.includes(hash) ? hash : 'plan'),
+        status: '{{ project.status }}',
+        viewPhase: '',
+        briefPhase: '{{ project.status }}',
+        phaseOrder: [{% for p in phases %}'{{ p.value }}',{% endfor %}],
+        billingMode: '{{ project.billing_mode }}',
+        clientBrief: {{ client_brief_json|default:"{}"|safe }},
+        phaseLabels: {{ phase_labels_json|default:"{}"|safe }},
+        editingBrief: false,
+        briefFields: [],
+        go(tab) {
+            this.tab = tab;
+            history.replaceState(null, '', `#${tab}`);
+            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+        },
+        phaseIndex(key) { return this.phaseOrder.indexOf(key); },
+        async setPhase(key) {
+            if (key === this.status) return;
+            const ok = await billioConfirm({
+                title: `Passer à l'étape « ${this.phaseLabel(key)} » ?`,
+                message: "Le client verra la nouvelle étape dans son espace.",
+                confirmLabel: "Changer d'étape", icon: 'flag',
+            });
+            if (!ok) return;
+            this.status = key;
+            this.briefPhase = key;
+            await this.updateStatus();
+            window.location.reload(); // « À faire maintenant » et compteurs suivent la nouvelle étape
+        },
+        get currentBriefFields() {
+            return this.clientBrief[this.briefPhase] || [];
+        },
+        phaseLabel(key) {
+            return this.phaseLabels[key] || key;
+        },
+        toggleBrief() {
+            this.editingBrief = !this.editingBrief;
+            if (this.editingBrief) this.briefFields = this.currentBriefFields.map((f) => ({ ...f }));
+        },
+        async saveBrief() {
+            const body = new URLSearchParams({ phase: this.briefPhase, fields: JSON.stringify(this.briefFields) });
+            const response = await fetch('{% url "dashboard:project-brief-update" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+        openMenu: null,
+        addingDeliverable: false,
+        newDeliverableTitle: '',
+        newDeliverableMilestone: '',
+        addingMilestone: false,
+        newMilestoneTitle: '',
+        newMilestoneStartDate: '',
+        newMilestoneDate: '',
+        newMilestoneAmount: '',
+        editingMilestoneId: null,
+        editMilestoneTitle: '',
+        editMilestoneStartDate: '',
+        editMilestoneDate: '',
+        editMilestoneAmount: '',
+        formMilestoneId: null,
+        formFields: [],
+        addingTask: false,
+        newTaskTitle: '',
+        newTaskAssignee: '',
+        newTaskMilestone: '',
+        newTaskStartDate: '',
+        newTaskDate: '',
+        editingTaskId: null,
+        editTaskTitle: '',
+        editTaskStartDate: '',
+        editTaskDate: '',
+        editTaskAssignee: '',
+        addingMeeting: false,
+        newMeetingTitle: '',
+        newMeetingDate: '',
+        newMeetingDuration: 30,
+        newMeetingLocation: '',
+        editingMeetingId: null,
+        editMeetingTitle: '',
+        editMeetingDate: '',
+        editMeetingDuration: 30,
+        editMeetingLocation: '',
+
+        async updateStatus() {
+            await fetch('{% url "dashboard:project-update-status" project.id %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'status=' + encodeURIComponent(this.status),
+            });
+        },
+
+        async updateBillingMode() {
+            await fetch('{% url "dashboard:project-billing-update" project.id %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'billing_mode=' + encodeURIComponent(this.billingMode),
+            });
+        },
+
+        async createDeliverable() {
+            if (!this.newDeliverableTitle.trim()) return;
+            const body = new URLSearchParams({ title: this.newDeliverableTitle, milestone_id: this.newDeliverableMilestone });
+            const response = await fetch('{% url "dashboard:deliverable-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        async createMilestone() {
+            if (!this.newMilestoneTitle.trim()) return;
+            const body = new URLSearchParams({
+                title: this.newMilestoneTitle, start_date: this.newMilestoneStartDate, due_date: this.newMilestoneDate,
+                amount: this.newMilestoneAmount,
+            });
+            const response = await fetch('{% url "dashboard:milestone-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        async toggleMilestone(id, done) {
+            const ok = await billioConfirm(done
+                ? { title: 'Rouvrir ce jalon ?', message: 'Il repassera en « non atteint ».', confirmLabel: 'Rouvrir', icon: 'rotate-ccw' }
+                : { title: 'Valider ce jalon ?', message: 'Le jalon sera marqué comme atteint, visible par le client.', confirmLabel: 'Valider le jalon', icon: 'flag' });
+            if (!ok) return;
+            await fetch(`/dashboard/milestones/${id}/toggle/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            window.location.reload();
+        },
+
+        async deleteMilestone(id) {
+            if (!(await billioConfirm({ title: 'Supprimer ce jalon ?', message: 'Ses tâches seront détachées du jalon. Cette action est définitive.', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            await fetch(`/dashboard/milestones/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            window.location.reload();
+        },
+
+        startEditMilestone(id, title, dueDate, startDate, amount) {
+            this.editingMilestoneId = id;
+            this.editMilestoneTitle = title;
+            this.editMilestoneStartDate = startDate || '';
+            this.editMilestoneDate = dueDate || '';
+            this.editMilestoneAmount = amount || '';
+        },
+
+        async saveMilestone() {
+            if (!this.editMilestoneTitle.trim()) return;
+            const body = new URLSearchParams({
+                title: this.editMilestoneTitle, start_date: this.editMilestoneStartDate, due_date: this.editMilestoneDate,
+                amount: this.editMilestoneAmount,
+            });
+            await fetch(`/dashboard/milestones/${this.editingMilestoneId}/update/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            window.location.reload();
+        },
+
+        toggleForm(id, fields) {
+            if (this.formMilestoneId === id) { this.formMilestoneId = null; return; }
+            this.formMilestoneId = id;
+            this.formFields = Array.isArray(fields) ? fields.map((f) => ({ ...f })) : [];
+            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+        },
+
+        async saveForm(id) {
+            const body = new URLSearchParams({ fields: JSON.stringify(this.formFields) });
+            await fetch(`/dashboard/milestones/${id}/form/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body });
+            window.location.reload();
+        },
+
+        async createTask() {
+            if (!this.newTaskTitle.trim()) return;
+            const body = new URLSearchParams({
+                title: this.newTaskTitle, assignee_id: this.newTaskAssignee,
+                milestone_id: this.newTaskMilestone, start_date: this.newTaskStartDate, due_date: this.newTaskDate,
+            });
+            const response = await fetch('{% url "dashboard:task-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        async cycleTaskStatus(id, current) {
+            const next = { todo: 'in_progress', in_progress: 'done', done: 'todo' }[current] || 'todo';
+            if (next === 'done' && !(await billioConfirm({ title: 'Terminer cette tâche ?', message: 'Elle sera marquée comme terminée.', confirmLabel: 'Terminer', icon: 'check-circle-2' }))) return;
+            await fetch(`/dashboard/tasks/${id}/status/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'status=' + encodeURIComponent(next),
+            });
+            window.location.reload();
+        },
+
+        async deleteTask(id) {
+            if (!(await billioConfirm({ title: 'Supprimer cette tâche ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            await fetch(`/dashboard/tasks/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            window.location.reload();
+        },
+
+        startEditTask(id, title, dueDate, assigneeId, startDate) {
+            this.editingTaskId = id;
+            this.editTaskTitle = title;
+            this.editTaskStartDate = startDate || '';
+            this.editTaskDate = dueDate || '';
+            this.editTaskAssignee = assigneeId || '';
+        },
+
+        async saveTask() {
+            if (!this.editTaskTitle.trim()) return;
+            const body = new URLSearchParams({
+                title: this.editTaskTitle, start_date: this.editTaskStartDate, due_date: this.editTaskDate, assignee_id: this.editTaskAssignee,
+            });
+            await fetch(`/dashboard/tasks/${this.editingTaskId}/update/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            window.location.reload();
+        },
+
+        async createMeeting() {
+            if (!this.newMeetingTitle.trim() || !this.newMeetingDate) return;
+            const body = new URLSearchParams({
+                title: this.newMeetingTitle, scheduled_at: this.newMeetingDate,
+                duration_minutes: this.newMeetingDuration, location: this.newMeetingLocation,
+            });
+            const response = await fetch('{% url "dashboard:meeting-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        startEditMeeting(id, title, scheduledAt, duration, location) {
+            this.editingMeetingId = id;
+            this.editMeetingTitle = title;
+            this.editMeetingDate = scheduledAt;
+            this.editMeetingDuration = duration;
+            this.editMeetingLocation = location;
+        },
+
+        async saveMeeting() {
+            if (!this.editMeetingTitle.trim() || !this.editMeetingDate) return;
+            const body = new URLSearchParams({
+                title: this.editMeetingTitle, scheduled_at: this.editMeetingDate,
+                duration_minutes: this.editMeetingDuration, location: this.editMeetingLocation,
+            });
+            await fetch(`/dashboard/meetings/${this.editingMeetingId}/update/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            window.location.reload();
+        },
+
+        async updateMeetingStatus(id, status) {
+            await fetch(`/dashboard/meetings/${id}/status/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'status=' + encodeURIComponent(status),
+            });
+            window.location.reload();
+        },
+
+        addingTime: false,
+        async postTime(url, body) {
+            const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) { await billioConfirm({ title: 'Impossible', message: data.message || 'Erreur.', confirmLabel: 'OK', tone: 'danger', icon: 'alert-triangle' }); return null; }
+            return data;
+        },
+        async addTime(event) {
+            if (await this.postTime('{% url "dashboard:time-entry-create" project.id %}', new FormData(event.target))) window.location.reload();
+        },
+        async startTimer() {
+            if (await this.postTime('{% url "dashboard:time-timer-start" project.id %}', new URLSearchParams())) { window.BillioTimer && BillioTimer.notify(); window.location.reload(); }
+        },
+        async stopTimer(id) {
+            if (await this.postTime(`/dashboard/time/${id}/stop/`, new URLSearchParams())) { window.BillioTimer && BillioTimer.notify(); window.location.reload(); }
+        },
+        async deleteTime(id) {
+            if (!(await billioConfirm({ title: 'Supprimer ce temps ?', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            if (await this.postTime(`/dashboard/time/${id}/delete/`, new URLSearchParams())) window.location.reload();
+        },
+        async saveRate(event) {
+            if (await this.postTime('{% url "dashboard:time-rate-update" project.id %}', new FormData(event.target))) window.location.reload();
+        },
+        async invoiceTime() {
+            if (!(await billioConfirm({ title: 'Facturer le temps passé ?', message: 'Une facture brouillon est créée avec le temps facturable non facturé. Vous pourrez la relire avant envoi.', confirmLabel: 'Créer la facture', icon: 'receipt' }))) return;
+            const data = await this.postTime('{% url "dashboard:time-invoice" project.id %}', new URLSearchParams());
+            if (data && data.url) window.location.href = data.url;
+        },
+
+        async saveAsTemplate() {
+            const name = await billioConfirm({
+                title: 'Enregistrer comme modèle', icon: 'layout-template', confirmLabel: 'Enregistrer',
+                message: 'Jalons, tâches, livrables et questionnaires seront proposés à la création de vos prochains projets (dates recalées).',
+                input: { value: '{{ project.name|escapejs }}', placeholder: 'Nom du modèle' },
+            });
+            if (!name) return;
+            const response = await fetch('{% url "dashboard:project-save-as-template" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: new URLSearchParams({ name }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (window.billioConfirm) await billioConfirm({ title: response.ok ? 'Modèle enregistré' : 'Erreur', message: data.message || '', confirmLabel: 'OK', icon: 'layout-template' });
+        },
+
+        async deleteMeeting(id) {
+            if (!(await billioConfirm({ title: 'Supprimer cette réunion ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            await fetch(`/dashboard/meetings/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            window.location.reload();
+        },
+    };
+}
+
+// Chrono lancé ou arrêté depuis la barre du haut ou le widget : on rafraîchit l'onglet Temps.
+window.addEventListener('billio-timer:change', () => window.location.reload());
+
+document.querySelectorAll('.pd-timer[data-started]').forEach((el) => {
+    const start = new Date(el.dataset.started).getTime();
+    const tick = () => { const s = Math.max(0, Math.floor((Date.now() - start) / 1000)); el.textContent = `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+    tick(); setInterval(tick, 1000);
+});
+
+// Après un rechargement, on revient sur l'onglet en cours (les actions rechargent la page).
+async function submitDeliverable(id) {
+    await fetch(`/dashboard/deliverables/${id}/submit/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+    window.location.reload();
+}
+
+async function uploadDeliverableFile(id, input) {
+    if (!input.files.length) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    await fetch(`/dashboard/deliverables/${id}/files/upload/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
+    window.location.reload();
+}
+
+async function uploadProjectFile(input) {
+    if (!input.files.length) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    await fetch('{% url "dashboard:project-file-upload" project.id %}', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
+    window.location.reload();
+}
+
+function submitComment(evt, deliverableId) {
+    evt.preventDefault();
+    const body = evt.target.elements.body.value.trim();
+    if (!body) return false;
+    fetch(`/dashboard/deliverables/${deliverableId}/comments/create/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: new URLSearchParams({ body }),
+    }).then(() => window.location.reload());
+    return false;
+}
+</script>
+{% endblock %}

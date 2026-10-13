@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="fr"><body style="margin:0;padding:24px;background:#f4f4f5;font-family:Inter,Segoe UI,Arial,sans-serif;color:#18181b;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;padding:32px;" cellpadding="0" cellspacing="0">
+<tr><td>
+<p style="margin:0 0 24px;font-weight:700;font-size:20px;color:#6d28d9;">Billio</p>
+<p style="margin:0 0 16px;font-size:16px;">Bonjour{% if user.first_name %} {{ user.first_name }}{% endif %},</p>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#3f3f46;">Vous avez demandé à réinitialiser le mot de passe de votre compte Billio ({{ email }}). Choisissez-en un nouveau avec le bouton ci-dessous : le lien est valable 24 heures.</p>
+<p style="margin:0 0 24px;"><a href="{{ site_url }}{% url 'accounts:password-reset-confirm' uidb64=uid token=token %}" style="display:inline-block;padding:12px 22px;background:#6d28d9;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;">Choisir un nouveau mot de passe</a></p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#71717a;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe actuel reste valable.</p>
+</td></tr></table>
+</td></tr></table>
+</body></html>

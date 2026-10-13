@@ -1,0 +1,504 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Paramètres - Billio{% endblock %}
+{% block page_title %}Paramètres{% endblock %}
+{% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=1.8">
+{% endblock %}
+
+{% block content %}
+{% with org=entreprise_organization %}
+<div class="st" x-data="settingsPage()" x-init="init()">
+
+    {% if messages %}
+    <div class="st-messages">
+        {% for message in messages %}<p class="st-msg st-msg--{{ message.tags }}">{{ message }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    <nav class="st-nav">
+        <p class="st-nav-title">Compte</p>
+        <button type="button" :class="tab === 'profil' && 'is-active'" @click="go('profil')"><i data-lucide="user-round" class="w-4 h-4"></i> Profil</button>
+        <button type="button" :class="tab === 'securite' && 'is-active'" @click="go('securite')"><i data-lucide="lock-keyhole" class="w-4 h-4"></i> Mot de passe</button>
+        <button type="button" :class="tab === 'langue' && 'is-active'" @click="go('langue')"><i data-lucide="languages" class="w-4 h-4"></i> Langue <span class="st-nav-badge" translate="no">{{ current_language|upper }}</span></button>
+        {% if org %}
+        <p class="st-nav-title">Entreprise</p>
+        <button type="button" :class="tab === 'entreprise' && 'is-active'" @click="go('entreprise')"><i data-lucide="building-2" class="w-4 h-4"></i> Identité & mentions</button>
+        <button type="button" :class="tab === 'facturation' && 'is-active'" @click="go('facturation')"><i data-lucide="receipt" class="w-4 h-4"></i> Facturation</button>
+        <button type="button" :class="tab === 'paiement' && 'is-active'" @click="go('paiement')"><i data-lucide="landmark" class="w-4 h-4"></i> Coordonnées de paiement</button>
+        <button type="button" :class="tab === 'equipe' && 'is-active'" @click="go('equipe')"><i data-lucide="users-round" class="w-4 h-4"></i> Équipe</button>
+        <button type="button" :class="tab === 'rdv' && 'is-active'" @click="go('rdv')"><i data-lucide="calendar-check" class="w-4 h-4"></i> Prise de rendez-vous</button>
+        <button type="button" :class="tab === 'metier' && 'is-active'" @click="go('metier')"><i data-lucide="briefcase-business" class="w-4 h-4"></i> Métier & modèles</button>
+        <button type="button" :class="tab === 'notifications' && 'is-active'" @click="go('notifications')"><i data-lucide="bell-ring" class="w-4 h-4"></i> Notifications client</button>
+        {% endif %}
+        <p class="st-nav-title">Avancé</p>
+        <button type="button" :class="tab === 'dev' && 'is-active'" @click="go('dev')"><i data-lucide="braces" class="w-4 h-4"></i> API</button>
+        <a href="{% url 'dashboard:automation-builder' %}"><i data-lucide="workflow" class="w-4 h-4"></i> Automatisations <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 st-ext"></i></a>
+        <a href="{% url 'integrations:integrations-page' %}"><i data-lucide="puzzle" class="w-4 h-4"></i> Intégrations <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 st-ext"></i></a>
+    </nav>
+
+    <div class="st-content">
+        <!-- ================= Profil ================= -->
+        <section class="st-card" x-show="tab === 'profil'">
+            <header><h2>Profil</h2><p>Ces informations identifient votre compte. Elles n'apparaissent pas sur vos factures.</p></header>
+            <div class="st-avatar-edit" x-data="{ preview: null }">
+                <span class="st-avatar st-avatar--xl">
+                    <template x-if="preview"><img :src="preview" alt=""></template>
+                    {% if user.avatar %}<img x-show="!preview" src="{{ user.avatar.url }}" alt="Photo de profil">{% else %}<span x-show="!preview">{{ user.get_full_name|default:user.email|slice:":2"|upper }}</span>{% endif %}
+                </span>
+                <div class="st-avatar-actions">
+                    <strong>Photo de profil</strong>
+                    <small>JPG, PNG ou WebP, 2 Mo maximum. Visible par votre équipe.</small>
+                    <div class="st-avatar-buttons">
+                        <form method="post" enctype="multipart/form-data" x-ref="avatarForm">
+                            {% csrf_token %}<input type="hidden" name="form_action" value="save_avatar">
+                            <label class="st-btn"><i data-lucide="upload" class="w-4 h-4"></i> {% if user.avatar %}Changer la photo{% else %}Ajouter une photo{% endif %}
+                                <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" class="sr-only"
+                                       @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $refs.avatarForm.submit(); }">
+                            </label>
+                        </form>
+                        {% if user.avatar %}
+                        <form method="post" @submit.prevent="if (await billioConfirm({ title: 'Supprimer la photo de profil ?', message: 'Vos initiales seront affichées à la place.', confirmLabel: 'Supprimer', tone: 'danger' })) $el.submit()">
+                            {% csrf_token %}<input type="hidden" name="form_action" value="remove_avatar">
+                            <button type="submit" class="st-link-danger">Supprimer</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <form method="post" class="st-form">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_profile">
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Prénom</span><input name="first_name" value="{{ user.first_name }}" maxlength="150"></label>
+                    <label class="st-field"><span>Nom</span><input name="last_name" value="{{ user.last_name }}" maxlength="150"></label>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Email de connexion</span><input value="{{ user.email }}" disabled><small>Contactez le support pour le changer.</small></label>
+                    <label class="st-field"><span>Téléphone</span><input name="phone" value="{{ user.phone|default:'' }}" maxlength="20"></label>
+                </div>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+        </section>
+
+        <!-- ================= Langue ================= -->
+        <section class="st-card" x-show="tab === 'langue'" x-cloak>
+            <header><h2>Langue de l'interface</h2><p>Change la langue des menus et des écrans. Le choix est enregistré sur votre compte : vous le retrouvez sur tous vos appareils.</p></header>
+            <div class="st-lang" translate="no">
+                {% for code, label, sample in language_options %}
+                <a href="/i18n/set/{{ code }}/?next={{ request.path|urlencode }}%3Ftab%3Dlangue" class="st-lang-option{% if code == current_language %} is-active{% endif %}" lang="{{ code }}">
+                    <span class="st-lang-code">{{ code|upper }}</span>
+                    <span class="st-lang-text"><strong>{{ label }}</strong><small>{{ sample }}</small></span>
+                    {% if code == current_language %}<i data-lucide="check" class="w-4 h-4"></i>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+            <div class="st-sub">
+                <p class="st-label">Ce qui change</p>
+                <ul class="st-lang-list">
+                    <li><i data-lucide="check" class="w-3.5 h-3.5"></i> Menus, écrans, messages et notifications de l'application.</li>
+                    <li><i data-lucide="check" class="w-3.5 h-3.5"></i> Format des dates (noms des mois, jours).</li>
+                    <li class="is-off"><i data-lucide="minus" class="w-3.5 h-3.5"></i> Vos documents, devis et factures gardent la langue dans laquelle vous les écrivez.</li>
+                    <li class="is-off"><i data-lucide="minus" class="w-3.5 h-3.5"></i> Vos clients voient leur espace et leurs pages de paiement dans la langue de leur navigateur.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ================= Mot de passe ================= -->
+        <section class="st-card" x-show="tab === 'securite'" x-cloak>
+            <header><h2>Mot de passe</h2><p>{% if user.has_usable_password %}Au moins 8 caractères, pas uniquement des chiffres.{% else %}Vous vous connectez avec Google : définissez un mot de passe pour pouvoir aussi vous connecter par email.{% endif %}</p></header>
+            <form method="post" class="st-form st-form--narrow">
+                {% csrf_token %}<input type="hidden" name="form_action" value="change_password">
+                {% if user.has_usable_password %}<label class="st-field"><span>Mot de passe actuel</span><input type="password" name="old_password" autocomplete="current-password" required></label>{% endif %}
+                <label class="st-field"><span>Nouveau mot de passe</span><input type="password" name="new_password1" autocomplete="new-password" required></label>
+                <label class="st-field"><span>Confirmation</span><input type="password" name="new_password2" autocomplete="new-password" required></label>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Modifier le mot de passe</button></div>
+            </form>
+            <p class="st-meta">Dernière connexion : {{ user.last_login|date:"d/m/Y à H:i"|default:"—" }}</p>
+        </section>
+
+        {% if org %}
+        <!-- ================= Entreprise ================= -->
+        <section class="st-card" x-show="tab === 'entreprise'" x-cloak>
+            <header><h2>Identité & mentions légales</h2><p>Imprimées sur vos factures, devis et documents.</p></header>
+            <div class="st-logo">
+                <div class="st-logo-preview">
+                    <template x-if="logoUrl"><img :src="logoUrl" alt="Logo"></template>
+                    <template x-if="!logoUrl"><span>{{ org.name|slice:":1"|upper }}</span></template>
+                </div>
+                <div>
+                    <p class="st-label">Logo</p>
+                    <p class="st-help">PNG, JPG ou WEBP, 2 Mo maximum. Affiché en tête de vos documents.</p>
+                    <div class="st-logo-actions">
+                        <label class="st-btn"><input type="file" accept="image/png,image/jpeg,image/webp" hidden @change="uploadLogo($event)"> <span x-text="logoUrl ? 'Remplacer' : 'Ajouter un logo'"></span></label>
+                        <button type="button" class="st-btn st-btn--ghost" x-show="logoUrl" @click="removeLogo()">Retirer</button>
+                    </div>
+                    <p class="st-help" x-show="logoMsg" x-text="logoMsg"></p>
+                </div>
+            </div>
+            <form method="post" class="st-form">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_entreprise_info"><input type="hidden" name="entreprise_organization_id" value="{{ org.id }}">
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Raison sociale</span><input name="name" value="{{ org.name }}" required maxlength="200"></label>
+                    <label class="st-field"><span>Email de contact</span><input type="email" name="email" value="{{ org.email|default:'' }}"></label>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Téléphone</span><input name="phone" value="{{ org.phone|default:'' }}"></label>
+                    <label class="st-field"><span>Site web</span><input name="website" value="{{ org.website|default:'' }}" placeholder="https://"></label>
+                </div>
+                <label class="st-field"><span>Adresse</span><textarea name="address" rows="2">{{ org.address|default:'' }}</textarea></label>
+                <div class="st-grid-3">
+                    <label class="st-field"><span>Code postal</span><input name="postal_code" value="{{ org.postal_code|default:'' }}"></label>
+                    <label class="st-field"><span>Ville</span><input name="city" value="{{ org.city|default:'' }}"></label>
+                    <label class="st-field"><span>Pays</span><input name="country" value="{{ org.country|default:'France' }}"></label>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>SIRET</span><input name="registration_number" value="{{ org.registration_number|default:'' }}" placeholder="123 456 789 00012"></label>
+                    <label class="st-field"><span>N° de TVA intracommunautaire</span><input name="tax_id" value="{{ org.tax_id|default:'' }}" placeholder="FR12 345678901"></label>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Couleur principale</span><span class="st-color"><input type="color" name="primary_color" value="{{ org.primary_color|default:'#6d28d9' }}"><em>{{ org.primary_color|default:'#6d28d9' }}</em></span></label>
+                    <label class="st-field"><span>Couleur secondaire</span><span class="st-color"><input type="color" name="secondary_color" value="{{ org.secondary_color|default:'#f59e0b' }}"><em>{{ org.secondary_color|default:'#f59e0b' }}</em></span></label>
+                </div>
+                <div class="st-check-list">
+                    <p class="st-label">Mentions obligatoires sur vos factures</p>
+                    <span class="{% if org.registration_number %}is-ok{% endif %}">SIRET</span>
+                    <span class="{% if org.address and org.city %}is-ok{% endif %}">Adresse complète</span>
+                    <span class="{% if org.tax_id or org.billing_preferences.vat_exempt %}is-ok{% endif %}">TVA intracom. ou franchise</span>
+                    <span class="{% if org.email %}is-ok{% endif %}">Email</span>
+                </div>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+        </section>
+
+        <!-- ================= Facturation ================= -->
+        <section class="st-card" x-show="tab === 'facturation'" x-cloak>
+            <header><h2>Facturation</h2><p>Numérotation, conditions et TVA appliquées par défaut à vos nouveaux documents.</p></header>
+            {% with prefs=org.billing_preferences %}
+            <form method="post" class="st-form" x-data="{ ip: '{{ org.invoice_prefix|escapejs }}', inum: {{ org.next_invoice_number }}, qp: '{{ org.quote_prefix|escapejs }}', qnum: {{ org.next_quote_number }} }">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_billing">
+                <p class="st-label">Numérotation</p>
+                <div class="st-grid-4">
+                    <label class="st-field"><span>Préfixe factures</span><input name="invoice_prefix" x-model="ip" maxlength="10" required></label>
+                    <label class="st-field"><span>Prochain n°</span><input type="number" min="1" name="next_invoice_number" x-model.number="inum"></label>
+                    <label class="st-field"><span>Préfixe devis</span><input name="quote_prefix" x-model="qp" maxlength="10" required></label>
+                    <label class="st-field"><span>Prochain n°</span><input type="number" min="1" name="next_quote_number" x-model.number="qnum"></label>
+                </div>
+                <p class="st-help">Prochaine facture : <strong x-text="`${(ip || '').toUpperCase()}-${String(inum || 1).padStart(4, '0')}`"></strong> · prochain devis : <strong x-text="`${(qp || '').toUpperCase()}-${String(qnum || 1).padStart(4, '0')}`"></strong>. La numérotation doit rester continue : ne revenez pas en arrière.</p>
+
+                <p class="st-label st-label--gap">Conditions de paiement</p>
+                <div class="st-grid-3">
+                    <label class="st-field"><span>Délai de paiement</span>
+                        <select name="payment_days">{% for d in payment_day_choices %}<option value="{{ d.0 }}" {% if d.0 == current_payment_days %}selected{% endif %}>{{ d.1 }}</option>{% endfor %}</select></label>
+                    <label class="st-field"><span>Pénalités de retard (% / an)</span><input name="penalty_rate" value="{{ prefs.penalty_rate|default:'' }}" placeholder="Ex. 12"></label>
+                    <label class="st-field"><span>Devise</span>
+                        <select name="default_currency">{% for c in currency_choices %}<option value="{{ c }}" {% if c == org.default_currency %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+                </div>
+                <label class="st-field"><span>Escompte pour paiement anticipé</span><input name="early_discount" value="{{ prefs.early_discount|default:'' }}" placeholder="Pas d'escompte pour paiement anticipé."></label>
+                <label class="st-toggle"><input type="checkbox" name="vat_exempt" {% if prefs.vat_exempt %}checked{% endif %}>
+                    <span><strong>Franchise en base de TVA</strong><small>Nouvelles lignes à 0 % et mention « TVA non applicable, art. 293 B du CGI » sur vos factures.</small></span></label>
+                {% if billing_texts %}<div class="st-preview"><p class="st-label">Aperçu des mentions imprimées</p><p>{{ billing_texts.payment_terms }}</p><p>{{ billing_texts.legal_mentions }}</p></div>{% endif %}
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+            {% endwith %}
+
+            <div class="st-sub">
+                <p class="st-label">Taux de TVA</p>
+                <div class="st-list">
+                    {% for tax in tax_rates %}
+                    <div class="st-list-row">
+                        <span><strong>{{ tax.name }}</strong> · {{ tax.rate|floatformat:"-2" }} %{% if tax.is_default %} <em class="st-badge">Par défaut</em>{% endif %}</span>
+                        <span class="st-row-actions">
+                            {% if not tax.is_default %}<form method="post">{% csrf_token %}<input type="hidden" name="form_action" value="tax_default"><input type="hidden" name="tax_id" value="{{ tax.id }}"><button type="submit">Par défaut</button></form>{% endif %}
+                            <form method="post" onsubmit="return confirm('Supprimer ce taux ?')">{% csrf_token %}<input type="hidden" name="form_action" value="tax_delete"><input type="hidden" name="tax_id" value="{{ tax.id }}"><button type="submit" class="is-danger">Supprimer</button></form>
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="st-help">Aucun taux enregistré : 20 % est utilisé par défaut.</p>
+                    {% endfor %}
+                </div>
+                <form method="post" class="st-inline-form">
+                    {% csrf_token %}<input type="hidden" name="form_action" value="save_tax_rate"><input type="hidden" name="tax_organization_id" value="{{ org.id }}">
+                    <input name="tax_name" placeholder="Nom (ex. TVA réduite)" required>
+                    <input name="tax_rate" placeholder="Taux %" required inputmode="decimal">
+                    <button type="submit" class="st-btn">Ajouter</button>
+                </form>
+            </div>
+            <p class="st-meta">TJM, pénalités et franchise se règlent aussi depuis le <a href="{% url 'dashboard:resources-center' %}">Centre de ressources</a>.</p>
+        </section>
+
+        <!-- ================= Paiement ================= -->
+        <section class="st-card" x-show="tab === 'paiement'" x-cloak>
+            <header><h2>Coordonnées de paiement</h2><p>Affichées sur vos factures et sur la page de paiement envoyée au client.</p></header>
+            <form method="post" class="st-form" x-data="{ method: '{{ org.preferred_payment_method|default:'bank_transfer' }}' }">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_payment_info"><input type="hidden" name="payment_organization_id" value="{{ org.id }}">
+                <label class="st-field"><span>Moyen de paiement principal</span>
+                    <select name="preferred_payment_method" x-model="method">{% for value, label in payment_method_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+                <div x-show="method === 'bank_transfer'" class="st-form">
+                    <div class="st-grid-2">
+                        <label class="st-field"><span>Banque</span><input name="bank_name" value="{{ org.bank_name|default:'' }}"></label>
+                        <label class="st-field"><span>BIC</span><input name="bic_swift" value="{{ org.bic_swift|default:'' }}" class="st-mono"></label>
+                    </div>
+                    <label class="st-field"><span>IBAN</span><input name="iban" value="{{ org.iban|default:'' }}" class="st-mono" placeholder="FR76 …"></label>
+                </div>
+                <label class="st-field"><span>Instructions de paiement</span><textarea name="payment_instructions" rows="3" placeholder="Ex. Merci d'indiquer le numéro de facture dans le libellé du virement.">{{ org.payment_instructions|default:'' }}</textarea></label>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+            <div class="st-stripe">
+                <span class="st-stripe-logo">{% include "integrations/icons/stripe.svg.html" %}</span>
+                <div class="st-stripe-text">
+                    <strong>Paiement par carte (Stripe)</strong>
+                    <span>{% if stripe_connected %}Activé : vos clients paient factures et jalons par carte depuis leur lien.{% else %}Reliez votre compte Stripe pour que vos clients paient par carte depuis leur lien.{% endif %}</span>
+                </div>
+                <a class="st-btn{% if not stripe_connected %} st-btn--primary{% endif %}" href="{% url 'integrations:integrations-page' %}?plugin=stripe">{% if stripe_connected %}Gérer{% else %}Configurer{% endif %}</a>
+            </div>
+        </section>
+
+        <!-- ================= Prise de rendez-vous ================= -->
+        <section class="st-card" x-show="tab === 'rdv'" x-cloak x-data="{ types: {{ booking_types_json|default:'[]' }}, copied: false }">
+            <header><h2>Prise de rendez-vous en ligne</h2><p>Une page publique où vos clients et prospects réservent un créneau libre. Les créneaux déjà pris (rendez-vous, réunions de projet) sont masqués ; la personne reçoit une confirmation avec un lien d'annulation.</p></header>
+            {% if not booking_allowed %}<p class="st-plan-note"><i data-lucide="lock" class="w-4 h-4"></i> La prise de rendez-vous en ligne est disponible à partir du forfait {{ booking_plan }}. <a href="{% url 'subscriptions:billing' %}">Voir les forfaits</a></p>{% endif %}
+            <div class="st-token">
+                <code>{{ booking_url }}</code>
+                <button type="button" class="st-btn" @click="navigator.clipboard.writeText('{{ booking_url }}'); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copié' : 'Copier le lien'"></button>
+                {% if booking.enabled %}<a class="st-btn" href="{{ booking_url }}" target="_blank" rel="noopener">Ouvrir</a>{% endif %}
+            </div>
+            <form method="post" class="st-form" style="margin-top: 16px;">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_booking">
+                <label class="st-check"><input type="checkbox" name="enabled"{% if booking.enabled %} checked{% endif %}> Activer la page de réservation</label>
+                <div class="st-field"><span>Motifs de rendez-vous</span>
+                    <template x-for="(t, i) in types" :key="i">
+                        <div class="st-inline-form" style="margin: 0 0 6px;">
+                            <input name="type_name" x-model="t.name" placeholder="Ex. Visite de chantier" maxlength="120">
+                            <input name="type_duration" x-model="t.duration" type="number" min="5" max="480" style="max-width: 110px; flex: none;"> <span class="st-muted" style="align-self:center">min</span>
+                            <button type="button" class="st-link-danger" @click="types.splice(i, 1)" x-show="types.length > 1">Retirer</button>
+                        </div>
+                    </template>
+                    <button type="button" class="st-btn" style="align-self:flex-start" @click="types.push({ name: '', duration: 30 })">+ Motif</button>
+                </div>
+                <div class="st-field"><span>Jours d'ouverture</span>
+                    <div class="st-days">{% for value, label in weekday_choices %}<label><input type="checkbox" name="days" value="{{ value }}"{% if value in booking.days %} checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>De</span><input type="time" name="start" value="{{ booking.start }}"></label>
+                    <label class="st-field"><span>À</span><input type="time" name="end" value="{{ booking.end }}"></label>
+                </div>
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Délai de prévenance (heures)</span><input type="number" name="min_notice_hours" min="0" max="336" value="{{ booking.min_notice_hours }}"></label>
+                    <label class="st-field"><span>Réservable jusqu'à (jours)</span><input type="number" name="max_days_ahead" min="1" max="180" value="{{ booking.max_days_ahead }}"></label>
+                </div>
+                <label class="st-field"><span>Lieu ou lien visio</span><input name="location" maxlength="255" value="{{ booking.location }}" placeholder="Ex. 12 rue des Lilas, Lyon — ou lien Google Meet"></label>
+                <label class="st-field"><span>Message d'accueil</span><textarea name="intro" rows="2" maxlength="500" placeholder="Ex. Choisissez un créneau pour une première visite gratuite.">{{ booking.intro }}</textarea></label>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+            <div class="st-sub">
+                <h3 class="st-label">Prochains rendez-vous</h3>
+                <div class="st-list">
+                    {% for a in upcoming_appointments %}
+                    <div class="st-list-row">
+                        <span><strong>{{ a.start|date:"D d/m H:i" }}</strong> · <span translate="no">{{ a.type_name }} — {{ a.name }}</span> <small class="st-muted">{{ a.email }}{% if a.phone %} · {{ a.phone }}{% endif %}</small>{% if a.notes %}<br><small class="st-muted" translate="no">{{ a.notes|truncatechars:120 }}</small>{% endif %}</span>
+                        <form method="post" action="{% url 'dashboard:appointment-cancel' a.id %}" @submit.prevent="if (await billioConfirm({ title: 'Annuler ce rendez-vous ?', confirmLabel: 'Annuler le rendez-vous', cancelLabel: 'Garder', tone: 'danger' })) $el.submit()">{% csrf_token %}<button type="submit" class="st-link-danger">Annuler</button></form>
+                    </div>
+                    {% empty %}
+                    <p class="st-help">Aucun rendez-vous à venir.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Métier & modèles ================= -->
+        <section class="st-card" x-show="tab === 'metier'" x-cloak x-data="{ pick: '{{ org.trade|default:'' }}' }">
+            <header><h2>Métier & modèles de projet</h2><p>Votre métier règle les phases de vos projets, les modèles de projet proposés à la création et les mentions légales ajoutées à vos factures.</p></header>
+            <form method="post" class="st-form">
+                {% csrf_token %}<input type="hidden" name="form_action" value="apply_trade">
+                <div class="st-trades">
+                    {% for pack in trade_packs %}
+                    <label class="st-trade" :class="pick === '{{ pack.key }}' && 'is-active'">
+                        <input type="radio" name="trade" value="{{ pack.key }}" x-model="pick" class="sr-only">
+                        <span class="st-trade-head"><i data-lucide="{{ pack.icon }}" class="w-4 h-4"></i> <strong>{{ pack.label }}</strong>{% if org.trade == pack.key %} <em class="st-badge">Actuel</em>{% endif %}</span>
+                        <small>{{ pack.description }}</small>
+                        <span class="st-trade-detail" translate="no">{{ pack.phases|join:" → " }}</span>
+                        {% if pack.templates %}<span class="st-trade-detail">Modèles : {{ pack.templates|join:", " }}</span>{% endif %}
+                        <span class="st-trade-detail">Unités : {{ pack.units|join:", " }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="st-help">Appliquer un pack ne supprime rien d'utilisé : les phases qui portent déjà des projets sont conservées (placées avant « Terminé »), les autres sont remplacées. Les modèles de projet du pack s'ajoutent aux vôtres.</p>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary" :disabled="!pick">Appliquer ce métier</button></div>
+            </form>
+
+            <div class="st-sub">
+                <h3 class="st-label">Vos modèles de projet</h3>
+                <div class="st-list">
+                    {% for t in project_templates %}
+                    <div class="st-list-row" x-data="{ gone: false }" x-show="!gone">
+                        <span><strong>{{ t.name }}</strong><small class="st-muted"> · {{ t.milestone_count }} jalon{{ t.milestone_count|pluralize }}{% if t.description %} · {{ t.description }}{% endif %}</small></span>
+                        <button type="button" class="st-link-danger" @click="if (await billioConfirm({ title: 'Supprimer ce modèle ?', message: 'Les projets déjà créés avec ce modèle ne changent pas.', confirmLabel: 'Supprimer', tone: 'danger' })) { const r = await fetch('{% url 'dashboard:project-template-delete' t.id %}', { method: 'POST', headers: { 'X-CSRFToken': csrf() } }); if (r.ok) gone = true; }">Supprimer</button>
+                    </div>
+                    {% empty %}
+                    <p class="st-help">Aucun modèle. Appliquez un métier, ou ouvrez un projet et cliquez « Enregistrer comme modèle ».</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= Notifications client ================= -->
+        <section class="st-card" x-show="tab === 'notifications'" x-cloak>
+            <header><h2>Notifications client</h2><p>Automatisations actives par défaut sur tous vos projets. Le client les retrouve dans la cloche de son espace ; les changements <strong>majeurs</strong> lui sont aussi envoyés par email.</p></header>
+            <form method="post" class="st-form">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_client_notifications">
+                <div class="st-notif-table">
+                    <div class="st-notif-row st-notif-row--head"><span>Évènement</span><span>Espace client</span><span>Email</span></div>
+                    {% for ev in client_notification_events %}
+                    <div class="st-notif-row" x-data="{ on: {{ ev.enabled|yesno:'true,false' }} }">
+                        <span class="st-notif-label">
+                            <strong>{{ ev.label }} <em class="st-role {% if ev.major %}st-role--owner{% else %}st-role--viewer{% endif %}">{% if ev.major %}Majeur{% else %}Mineur{% endif %}</em></strong>
+                            <small>{{ ev.description }}</small>
+                        </span>
+                        <label class="st-switch"><input type="checkbox" name="{{ ev.key }}__enabled" x-model="on"{% if ev.enabled %} checked{% endif %}><span></span></label>
+                        <label class="st-switch" :class="!on && 'is-off'"><input type="checkbox" name="{{ ev.key }}__email" :disabled="!on"{% if ev.email %} checked{% endif %}><span></span></label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="st-help">Les emails partent de votre adresse d'envoi si elle est connectée dans Intégrations, sinon de l'adresse Billio. Le client répond directement à {{ org.email|default:"votre email" }}.</p>
+                <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
+            </form>
+        </section>
+
+        <!-- ================= Équipe ================= -->
+        <section class="st-card" x-show="tab === 'equipe'" x-cloak x-data="{ inviteOpen: false, permsOpen: null }">
+            <header class="st-header-row">
+                <div><h2>Équipe</h2><p>Les membres de {{ org.name }}, leur rôle et leurs droits.</p></div>
+                {% if can_manage_team %}<button type="button" class="st-btn" @click="inviteOpen = !inviteOpen"><i data-lucide="user-plus" class="w-4 h-4"></i> Inviter</button>{% endif %}
+            </header>
+            {% if can_manage_team %}
+            <form x-show="inviteOpen" x-cloak method="post" action="{% url 'organizations:invite-member-create' %}" class="st-inline-form">
+                {% csrf_token %}
+                <input type="email" name="email" required placeholder="email@exemple.com">
+                <select name="role"><option value="member" selected>Membre</option><option value="admin">Administrateur</option><option value="viewer">Lecteur</option></select>
+                <button type="submit" class="st-btn st-btn--primary">Envoyer l'invitation</button>
+            </form>
+            {% endif %}
+
+            <div class="st-roles">
+                <div><span class="st-role st-role--owner">Propriétaire</span><p>Tous les droits. Ne peut pas être retiré.</p></div>
+                <div><span class="st-role st-role--admin">Administrateur</span><p>Gère l'équipe, l'entreprise et la facturation.</p></div>
+                <div><span class="st-role st-role--member">Membre</span><p>Crée factures, devis et projets ; voit les chiffres.</p></div>
+                <div><span class="st-role st-role--viewer">Lecteur</span><p>Consulte sans créer de facture.</p></div>
+            </div>
+
+            <div class="st-list">
+                {% for member in team_members %}
+                <div class="st-member">
+                    <div class="st-list-row">
+                        <span class="st-person">
+                            <span class="st-avatar">{% if member.user.avatar %}<img src="{{ member.user.avatar.url }}" alt="">{% else %}{{ member.user.get_full_name|default:member.user.email|slice:":1"|upper }}{% endif %}</span>
+                            <span><strong>{{ member.user.get_full_name|default:member.user.email }}{% if member.is_self %} <em class="st-badge">Vous</em>{% endif %}</strong><small>{{ member.user.email }}</small></span>
+                        </span>
+                        <span class="st-member-actions">
+                            {% if can_manage_team and not member.is_owner and not member.is_self %}
+                            <form method="post" action="{% url 'organizations:member-update' member.id %}"
+                                  @change="if (await billioConfirm({ title: 'Changer le rôle de ce membre ?', message: 'Ses droits seront remis aux droits par défaut du nouveau rôle.', confirmLabel: 'Changer le rôle', icon: 'shield' })) $el.submit(); else $el.reset()">
+                                {% csrf_token %}
+                                <select name="role" class="st-role-select" aria-label="Rôle">
+                                    {% for value, label in role_choices %}<option value="{{ value }}"{% if member.role == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                                </select>
+                            </form>
+                            <button type="button" class="st-icon-btn" @click="permsOpen = permsOpen === {{ member.id }} ? null : {{ member.id }}" title="Droits détaillés" aria-label="Droits détaillés"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></button>
+                            <form method="post" action="{% url 'organizations:member-remove' member.id %}"
+                                  @submit.prevent="if (await billioConfirm({ title: 'Retirer ce membre de l\'équipe ?', message: 'Cette personne n\'aura plus accès à l\'organisation. Son compte n\'est pas supprimé.', confirmLabel: 'Retirer', tone: 'danger', icon: 'user-minus' })) $el.submit()">
+                                {% csrf_token %}<button type="submit" class="st-icon-btn st-icon-btn--danger" title="Retirer de l'équipe" aria-label="Retirer de l'équipe"><i data-lucide="user-minus" class="w-4 h-4"></i></button>
+                            </form>
+                            {% else %}
+                            <span class="st-role st-role--{% if member.is_owner %}owner{% else %}{{ member.role }}{% endif %}">{% if member.is_owner %}Propriétaire{% else %}{{ member.get_role_display }}{% endif %}</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if can_manage_team and not member.is_owner and not member.is_self %}
+                    <form x-show="permsOpen === {{ member.id }}" x-cloak method="post" action="{% url 'organizations:member-update' member.id %}" class="st-perms">
+                        {% csrf_token %}
+                        <label><input type="checkbox" name="can_create_invoices"{% if member.can_create_invoices %} checked{% endif %}> Créer et envoyer des factures et devis</label>
+                        <label><input type="checkbox" name="can_view_financials"{% if member.can_view_financials %} checked{% endif %}> Voir les chiffres (chiffre d'affaires, paiements)</label>
+                        <label><input type="checkbox" name="can_edit_organization"{% if member.can_edit_organization %} checked{% endif %}> Modifier l'entreprise (mentions, coordonnées bancaires)</label>
+                        <label><input type="checkbox" name="can_manage_members"{% if member.can_manage_members %} checked{% endif %}> Gérer l'équipe (inviter, changer les rôles)</label>
+                        <div class="st-actions"><button type="button" class="st-btn" @click="permsOpen = null">Annuler</button><button type="submit" class="st-btn st-btn--primary">Enregistrer les droits</button></div>
+                    </form>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="st-help">Vous êtes seul(e) pour le moment.</p>
+                {% endfor %}
+                {% for invite in pending_invites %}
+                <div class="st-list-row">
+                    <span class="st-person"><span class="st-avatar st-avatar--pending"><i data-lucide="mail" class="w-3.5 h-3.5"></i></span><span><strong>{{ invite.email }}</strong><small>Invitation envoyée le {{ invite.created_at|date:"d/m/Y" }} · {{ invite.get_role_display }}</small></span></span>
+                    {% if can_manage_team %}<form method="post" action="{% url 'organizations:invite-cancel' invite.id %}" @submit.prevent="if (await billioConfirm({ title: 'Annuler cette invitation ?', message: 'Le lien envoyé ne fonctionnera plus.', confirmLabel: 'Annuler l\'invitation', tone: 'danger', icon: 'mail-x' })) $el.submit()">{% csrf_token %}<button type="submit" class="st-link-danger">Annuler</button></form>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ================= API ================= -->
+        <section class="st-card" x-show="tab === 'dev'" x-cloak>
+            <header><h2>API</h2><p>Authentifiez vos requêtes avec l'en-tête <code>Authorization: Token &lt;votre-token&gt;</code>. <a href="/api/" target="_blank" rel="noopener">Documentation</a>.</p></header>
+            {% if not api_allowed %}<p class="st-plan-note"><i data-lucide="lock" class="w-4 h-4"></i> L'API est disponible à partir du forfait {{ api_plan }}. <a href="{% url 'subscriptions:billing' %}">Voir les forfaits</a></p>{% endif %}
+            {% if api_token %}
+            <div class="st-token"><code x-ref="token">{{ api_token.key }}</code><button type="button" class="st-btn" @click="copyToken()" x-text="copied ? 'Copié' : 'Copier'"></button></div>
+            <div class="st-actions st-actions--left">
+                <form method="post" action="{% url 'accounts:api-token-generate' %}">{% csrf_token %}<button type="submit" class="st-btn">Régénérer</button></form>
+                <form method="post" action="{% url 'accounts:api-token-revoke' %}" onsubmit="return confirm('Révoquer ce token ? Les intégrations qui l\'utilisent cesseront de fonctionner.');">{% csrf_token %}<button type="submit" class="st-btn st-btn--danger">Révoquer</button></form>
+            </div>
+            {% else %}
+            <form method="post" action="{% url 'accounts:api-token-generate' %}">{% csrf_token %}<button type="submit" class="st-btn st-btn--primary">Générer un token</button></form>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endwith %}
+
+<script>
+function settingsPage() {
+    const TABS = ['profil', 'securite', 'langue', 'entreprise', 'facturation', 'paiement', 'equipe', 'rdv', 'metier', 'notifications', 'dev'];
+    return {
+        tab: '{% if entreprise_organization %}entreprise{% else %}profil{% endif %}',
+        logoUrl: '{% if entreprise_organization.logo %}{{ entreprise_organization.logo.url }}{% endif %}',
+        logoMsg: '',
+        copied: false,
+        init() {
+            const legacy = { tva: 'facturation', donnees: 'profil', branding: 'entreprise' };
+            let t = new URLSearchParams(location.search).get('tab') || location.hash.slice(1);
+            t = legacy[t] || t;
+            if (TABS.includes(t)) this.tab = t;
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        go(t) { this.tab = t; history.replaceState(null, '', `?tab=${t}`); },
+        csrf() { return document.querySelector('.st [name=csrfmiddlewaretoken]').value; },
+        async sendLogo(body) {
+            const res = await fetch('{% url "organizations:organization-logo" %}', { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.ok === false || data.success === false) { this.logoMsg = data.error || data.message || 'Opération impossible.'; return null; }
+            return data;
+        },
+        async uploadLogo(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const body = new FormData(); body.append('logo', file);
+            const data = await this.sendLogo(body);
+            if (data) { this.logoUrl = data.url || data.logo_url || ''; this.logoMsg = 'Logo mis à jour.'; }
+            e.target.value = '';
+        },
+        async removeLogo() {
+            const body = new FormData(); body.append('remove', '1');
+            if (await this.sendLogo(body)) { this.logoUrl = ''; this.logoMsg = 'Logo retiré.'; }
+        },
+        copyToken() {
+            navigator.clipboard.writeText(this.$refs.token.textContent.trim());
+            this.copied = true; setTimeout(() => { this.copied = false; }, 1500);
+        },
+    };
+}
+</script>
+{% endblock %}

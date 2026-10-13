@@ -1,0 +1,9 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Email envoyé{% endblock %}
+{% block content %}
+<div class="auth-icon"><i data-lucide="mail-check" class="w-6 h-6"></i></div>
+<h2 class="auth-title">Vérifiez votre boîte mail</h2>
+<p class="auth-lead">Si un compte Billio existe avec cette adresse, vous allez recevoir un email avec un lien pour choisir un nouveau mot de passe. Pensez à regarder dans les indésirables.</p>
+<a href="{% url 'accounts:login' %}" class="auth-submit-btn">Retour à la connexion</a>
+<p class="mt-6 text-sm text-center text-gray-600">Rien reçu après quelques minutes ? <a href="{% url 'accounts:password-reset' %}" class="auth-link">Renvoyer le lien</a></p>
+{% endblock %}

@@ -1,0 +1,345 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Projects - Billio{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block page_subtitle %}Suivez l'avancement de vos missions clients en un coup d'œil{% endblock %}
+
+{% block header_finance_chip %}
+<a href="{% url 'dashboard:milestones-board' %}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50 mr-2">
+    <i data-lucide="list-checks" class="w-3.5 h-3.5 mr-1.5"></i>
+    Kanban jalons
+</a>
+{% if 'notion' in connected_plugins %}
+<a href="{% url 'integrations:integrations-page' %}?plugin=notion" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50 mr-2" title="Créer un projet à partir d'une page ou d'une base Notion">
+    <i data-lucide="import" class="w-3.5 h-3.5 mr-1.5"></i> Importer depuis Notion
+</a>
+{% endif %}
+<button type="button" onclick="window.dispatchEvent(new CustomEvent('open-create-project-modal'))" class="btn-primary-black inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium hover:text-white">
+    <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+    </svg>
+    Nouveau projet
+</button>
+{% endblock %}
+
+{% block content %}
+{{ clients_data|json_script:"projects-clients-data" }}
+{{ phases|json_script:"projects-phases-data" }}
+<div x-data="projectBoardPage()"
+     x-init="init()"
+     @open-create-project-modal.window="createModalOpen = true"
+     @keydown.escape.window="createModalOpen = false; contextMenu.open = false">
+
+    <div class="kanban-board" id="kanban-board">
+        {% for column in columns %}
+        <div class="kanban-column kanban-column--{{ column.id }}" data-kanban-column="{{ column.id }}" style="--phase: {{ column.color }};">
+            <div class="kanban-column-head">
+                <span class="kanban-column-dot"></span>
+                <span class="flex-1 kanban-column-title">{{ column.label }}</span>
+                <span class="kanban-column-count">{{ column.cards|length }}</span>
+                <button type="button" class="detail-item-delete" @click="movePhase({{ column.phase_id }}, 'left')" {% if forloop.first %}disabled style="opacity: 0.3; cursor: default;"{% endif %} aria-label="Déplacer la phase à gauche" title="Déplacer à gauche">
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" class="detail-item-delete" @click="movePhase({{ column.phase_id }}, 'right')" {% if forloop.last %}disabled style="opacity: 0.3; cursor: default;"{% endif %} aria-label="Déplacer la phase à droite" title="Déplacer à droite">
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" class="detail-item-delete" @click="deletePhase({{ column.phase_id }})" aria-label="Supprimer la phase" title="Supprimer la phase">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                </button>
+            </div>
+            <div class="kanban-column-body" data-kanban-dropzone="{{ column.id }}">
+                {% for card in column.cards %}
+                <div class="kanban-card kanban-card--{{ column.id }}" draggable="true" data-kanban-card data-project-id="{{ card.id }}" style="--phase: {{ column.color }};"
+                     @contextmenu.prevent="openCardMenu($event, {{ card.id }}, '{{ column.id }}')">
+                    <div class="kanban-card-top">
+                        <a href="{% url 'dashboard:project-detail' card.id %}" class="kanban-card-title">{{ card.name }}</a>
+                        {% if card.reference %}<span class="kanban-card-tag">{{ card.reference }}</span>{% endif %}
+                    </div>
+                    <div class="kanban-card-client-row">
+                        <span class="kanban-card-avatar">{{ card.client.name|slice:":2"|upper }}</span>
+                        <span class="kanban-card-client">{{ card.client.name }}</span>
+                    </div>
+                    <div class="kanban-card-progress">
+                        <div class="kanban-card-progress-bar" style="width: {{ card.progress_percent }}%;"></div>
+                    </div>
+                    <div class="kanban-card-footer">
+                        <span class="kanban-card-progress-label">{{ card.progress_percent }}% complété</span>
+                        {% if card.delivery_date %}
+                        <span class="kanban-card-due{% if card.is_late %} kanban-card-due--late{% elif card.is_due_soon %} kanban-card-due--soon{% endif %}">
+                            <i data-lucide="calendar" class="w-3 h-3"></i> {{ card.delivery_date|date:"d/m" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        <div class="kanban-column" style="justify-content: flex-start;">
+            <div x-show="!addingPhase" class="kanban-column-head" style="cursor: pointer; justify-content: center;" @click="addingPhase = true">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Nouvelle phase</span>
+            </div>
+            <div x-show="addingPhase" x-cloak class="p-3 space-y-2">
+                <input type="text" x-model="newPhaseLabel" placeholder="Nom de la phase" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <input type="color" x-model="newPhaseColor" class="w-full h-9 border border-gray-300 rounded-lg">
+                <div class="flex justify-end gap-2">
+                    <button type="button" @click="addingPhase = false" class="text-xs px-2" style="color: var(--billio-muted);">Annuler</button>
+                    <button type="button" @click="addPhase()" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if not has_projects %}
+    <p class="text-sm mt-6 text-center" style="color: var(--billio-muted);">
+        Aucun projet pour le moment. <a href="#" @click.prevent="createModalOpen = true" class="underline">Créer votre premier projet</a>.
+    </p>
+    {% endif %}
+
+    <!-- Modale : Nouveau projet -->
+    <div x-show="createModalOpen"
+         x-cloak
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[120] flex items-start justify-center pt-[4vh] px-3 pb-6"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="create-project-modal-title">
+        <div class="absolute inset-0 bg-gray-900/55 backdrop-blur-[2px]" @click="createModalOpen = false" aria-hidden="true"></div>
+
+        <div class="relative w-full max-w-lg max-h-full rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/15 flex flex-col overflow-hidden" @click.stop>
+            <div class="shrink-0 flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-white">
+                <div class="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                    <i data-lucide="folder-plus" class="w-5 h-5"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h2 id="create-project-modal-title" class="text-base font-bold text-gray-900">Nouveau projet</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Lancez le suivi d'une nouvelle mission client</p>
+                </div>
+                <button type="button" class="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50" @click="createModalOpen = false" aria-label="Fermer">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form method="post" action="{% url 'dashboard:project-create' %}" class="flex-1 min-h-0 overflow-y-auto">
+                {% csrf_token %}
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Client <span class="text-red-500">*</span></label>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-xs font-bold"
+                                 :class="selectedClient ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-400'"
+                                 x-text="selectedClient ? selectedClient.initials : '?'"></div>
+                            <select name="client_id" x-model="clientId" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                                <option value="">Sélectionner un client</option>
+                                {% for client in clients %}
+                                <option value="{{ client.id }}">{{ client.company_name|default:client.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if not clients %}
+                        <p class="text-xs text-amber-700 mt-1.5"><a href="{% url 'clients:client-list' %}" class="underline">Créer un client</a> avant de démarrer un projet.</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Nom du projet <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <i data-lucide="briefcase" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" name="name" required placeholder="Ex. Refonte site web" class="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Phase de départ</label>
+                        <div class="flex flex-wrap gap-1.5">
+                            {% for value, label in status_choices %}
+                            <button type="button" @click="status = '{{ value }}'"
+                                    :class="status === '{{ value }}' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
+                                    class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors">
+                                {{ label }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="status" x-model="status">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Référence</label>
+                            <input type="text" name="reference" placeholder="PRJ-001" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Date de livraison</label>
+                            <input type="date" name="delivery_date" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                        </div>
+                    </div>
+
+                    {% if project_templates %}
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Partir d'un modèle</label>
+                        <select name="template_id" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                            <option value="">Projet vide</option>
+                            {% for t in project_templates %}<option value="{{ t.id }}">{{ t.name }} — {{ t.milestone_count }} jalon{{ t.milestone_count|pluralize }}</option>{% endfor %}
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Jalons, tâches et livrables sont créés et datés à partir de la date de début.</p>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Date de début</label>
+                        <input type="date" name="start_date" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">Description</label>
+                        <textarea name="description" rows="3" placeholder="Objectif, périmètre, notes internes…" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"></textarea>
+                    </div>
+                </div>
+
+                <div class="shrink-0 flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/60">
+                    <button type="button" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900" @click="createModalOpen = false">Annuler</button>
+                    <button type="submit" class="btn-primary-black px-5 py-2.5 rounded-xl text-sm font-semibold hover:text-white inline-flex items-center gap-2">
+                        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+                        Créer le projet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Menu contextuel (clic droit sur une carte) -->
+    <div x-show="contextMenu.open"
+         x-cloak
+         x-transition
+         @click.outside="contextMenu.open = false"
+         class="fixed z-[130] w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+         :style="`top: ${contextMenu.y}px; left: ${contextMenu.x}px;`">
+        <a :href="`/dashboard/projects/${contextMenu.projectId}/`" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2" style="color: var(--billio-text);">
+            <i data-lucide="pencil" class="w-3.5 h-3.5"></i> Modifier
+        </a>
+        <a :href="`/dashboard/projects/${contextMenu.projectId}/gantt/`" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2" style="color: var(--billio-text);">
+            <i data-lucide="gantt-chart-square" class="w-3.5 h-3.5"></i> Vue Gantt
+        </a>
+        <button type="button" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2" style="color: var(--billio-text);"
+                @click="duplicateProject(contextMenu.projectId)">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Dupliquer
+        </button>
+        <div class="border-t border-gray-100 my-1"></div>
+        <p class="px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide" style="color: var(--billio-muted);">Changer de phase</p>
+        <template x-for="phase in phases" :key="phase.id">
+            <button type="button" x-show="phase.value !== contextMenu.currentPhase" class="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2" style="color: var(--billio-text);"
+                    @click="changeProjectPhase(contextMenu.projectId, phase.value)">
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i> <span x-text="phase.label"></span>
+            </button>
+        </template>
+        <div class="border-t border-gray-100 my-1"></div>
+        <button type="button" class="w-full text-left px-3 py-1.5 text-xs hover:bg-red-50 flex items-center gap-2 text-red-600"
+                @click="deleteProject(contextMenu.projectId)">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer
+        </button>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function projectBoardPage() {
+    return {
+        createModalOpen: false,
+        clientId: '',
+        status: '{{ status_choices.0.0|default:"discovery" }}',
+        clients: [],
+        addingPhase: false,
+        newPhaseLabel: '',
+        newPhaseColor: '#6366f1',
+        phases: [],
+        contextMenu: { open: false, x: 0, y: 0, projectId: null, currentPhase: null },
+        init() {
+            const el = document.getElementById('projects-clients-data');
+            try {
+                this.clients = el ? JSON.parse(el.textContent || '[]') : [];
+            } catch (e) {
+                this.clients = [];
+            }
+            const phasesEl = document.getElementById('projects-phases-data');
+            try {
+                this.phases = phasesEl ? JSON.parse(phasesEl.textContent || '[]') : [];
+            } catch (e) {
+                this.phases = [];
+            }
+        },
+
+        openCardMenu(event, projectId, currentPhase) {
+            this.contextMenu = { open: true, x: event.clientX, y: event.clientY, projectId, currentPhase };
+        },
+
+        async duplicateProject(id) {
+            this.contextMenu.open = false;
+            const response = await fetch(`/dashboard/projects/${id}/duplicate/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        async deleteProject(id) {
+            this.contextMenu.open = false;
+            if (!(await billioConfirm({ title: 'Supprimer ce projet ?', message: 'Tout son contenu (jalons, tâches, livrables, fichiers) sera supprimé définitivement.', confirmLabel: 'Supprimer le projet', tone: 'danger' }))) return;
+            await fetch(`/dashboard/projects/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            window.location.reload();
+        },
+
+        async changeProjectPhase(id, phaseValue) {
+            this.contextMenu.open = false;
+            if (!(await billioConfirm({ title: 'Changer la phase du projet ?', message: 'Le client verra la nouvelle étape dans son espace.', confirmLabel: 'Changer de phase', icon: 'flag' }))) return;
+            await fetch(`/dashboard/projects/${id}/status/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `status=${encodeURIComponent(phaseValue)}`,
+            });
+            window.location.reload();
+        },
+        get selectedClient() {
+            return this.clients.find((c) => String(c.id) === String(this.clientId)) || null;
+        },
+
+        async addPhase() {
+            if (!this.newPhaseLabel.trim()) return;
+            const body = new URLSearchParams({ label: this.newPhaseLabel, color: this.newPhaseColor });
+            const response = await fetch('{% url "dashboard:phase-create" %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            if (response.ok) window.location.reload();
+        },
+
+        async deletePhase(id) {
+            if (!(await billioConfirm({ title: 'Supprimer cette phase ?', message: 'Elle disparaîtra du tableau des projets. Cette action est définitive.', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            const response = await fetch(`/dashboard/projects/phases/${id}/delete/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert(data.message || "Impossible de supprimer cette phase.");
+            }
+        },
+
+        async movePhase(id, direction) {
+            const response = await fetch(`/dashboard/projects/phases/${id}/move/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'direction=' + encodeURIComponent(direction),
+            });
+            if (response.ok) window.location.reload();
+        },
+    };
+}
+</script>
+{% endblock %}

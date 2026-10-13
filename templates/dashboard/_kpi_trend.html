@@ -1,0 +1,6 @@
+<p class="text-xs text-gray-500 mt-2">
+    {% if trend.direction == 'up' %}<span class="font-semibold text-emerald-600">▲ {{ trend.pct_text }}</span>
+    {% elif trend.direction == 'down' %}<span class="font-semibold text-red-600">▼ {{ trend.pct_text }}</span>
+    {% else %}<span class="font-semibold text-gray-700">{{ trend.pct_text }}</span>{% endif %}
+    vs. mois précédent
+</p>

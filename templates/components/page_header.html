@@ -1,0 +1,32 @@
+<div class="billio-card p-6 md:p-8">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+            <h1 class="billio-page-title text-2xl md:text-3xl flex items-center gap-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="{{ icon_d }}"></path>
+                </svg>
+                {{ title }}
+            </h1>
+            {% if subtitle %}
+            <p class="billio-page-subtitle text-sm md:text-base mt-1">
+                {{ subtitle }}
+            </p>
+            {% endif %}
+        </div>
+
+        {% if action_href and action_label %}
+        <a
+            href="{{ action_href }}"
+            {% if action_id %}id="{{ action_id }}"{% endif %}
+            {% if action_onclick %}onclick="{{ action_onclick }}"{% endif %}
+            class="btn-primary-black inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold hover:text-white transition-colors shadow-sm"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path>
+            </svg>
+            {{ action_label }}
+        </a>
+        {% endif %}
+    </div>
+</div>
+

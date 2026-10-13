@@ -1,0 +1,380 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Billio{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Connectez vos outils de messagerie, de productivité et d’emailing{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.3">
+{% endblock %}
+
+{% block content %}
+{{ plugins_json|json_script:"plugins-config" }}
+<div class="ig" x-data="integrationsPage()" x-init="init()">
+    {% csrf_token %}
+
+    {% if messages %}
+    <div class="ig-messages">
+        {% for message in messages %}<div class="ig-msg{% if message.tags == 'error' %} is-error{% endif %}">{{ message }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not organization %}
+    <div class="ig-card">Aucune organisation disponible.</div>
+    {% elif not can_manage %}
+    <div class="ig-msg is-warn">Vous pouvez consulter les intégrations mais pas les modifier (droits d'édition de l'organisation requis).</div>
+    {% endif %}
+
+    {% if categories %}
+    <div class="ig-head">
+        <div class="tabs-pills">
+            <button type="button" class="tab-pill" :class="filter === 'all' ? 'tab-pill-active' : ''" @click="filter = 'all'">Tout</button>
+            {% for cat in categories %}
+            <button type="button" class="tab-pill" :class="filter === '{{ cat.key }}' ? 'tab-pill-active' : ''" @click="filter = '{{ cat.key }}'">{{ cat.label }}</button>
+            {% endfor %}
+        </div>
+        <div class="ig-head-side">
+            <label class="ig-filter"><i data-lucide="search" class="w-4 h-4"></i><input type="search" x-model.debounce.150ms="q" placeholder="Rechercher un outil…" aria-label="Rechercher un outil"></label>
+            <p class="ig-count"><strong x-text="connectedCount()"></strong> connecté(s)</p>
+        </div>
+    </div>
+
+    {% for cat in categories %}
+    <section class="ig-section" x-show="(filter === 'all' || filter === '{{ cat.key }}') && anyMatch('{% for item in cat.items %}{{ item.connector.name|lower|escapejs }}|{% endfor %}')">
+        <h2>{{ cat.label }} <span class="ig-section-count">{{ cat.items|length }}</span></h2>
+        <div class="ig-grid">
+            {% for item in cat.items %}
+            <button type="button" class="ig-tile" x-show="matches('{{ item.connector.name|lower|escapejs }}')" @click="open('{{ item.connector.key }}', '{{ item.connector.name|escapejs }}', '{{ item.connector.description|default:''|escapejs }}')"
+                    :class="statusOf('{{ item.connector.key }}', '{{ item.instance.status|default:'not_connected' }}') === 'connected' ? 'is-on' : (statusOf('{{ item.connector.key }}', '{{ item.instance.status|default:'not_connected' }}') === 'error' ? 'is-error' : '')">
+                <span class="ig-logo{% if item.logo %} has-brand{% endif %}" data-key="{{ item.connector.key }}">
+                    {% if item.logo %}{% include "integrations/icons/"|add:item.connector.key|add:".svg.html" %}
+                    {% else %}<i data-lucide="{{ item.connector.icon|default:'plug' }}" class="w-5 h-5"></i>{% endif %}
+                </span>
+                <span class="ig-tile-text">
+                    <strong>{{ item.connector.name }}</strong>
+                    <small x-text="tileLabel('{{ item.connector.key }}', '{{ item.instance.status|default:'not_connected' }}')"></small>
+                </span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ig-tile-chev"></i>
+            </button>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+    <p class="ig-card" x-show="q && !anyMatch(allNames())" x-cloak>Aucun outil ne correspond à cette recherche.</p>
+    {# Briques internes (Stripe) : pas de tuile visible, mais leur panneau s'ouvre depuis Paramètres › Paiement. #}
+    {% for item in internal_connectors %}
+    <button type="button" class="ig-tile" hidden @click="open('{{ item.connector.key }}', '{{ item.connector.name|escapejs }}', '{{ item.connector.description|default:''|escapejs }}')">
+        <span class="ig-logo has-brand" data-key="{{ item.connector.key }}">{% include "integrations/icons/"|add:item.connector.key|add:".svg.html" %}</span>
+    </button>
+    {% endfor %}
+    {% endif %}
+
+    <!-- ===================== Panneau du plugin ===================== -->
+    <div class="ig-drawer-backdrop" x-show="current" x-cloak x-transition.opacity @click="close()"></div>
+    <aside class="ig-drawer" x-show="current" x-cloak x-transition:enter="ig-slide-in" @keydown.escape.window="close()">
+        <template x-if="current">
+            <div class="ig-drawer-inner">
+                <header class="ig-drawer-head">
+                    <div>
+                        <p class="ig-kicker">Plugin</p>
+                        <h3 x-text="current.name"></h3>
+                        <span class="ig-status" :class="'is-' + state().status" x-text="statusText(state().status)"></span>
+                    </div>
+                    <button type="button" class="ig-icon-btn" @click="close()" aria-label="Fermer"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </header>
+
+                <div class="ig-drawer-body">
+                    <!-- Plugin sans configuration détaillée -->
+                    <template x-if="!spec()">
+                        <div>
+                            <p class="ig-summary" x-text="current.description || 'Connexion simple par clé API ou URL de webhook.'"></p>
+                            <form method="post" :action="'/integrations/connect/' + current.key + '/'" class="ig-form">
+                                <input type="hidden" name="csrfmiddlewaretoken" :value="csrf()">
+                                <label class="ig-field"><span>Clé API</span><input name="api_key" autocomplete="off"></label>
+                                <label class="ig-field"><span>URL de webhook</span><input name="webhook_url" placeholder="https://…"></label>
+                                <label class="ig-field"><span>Jeton d'accès</span><input name="access_token" autocomplete="off"></label>
+                                <button type="submit" class="ig-btn ig-btn--primary" {% if not can_manage %}disabled{% endif %}>Connecter</button>
+                            </form>
+                        </div>
+                    </template>
+
+                    <template x-if="spec()">
+                        <div>
+                            <p class="ig-summary" x-text="spec().summary"></p>
+                            <ul class="ig-uses" x-show="spec().uses.length">
+                                <template x-for="u in spec().uses" :key="u"><li><i data-lucide="check" class="w-3.5 h-3.5"></i><span x-text="u"></span></li></template>
+                            </ul>
+
+                            <!-- Résultat du dernier test -->
+                            <div class="ig-result" x-show="result.text" :class="result.ok ? 'is-ok' : 'is-error'">
+                                <i :data-lucide="result.ok ? 'circle-check' : 'circle-alert'" class="w-4 h-4"></i><span x-text="result.text"></span>
+                            </div>
+                            <div class="ig-result is-error" x-show="!result.text && state().error"><i data-lucide="circle-alert" class="w-4 h-4"></i><span x-text="'Dernière erreur : ' + state().error"></span></div>
+
+                            <details class="ig-guide" :open="state().status !== 'connected'">
+                                <summary>Guide de configuration</summary>
+                                <ol>
+                                    <template x-for="(step, i) in spec().steps" :key="i">
+                                        <li><span x-text="step[0]"></span> <a x-show="step[1]" :href="step[1]" target="_blank" rel="noopener" class="ig-link">Ouvrir <i data-lucide="external-link" class="w-3 h-3"></i></a></li>
+                                    </template>
+                                </ol>
+                            </details>
+
+                            <!-- Google Drive : connexion OAuth -->
+                            <template x-if="spec().oauth">
+                                <div class="ig-oauth">
+                                    <template x-if="state().status === 'connected'">
+                                        <div class="ig-account">
+                                            <i data-lucide="hard-drive" class="w-4 h-4"></i>
+                                            <div><strong x-text="state().config.account || 'Compte Google'"></strong><small>Connecté le <span x-text="state().connected_at"></span></small></div>
+                                            <a x-show="state().config.folder_url" :href="state().config.folder_url" target="_blank" rel="noopener" class="ig-link">Dossier Billio</a>
+                                        </div>
+                                    </template>
+                                    <template x-if="cfg.googleReady">
+                                        <a href="{% url 'integrations:google-connect' %}" class="ig-google-btn" {% if not can_manage %}aria-disabled="true"{% endif %}>
+                                            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+                                            <span x-text="state().status === 'connected' ? 'Changer de compte Google' : 'Se connecter avec Google'"></span>
+                                        </a>
+                                    </template>
+                                    <template x-if="!cfg.googleReady">
+                                        <div class="ig-admin">
+                                            <p><strong>À faire une fois sur le serveur</strong> (administrateur) :</p>
+                                            <ol>
+                                                <li>Créez un projet sur <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" class="ig-link">Google Cloud Console</a> et activez l'API Google Drive.</li>
+                                                <li>Configurez l'écran de consentement OAuth, puis créez un identifiant « ID client OAuth » de type « Application Web ».</li>
+                                                <li>Déclarez cette URI de redirection autorisée :<code class="ig-code-block" x-text="cfg.googleRedirect"></code></li>
+                                                <li>Renseignez <code>GOOGLE_CLIENT_ID</code> et <code>GOOGLE_CLIENT_SECRET</code> dans l'environnement du serveur puis redémarrez-le.</li>
+                                            </ol>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <!-- Formulaire de configuration -->
+                            <template x-if="spec().fields.length">
+                                <form class="ig-form" @submit.prevent="save()">
+                                    <template x-for="f in spec().fields" :key="f.name">
+                                        <label class="ig-field">
+                                            <span><span x-text="f.label"></span><b x-show="f.required" class="ig-req">*</b></span>
+                                            <template x-if="f.type === 'select'">
+                                                <select x-model="form[f.name]"><template x-for="o in f.options" :key="o[0]"><option :value="o[0]" x-text="o[1]" :selected="form[f.name] === o[0]"></option></template></select>
+                                            </template>
+                                            <template x-if="f.type !== 'select'">
+                                                <input :type="f.secret ? 'password' : (f.type === 'number' ? 'number' : 'text')" x-model="form[f.name]" autocomplete="off"
+                                                       :placeholder="f.secret && state().config[f.name] ? 'Enregistré (' + state().config[f.name] + ') — laisser vide pour conserver' : (f.placeholder || '')">
+                                            </template>
+                                            <small x-show="f.help" x-text="f.help"></small>
+                                        </label>
+                                    </template>
+
+                                    <!-- Telegram : trouver la conversation -->
+                                    <template x-if="current.key === 'telegram'">
+                                        <div class="ig-chats">
+                                            <button type="button" class="ig-btn" @click="findChats()" :disabled="busy"><i data-lucide="search" class="w-3.5 h-3.5"></i> Trouver mes conversations</button>
+                                            <template x-for="c in chats" :key="c.id">
+                                                <button type="button" class="ig-chat" :class="form.chat_id === c.id && 'is-active'" @click="form.chat_id = c.id">
+                                                    <strong x-text="c.title"></strong><small x-text="c.type + ' · ' + c.id"></small>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <div class="ig-actions">
+                                        <button type="submit" class="ig-btn ig-btn--primary" :disabled="busy || !canManage"><i data-lucide="plug-zap" class="w-4 h-4"></i> <span x-text="busy ? 'Vérification…' : 'Enregistrer et tester'"></span></button>
+                                        <button type="button" class="ig-btn" x-show="state().status !== 'not_connected'" @click="test()" :disabled="busy">Tester</button>
+                                    </div>
+                                </form>
+                            </template>
+
+                            <!-- Actions des plugins connectés -->
+                            <template x-if="state().status === 'connected' && (current.key === 'notion' || current.key === 'google-drive')">
+                                <section class="ig-tools">
+                                    <h4>Exporter vos tableaux</h4>
+                                    <div class="ig-export">
+                                        <button type="button" class="ig-btn" @click="exportTable('invoices')" :disabled="busy"><i data-lucide="receipt" class="w-3.5 h-3.5"></i> Factures</button>
+                                        <button type="button" class="ig-btn" @click="exportTable('payments')" :disabled="busy"><i data-lucide="banknote" class="w-3.5 h-3.5"></i> Paiements</button>
+                                    </div>
+                                    <p class="ig-help" x-text="current.key === 'notion' ? 'Une base Notion par tableau, créée sous la page des exports puis mise à jour à chaque export.' : 'Un fichier Google Sheets daté dans le dossier Billio de votre Drive.'"></p>
+                                </section>
+                            </template>
+
+                            <template x-if="state().status === 'connected' && current.key === 'notion'">
+                                <section class="ig-tools">
+                                    <h4>Importer un projet</h4>
+                                    <p class="ig-help">Choisissez une page (titres = jalons, cases à cocher = tâches) ou une base de données (une ligne = une tâche) partagée avec votre intégration.</p>
+                                    <div class="ig-search">
+                                        <input x-model="notion.q" @input.debounce.400ms="notionSearch()" placeholder="Rechercher dans Notion…">
+                                        <button type="button" class="ig-btn" @click="notionSearch()" :disabled="busy"><i data-lucide="search" class="w-3.5 h-3.5"></i></button>
+                                    </div>
+                                    <div class="ig-results">
+                                        <template x-for="it in notion.items" :key="it.id">
+                                            <button type="button" class="ig-result-row" :class="notion.selected && notion.selected.id === it.id && 'is-active'" @click="notionPick(it)">
+                                                <i :data-lucide="it.kind === 'database' ? 'table-2' : 'file-text'" class="w-4 h-4"></i>
+                                                <span><strong x-text="it.title"></strong><small x-text="(it.kind === 'database' ? 'Base de données' : 'Page') + (it.edited ? ' · modifiée le ' + it.edited : '')"></small></span>
+                                            </button>
+                                        </template>
+                                        <p class="ig-help" x-show="notion.searched && !notion.items.length">Rien trouvé : vérifiez que la page est bien partagée avec l'intégration (menu « … › Connexions »).</p>
+                                    </div>
+                                    <template x-if="notion.preview">
+                                        <div class="ig-preview">
+                                            <label class="ig-field"><span>Nom du projet</span><input x-model="notion.name"></label>
+                                            <p class="ig-help"><strong x-text="notion.preview.groups.length"></strong> jalon(s), <strong x-text="notion.preview.groups.reduce((n, g) => n + g.tasks.length, 0)"></strong> tâche(s) dont <strong x-text="notion.preview.groups.reduce((n, g) => n + g.tasks.filter((t) => t.done).length, 0)"></strong> terminée(s).</p>
+                                            <ul class="ig-preview-list">
+                                                <template x-for="g in notion.preview.groups.slice(0, 6)" :key="g.title"><li><strong x-text="g.title"></strong> <small x-text="g.tasks.length + ' tâche(s)'"></small></li></template>
+                                            </ul>
+                                            <label class="ig-field"><span>Client du projet</span>
+                                                <select x-model="notion.client"><option value="">Choisir…</option><template x-for="c in cfg.clients" :key="c.id"><option :value="c.id" x-text="c.name"></option></template></select></label>
+                                            <button type="button" class="ig-btn ig-btn--primary" @click="notionImport()" :disabled="busy || !notion.client"><i data-lucide="download" class="w-4 h-4"></i> Créer le projet dans Billio</button>
+                                        </div>
+                                    </template>
+                                </section>
+                            </template>
+
+                            <!-- Déconnexion -->
+                            {% if can_manage %}
+                            <template x-if="state().status !== 'not_connected' && state().id">
+                                <form method="post" :action="'/integrations/disconnect/' + state().id + '/'" class="ig-disconnect" onsubmit="return confirm('Déconnecter ce plugin ?')">
+                                    <input type="hidden" name="csrfmiddlewaretoken" :value="csrf()">
+                                    <button type="submit" class="ig-link-danger"><i data-lucide="unplug" class="w-3.5 h-3.5"></i> Déconnecter</button>
+                                </form>
+                            </template>
+                            {% endif %}
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </aside>
+</div>
+
+<script>
+function integrationsPage() {
+    const cfg = JSON.parse(document.getElementById('plugins-config').textContent);
+    return {
+        cfg,
+        filter: 'all',
+        q: '',
+        current: null,
+        form: {},
+        result: { ok: false, text: '' },
+        busy: false,
+        chats: [],
+        canManage: {{ can_manage|yesno:'true,false' }},
+        notion: { q: '', items: [], searched: false, selected: null, preview: null, name: '', client: '' },
+        init() {
+            // ?plugin=… : ouvre directement le panneau (après le branchement des événements Alpine).
+            if (cfg.open) {
+                this.$nextTick(() => {
+                    const tile = [...document.querySelectorAll('.ig-logo')].find((n) => n.dataset.key === cfg.open);
+                    if (tile) tile.closest('button').click();
+                });
+            }
+        },
+        csrf() { const i = document.querySelector('[name=csrfmiddlewaretoken]'); return i ? i.value : ''; },
+        spec() { return this.current ? cfg.specs[this.current.key] : null; },
+        state() { return (this.current && this.cfg.state[this.current.key]) || { status: 'not_connected', config: {}, error: '' }; },
+        statusOf(key, fallback) { return (this.cfg.state[key] || {}).status || fallback; },
+        statusText(s) { return { connected: 'Connecté', error: 'Erreur', not_connected: 'Non connecté' }[s] || s; },
+        tileLabel(key, fallback) {
+            const s = this.statusOf(key, fallback);
+            if (s === 'connected') return 'Connecté';
+            if (s === 'error') return 'À vérifier';
+            return cfg.specs[key] ? 'À configurer' : 'Disponible';
+        },
+        norm(text) { return (text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); },
+        matches(name) { return !this.q || this.norm(name).includes(this.norm(this.q)); },
+        anyMatch(names) { return names.split('|').some((n) => n && this.matches(n)); },
+        allNames() { return [...document.querySelectorAll('.ig-tile-text strong')].map((n) => n.textContent).join('|'); },
+        connectedCount() { return Object.entries(this.cfg.state).filter(([key, s]) => s.status === 'connected' && !(cfg.internal || []).includes(key)).length; },
+        open(key, name, description) {
+            this.current = { key, name, description };
+            const st = this.cfg.state[key] || { config: {} };
+            this.form = {};
+            ((cfg.specs[key] || {}).fields || []).forEach((f) => {
+                const v = (st.config || {})[f.name];
+                this.form[f.name] = f.secret ? '' : (v || (f.type === 'select' ? f.options[0][0] : ''));
+            });
+            this.result = { ok: false, text: '' };
+            this.chats = [];
+            this.notion = { q: '', items: [], searched: false, selected: null, preview: null, name: '', client: '' };
+            history.replaceState(null, '', `?plugin=${key}`);
+            this.$nextTick(() => setTimeout(() => window.lucide && lucide.createIcons(), 0));
+            if (key === 'notion' && this.state().status === 'connected') this.notionSearch();
+        },
+        close() { this.current = null; history.replaceState(null, '', location.pathname); },
+        async post(url, body) {
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf() }, body: JSON.stringify(body || {}) });
+            return res.json().catch(() => ({ ok: false, error: 'Réponse illisible du serveur.' }));
+        },
+        refreshIcons() { this.$nextTick(() => setTimeout(() => window.lucide && lucide.createIcons(), 0)); },
+        async save() {
+            this.busy = true; this.result = { ok: false, text: '' };
+            try {
+                const data = await this.post(`/integrations/plugins/${this.current.key}/save/`, this.form);
+                if (data.error) { this.result = { ok: false, text: data.error }; return; }
+                this.cfg.state[this.current.key] = { ...(this.cfg.state[this.current.key] || {}), status: data.status, config: data.config, error: data.ok ? '' : data.detail };
+                this.result = { ok: data.ok, text: data.ok ? `Connecté — ${data.detail}` : data.detail };
+                ((this.spec() || {}).fields || []).forEach((f) => { if (f.secret) this.form[f.name] = ''; });
+            } finally { this.busy = false; this.refreshIcons(); }
+        },
+        async test() {
+            this.busy = true;
+            try {
+                const data = await this.post(`/integrations/plugins/${this.current.key}/test/`);
+                this.result = { ok: !!data.ok, text: data.ok ? `Tout fonctionne — ${data.detail}` : (data.detail || data.error) };
+                if (data.status) this.cfg.state[this.current.key].status = data.status;
+            } finally { this.busy = false; this.refreshIcons(); }
+        },
+        async findChats() {
+            this.busy = true;
+            try {
+                const data = await this.post('/integrations/plugins/telegram/chats/', { access_token: this.form.access_token || '' });
+                if (!data.ok) { this.result = { ok: false, text: data.error }; return; }
+                this.chats = data.chats;
+                if (!data.chats.length) this.result = { ok: false, text: 'Aucune conversation : envoyez d\'abord un message à votre bot, puis réessayez.' };
+                else if (data.chats.length === 1) this.form.chat_id = data.chats[0].id;
+            } finally { this.busy = false; }
+        },
+        async exportTable(table) {
+            this.busy = true;
+            try {
+                const target = this.current.key === 'notion' ? 'notion' : 'drive';
+                const body = new URLSearchParams({ target });
+                const res = await fetch(`/integrations/export/${table}/`, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
+                const data = await res.json().catch(() => ({ ok: false, error: 'Export impossible.' }));
+                this.result = { ok: !!data.ok, text: data.ok ? data.detail : data.error };
+                if (data.ok && data.link) window.open(data.link, '_blank', 'noopener');
+            } finally { this.busy = false; this.refreshIcons(); }
+        },
+        async notionSearch() {
+            const res = await fetch(`/integrations/notion/search/?q=${encodeURIComponent(this.notion.q)}`);
+            const data = await res.json().catch(() => ({ ok: false }));
+            this.notion.searched = true;
+            if (!data.ok) { this.result = { ok: false, text: data.error || 'Recherche impossible.' }; return; }
+            this.notion.items = data.items;
+            this.refreshIcons();
+        },
+        async notionPick(item) {
+            this.notion.selected = item; this.notion.preview = null; this.busy = true;
+            try {
+                const res = await fetch(`/integrations/notion/preview/?id=${encodeURIComponent(item.id)}`);
+                const data = await res.json().catch(() => ({ ok: false }));
+                if (!data.ok) { this.result = { ok: false, text: data.error || 'Lecture impossible.' }; return; }
+                this.notion.preview = data.project;
+                this.notion.name = data.project.name;
+            } finally { this.busy = false; this.refreshIcons(); }
+        },
+        async notionImport() {
+            this.busy = true;
+            try {
+                const data = await this.post('/integrations/notion/import/', { id: this.notion.selected.id, client_id: this.notion.client, name: this.notion.name });
+                if (!data.ok) { this.result = { ok: false, text: data.error }; return; }
+                this.result = { ok: true, text: data.detail };
+                setTimeout(() => { window.location.href = data.url; }, 900);
+            } finally { this.busy = false; this.refreshIcons(); }
+        },
+    };
+}
+</script>
+{% endblock %}

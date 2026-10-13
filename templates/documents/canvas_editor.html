@@ -1,0 +1,226 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ document.title }} - Billio{% endblock %}
+{% block page_title %}{{ document.title }}{% endblock %}
+{% block page_subtitle %}{{ document.number }} · Canvas libre{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/document-canvas.css' %}?v=2.1">
+<script src="{% static 'js/document-canvas-vector.js' %}?v=1.1" defer></script>
+<script src="{% static 'js/document-canvas.js' %}?v=2.2" defer></script>
+{% endblock %}
+
+{% block header_finance_chip %}
+<span class="text-xs mr-3" data-dc-save-status style="color: var(--billio-muted);"></span>
+<span class="mr-2">{% include "components/drive_button.html" with kind="document" id=document.id %}</span>
+<a href="{% url 'documents:document-pdf' document.id %}" target="_blank" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50 mr-2">
+    <i data-lucide="download" class="w-3.5 h-3.5 mr-1.5"></i> Exporter PDF
+</a>
+<button type="button" data-dc-save-template data-url="{% url 'documents:document-save-as-template' document.id %}"
+        class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50 mr-2">
+    <i data-lucide="save" class="w-3.5 h-3.5 mr-1.5"></i> Enregistrer comme modèle
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="dc-shell" data-dc-root
+     data-document-id="{{ document.id }}"
+     data-save-url="{% url 'documents:document-save' %}"
+     data-upload-url="{% url 'documents:document-image-upload' document.id %}">
+    {% csrf_token %}
+
+    <!-- ================= Barre d'outils (pleine largeur, en haut) =================
+         data-tip = libellé de l'infobulle, data-kbd = raccourci affiché (« Ctrl+Maj+Z »). -->
+    <div class="dc-toolbar">
+        <div class="dc-toolbar-group">
+            <button type="button" class="dc-icon-btn" data-dc-undo data-tip="Annuler" data-kbd="Ctrl+Z"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-redo data-tip="Rétablir" data-kbd="Ctrl+Maj+Z"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+        </div>
+        <span class="dc-toolbar-sep"></span>
+
+        <!-- Outils d'insertion : clic = ajouter au centre de la vue, glisser = poser à l'endroit voulu -->
+        <div class="dc-toolbar-group">
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="paragraph" data-tip="Texte" data-kbd="T"><i data-lucide="type" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="title" data-tip="Titre" data-kbd="Maj+T"><i data-lucide="heading-1" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="rect" data-tip="Rectangle" data-kbd="R"><i data-lucide="square" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="ellipse" data-tip="Ellipse" data-kbd="O"><i data-lucide="circle" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="line" data-tip="Ligne" data-kbd="L"><i data-lucide="minus" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="arrow" data-tip="Flèche" data-kbd="Maj+L"><i data-lucide="move-right" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-tool="pen" data-tip="Plume : tracé vectoriel avec tangentes" data-kbd="P"><i data-lucide="pen-tool" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="table" data-tip="Tableau" data-kbd="B"><i data-lucide="table" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" draggable="true" data-dc-preset="image" data-tip="Image" data-kbd="I"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
+        </div>
+        <span class="dc-toolbar-sep"></span>
+
+        <!-- Outils de texte riche : actifs pendant l'édition d'un texte ou d'une cellule -->
+        <div class="dc-toolbar-group" data-dc-richtext>
+            <button type="button" class="dc-icon-btn" data-dc-exec="bold" data-tip="Gras" data-kbd="Ctrl+B"><i data-lucide="bold" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-exec="italic" data-tip="Italique" data-kbd="Ctrl+I"><i data-lucide="italic" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-exec="underline" data-tip="Souligné" data-kbd="Ctrl+U"><i data-lucide="underline" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-exec="strikeThrough" data-tip="Barré" data-kbd="Ctrl+Maj+X"><i data-lucide="strikethrough" class="w-4 h-4"></i></button>
+            <label class="dc-color-chip" data-tip="Couleur du texte sélectionné"><i data-lucide="baseline" class="w-4 h-4"></i><input type="color" data-dc-exec-color="foreColor" value="#6d28d9"></label>
+            <label class="dc-color-chip" data-tip="Surligner la sélection"><i data-lucide="highlighter" class="w-4 h-4"></i><input type="color" data-dc-exec-color="hiliteColor" value="#fef08a"></label>
+            <button type="button" class="dc-icon-btn" data-dc-exec="insertUnorderedList" data-tip="Liste à puces" data-kbd="Ctrl+Maj+8"><i data-lucide="list" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-exec="insertOrderedList" data-tip="Liste numérotée" data-kbd="Ctrl+Maj+7"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-link data-tip="Lien" data-kbd="Ctrl+K"><i data-lucide="link" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-exec="removeFormat" data-tip="Effacer la mise en forme" data-kbd="Ctrl+Espace"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="dc-toolbar-spacer"></div>
+
+        <div class="dc-toolbar-group">
+            <button type="button" class="dc-unit-btn" data-dc-unit data-tip="Unité des cotes et des dimensions" data-kbd="U">mm</button>
+            <button type="button" class="dc-icon-btn" data-dc-toggle-measures data-tip="Afficher les cotes en permanence" data-kbd="M"><i data-lucide="ruler" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-icon-btn" data-dc-toggle-grid data-tip="Grille magnétique" data-kbd="G"><i data-lucide="grid-3x3" class="w-4 h-4"></i></button>
+            <span class="dc-toolbar-sep"></span>
+            <button type="button" class="dc-icon-btn" data-dc-zoom-out data-tip="Zoom arrière" data-kbd="-"><i data-lucide="minus" class="w-4 h-4"></i></button>
+            <button type="button" class="dc-zoom-label" data-dc-zoom-fit data-tip="Ajuster à l'écran" data-kbd="Maj+1">100%</button>
+            <button type="button" class="dc-icon-btn" data-dc-zoom-in data-tip="Zoom avant" data-kbd="+"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            <span class="dc-toolbar-sep"></span>
+            <button type="button" class="dc-icon-btn" data-dc-help data-tip="Tous les raccourcis clavier" data-kbd="?"><i data-lucide="keyboard" class="w-4 h-4"></i></button>
+        </div>
+    </div>
+
+    <!-- ================= Rail gauche : bibliothèque ================= -->
+    <aside class="dc-library">
+        <nav class="dc-tabs" role="tablist">
+            <button type="button" class="dc-tab is-active" data-dc-tab="elements" data-tip="Éléments"><i data-lucide="shapes" class="w-4 h-4"></i><span>Éléments</span></button>
+            <button type="button" class="dc-tab" data-dc-tab="variables" data-tip="Variables"><i data-lucide="braces" class="w-4 h-4"></i><span>Variables</span></button>
+            <button type="button" class="dc-tab" data-dc-tab="layers" data-tip="Calques"><i data-lucide="layers" class="w-4 h-4"></i><span>Calques</span></button>
+            <button type="button" class="dc-tab" data-dc-tab="pages" data-tip="Pages"><i data-lucide="files" class="w-4 h-4"></i><span>Pages</span></button>
+        </nav>
+
+        <div class="dc-library-body">
+            <section class="dc-pane is-active" data-dc-pane="elements">
+                <p class="dc-pane-hint">Cliquez pour ajouter, ou glissez sur la page.</p>
+
+                <h3 class="dc-group-title">Texte</h3>
+                <div class="dc-preset-list">
+                    <button type="button" class="dc-preset dc-preset--text" draggable="true" data-dc-preset="title" data-tip="Titre" data-kbd="Maj+T"><span style="font-size:20px;font-weight:700;">Titre</span></button>
+                    <button type="button" class="dc-preset dc-preset--text" draggable="true" data-dc-preset="subtitle"><span style="font-size:15px;font-weight:500;color:#6b7280;">Sous-titre</span></button>
+                    <button type="button" class="dc-preset dc-preset--text" draggable="true" data-dc-preset="paragraph" data-tip="Paragraphe" data-kbd="T"><span style="font-size:12px;">Paragraphe de texte</span></button>
+                    <button type="button" class="dc-preset dc-preset--text" draggable="true" data-dc-preset="list"><span style="font-size:12px;">• Liste à puces</span></button>
+                    <button type="button" class="dc-preset dc-preset--text" draggable="true" data-dc-preset="callout"><span class="dc-preset-callout">Encadré / note</span></button>
+                </div>
+
+                <h3 class="dc-group-title">Formes</h3>
+                <div class="dc-shape-grid">
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="rect" data-tip="Rectangle" data-kbd="R"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="rounded" data-tip="Rectangle arrondi"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="ellipse" data-tip="Cercle / ellipse" data-kbd="O"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="triangle" data-tip="Triangle"><svg viewBox="0 0 24 24"><polygon points="12,4 21,20 3,20"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="diamond" data-tip="Losange"><svg viewBox="0 0 24 24"><polygon points="12,3 21,12 12,21 3,12"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="star" data-tip="Étoile"><svg viewBox="0 0 24 24"><polygon points="12,3 14.6,9.2 21,9.6 16,13.8 17.6,20.2 12,16.6 6.4,20.2 8,13.8 3,9.6 9.4,9.2"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="line" data-tip="Ligne" data-kbd="L"><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/></svg></button>
+                    <button type="button" class="dc-shape-btn" draggable="true" data-dc-preset="arrow" data-tip="Flèche" data-kbd="Maj+L"><svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="18" y2="12"/><polygon points="21,12 16,8.5 16,15.5" class="dc-fill"/></svg></button>
+                </div>
+
+                <h3 class="dc-group-title">Illustrations vectorielles</h3>
+                <div class="dc-vec-tools">
+                    <button type="button" class="dc-vec-tool" data-dc-tool="pen" data-tip="Cliquez pour poser des points, glissez pour tirer les tangentes" data-kbd="P"><i data-lucide="pen-tool" class="w-4 h-4"></i><span>Plume</span></button>
+                    <button type="button" class="dc-vec-tool" data-dc-tool="svg" data-tip="Formes et couleurs d'un fichier .svg, modifiables point par point"><i data-lucide="file-up" class="w-4 h-4"></i><span>Importer un SVG</span></button>
+                </div>
+                <div class="dc-shape-grid" data-dc-vec-presets></div>
+
+                <h3 class="dc-group-title">Tableaux</h3>
+                <div class="dc-preset-list">
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="table" data-tip="Tableau 3 × 3" data-kbd="B"><i data-lucide="table" class="w-4 h-4"></i> Tableau 3 × 3</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="price_table"><i data-lucide="receipt-text" class="w-4 h-4"></i> Tableau de prix</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="quote_table"><i data-lucide="list-checks" class="w-4 h-4"></i> Lignes du devis</button>
+                </div>
+
+                <h3 class="dc-group-title">Médias</h3>
+                <div class="dc-preset-list">
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="image" data-tip="Image" data-kbd="I"><i data-lucide="image-plus" class="w-4 h-4"></i> Image</button>
+                </div>
+
+                <h3 class="dc-group-title">Formulaire</h3>
+                <div class="dc-preset-list dc-preset-list--form">
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_text"><i data-lucide="text-cursor-input" class="w-4 h-4"></i> Texte court</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_textarea"><i data-lucide="align-left" class="w-4 h-4"></i> Texte long</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_email"><i data-lucide="at-sign" class="w-4 h-4"></i> Email</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_phone"><i data-lucide="phone" class="w-4 h-4"></i> Téléphone</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_date"><i data-lucide="calendar" class="w-4 h-4"></i> Date</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_number"><i data-lucide="hash" class="w-4 h-4"></i> Nombre</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_select"><i data-lucide="chevrons-up-down" class="w-4 h-4"></i> Liste déroulante</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_radio"><i data-lucide="circle-dot" class="w-4 h-4"></i> Choix unique</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="field_checkbox"><i data-lucide="list-checks" class="w-4 h-4"></i> Choix multiples</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="button_submit"><i data-lucide="send" class="w-4 h-4"></i> Bouton Envoyer</button>
+                </div>
+
+                <h3 class="dc-group-title">Blocs prêts</h3>
+                <div class="dc-preset-list">
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="banner"><i data-lucide="panel-top" class="w-4 h-4"></i> Bandeau d'en-tête</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="client_block"><i data-lucide="user-round" class="w-4 h-4"></i> Bloc client</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="company_block"><i data-lucide="building-2" class="w-4 h-4"></i> Bloc entreprise</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="signature"><i data-lucide="pen-line" class="w-4 h-4"></i> Bloc signature</button>
+                    <button type="button" class="dc-preset" draggable="true" data-dc-preset="footer"><i data-lucide="panel-bottom" class="w-4 h-4"></i> Pied de page</button>
+                </div>
+            </section>
+
+            <section class="dc-pane" data-dc-pane="variables">
+                <p class="dc-pane-hint">Les champs se remplissent tout seuls (client, entreprise, document) ou depuis ce panneau. <strong>+</strong> insère un champ dans la page ; cliquez sur un champ de la page pour le remplacer.</p>
+                <div class="dc-var-list" data-dc-var-list></div>
+            </section>
+
+            <section class="dc-pane" data-dc-pane="layers">
+                <p class="dc-pane-hint">Du premier plan vers l'arrière-plan.</p>
+                <div class="dc-layer-list" data-dc-layer-list></div>
+            </section>
+
+            <section class="dc-pane" data-dc-pane="pages">
+                <div class="dc-page-list" data-dc-page-list></div>
+                <button type="button" class="dc-btn dc-btn--block mt-2" data-dc-add-page><i data-lucide="plus" class="w-3.5 h-3.5"></i> Ajouter une page</button>
+            </section>
+        </div>
+    </aside>
+
+    <!-- ================= Zone centrale ================= -->
+    <div class="dc-stage">
+        <div class="dc-workspace" data-dc-workspace>
+            <div class="dc-pages" data-dc-pages translate="no"></div>
+        </div>
+    </div>
+
+    <!-- ================= Inspecteur ================= -->
+    <aside class="dc-inspector" data-dc-inspector></aside>
+
+    <input type="file" accept="image/*" class="hidden" data-dc-image-input>
+    <input type="file" accept=".svg,image/svg+xml" class="hidden" data-dc-svg-input>
+</div>
+
+<!-- Menu contextuel (clic droit sur un élément) -->
+<div class="dc-context" data-dc-context hidden>
+    <button type="button" data-dc-cmd="duplicate"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Dupliquer <kbd>Ctrl D</kbd></button>
+    <button type="button" data-dc-cmd="copy"><i data-lucide="clipboard-copy" class="w-3.5 h-3.5"></i> Copier <kbd>Ctrl C</kbd></button>
+    <button type="button" data-dc-cmd="paste"><i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i> Coller <kbd>Ctrl V</kbd></button>
+    <hr>
+    <button type="button" data-dc-cmd="front"><i data-lucide="bring-to-front" class="w-3.5 h-3.5"></i> Premier plan</button>
+    <button type="button" data-dc-cmd="forward"><i data-lucide="arrow-up" class="w-3.5 h-3.5"></i> Avancer</button>
+    <button type="button" data-dc-cmd="backward"><i data-lucide="arrow-down" class="w-3.5 h-3.5"></i> Reculer</button>
+    <button type="button" data-dc-cmd="back"><i data-lucide="send-to-back" class="w-3.5 h-3.5"></i> Arrière-plan</button>
+    <hr>
+    <button type="button" data-dc-cmd="lock"><i data-lucide="lock" class="w-3.5 h-3.5"></i> Verrouiller / déverrouiller</button>
+    <button type="button" data-dc-cmd="delete" class="is-danger"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer <kbd>Suppr</kbd></button>
+</div>
+
+{{ canvas_json|json_script:"dc-config" }}
+<script>
+    window.__dcMeta = {
+        title: "{{ document.title|escapejs }}",
+        documentType: "{{ document.document_type }}",
+        status: "{{ document.status }}",
+        clientId: "{{ document.client_id|default:'' }}",
+        pageFormat: "{{ page_format }}",
+        pageOrientation: "{{ page_orientation }}",
+        documentTypes: [{% for key, label in document_types %}["{{ key }}", "{{ label|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+        statuses: [{% for key, label in status_choices %}["{{ key }}", "{{ label|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+        clients: [{% for c in clients %}["{{ c.id }}", "{{ c.name|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+        pageFormats: [{% for key, label in page_format_choices %}["{{ key }}", "{{ label|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+        orientations: [{% for key, label in page_orientation_choices %}["{{ key }}", "{{ label|escapejs }}"]{% if not forloop.last %},{% endif %}{% endfor %}],
+        listUrl: "{% url 'dashboard:documents-list' %}",
+        deleteUrl: "{% url 'documents:document-delete' document.id %}",
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'dashboard/base.html' %}
+{% block page_title %}{{ page_title|default:"Aperçu du devis" }}{% endblock %}
+{% block page_subtitle %}Vérifiez le devis avant de l’envoyer{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ page_title }}</h1>
+                    <p class="mt-2 text-gray-600">Prévisualisation du devis avant envoi</p>
+                </div>
+                <div class="flex space-x-4 items-center">
+                    {% include "components/drive_button.html" with kind="quote" id=quote.id %}
+                    <a href="{% url 'invoices:quote-edit' quote.id %}" class="btn-modern btn-modern-secondary">
+                        Modifier
+                    </a>
+                    <button onclick="window.print()" class="btn-modern btn-modern-primary">
+                        Imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div class="invoice-preview border border-gray-200 rounded-lg p-6 bg-white" translate="no">
+                <style>
+                    {{ css_content|safe }}
+                </style>
+                {{ html_content|safe }}
+            </div>
+        </div>
+
+        {% if messages %}{% for message in messages %}<p class="mt-6 text-sm px-3 py-2 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-800{% endif %}">{{ message }}</p>{% endfor %}{% endif %}
+        {% if quote.status == 'accepted' %}
+        <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5 text-sm">
+            <p class="font-semibold text-gray-900">Factures de situation</p>
+            <p class="text-gray-500 mt-0.5">Facturez le marché au fil de l'avancement des travaux. Chaque situation facture la différence avec la précédente.</p>
+            {% if situations %}
+            <ul class="mt-3 space-y-1">
+                {% for s in situations %}<li><a class="underline" href="{% url 'invoices:invoice-preview' s.id %}">Situation n° {{ s.situation_number }}</a> — cumul {{ s.situation_progress }} % · {{ s.total_amount }} € TTC{% if s.retention_amount %} (retenue {{ s.retention_amount }} €{% if s.retention_released_at %}, libérée{% endif %}){% endif %} · {% if s.status == 'draft' %}brouillon{% else %}{{ s.invoice_number }}{% endif %}</li>{% endfor %}
+            </ul>
+            {% endif %}
+            {% if situation_progress < 100 %}
+            <form method="post" action="{% url 'invoices:quote-situation-create' quote.id %}" class="mt-4 flex flex-wrap items-end gap-3">
+                {% csrf_token %}
+                <label class="flex flex-col gap-1"><span class="text-xs text-gray-500">Avancement cumulé (%)</span>
+                    <input type="number" name="progress" min="1" max="100" step="0.01" required placeholder="Ex. 40" class="w-32 border border-gray-300 rounded-lg px-3 py-2"></label>
+                <label class="flex flex-col gap-1"><span class="text-xs text-gray-500">Retenue de garantie (%)</span>
+                    <input type="number" name="retention_rate" min="0" max="10" step="0.01" value="5" class="w-28 border border-gray-300 rounded-lg px-3 py-2"></label>
+                <button type="submit" class="btn-modern btn-modern-primary">Créer la situation n° {{ situations|length|add:1 }}</button>
+            </form>
+            {% else %}<p class="mt-3 text-green-700">Marché facturé à 100 %.</p>{% endif %}
+        </div>
+        {% endif %}
+
+        <div class="mt-8 flex justify-center space-x-4">
+            <a href="{% url 'invoices:quote-list' %}" class="btn-modern btn-modern-secondary">
+                Retour à la liste
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * { visibility: hidden; }
+    .invoice-preview, .invoice-preview * { visibility: visible; }
+    .invoice-preview {
+        position: absolute; left: 0; top: 0; width: 100%;
+        border: none !important; box-shadow: none !important; padding: 0 !important;
+    }
+}
+</style>
+{% endblock %}

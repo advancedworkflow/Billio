@@ -1,0 +1,42 @@
+{% comment %}
+Sélecteur de langue (fr / en / de / es), sans dépendance JavaScript (<details>).
+Les noms de langue restent dans leur propre langue (translate="no").
+Paramètre facultatif : align="left" pour ouvrir le menu vers la droite.
+{% endcomment %}
+<details class="lang-switch" translate="no">
+    <summary class="lang-switch-btn" title="Langue / Language">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span>{{ current_language|upper }}</span>
+    </summary>
+    <div class="lang-switch-menu{% if align == 'left' %} is-left{% endif %}">
+        {% for code, label in available_languages %}
+        <a href="/i18n/set/{{ code }}/?next={{ request.get_full_path|urlencode }}" class="{% if code == current_language %}is-active{% endif %}" lang="{{ code }}">
+            <span class="lang-switch-code">{{ code|upper }}</span>{{ label }}
+            {% if code == current_language %}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>{% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</details>
+<style>
+.lang-switch { position: relative; display: inline-flex; }
+.lang-switch > summary { list-style: none; }
+.lang-switch > summary::-webkit-details-marker { display: none; }
+.lang-switch-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--billio-border, #e4e4e7); background: #fff; color: #3f3f46; font-size: 12.5px; font-weight: 600; cursor: pointer; user-select: none; }
+.lang-switch-btn:hover, .lang-switch[open] .lang-switch-btn { border-color: #a1a1aa; color: #18181b; }
+.lang-switch-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 90; min-width: 170px; padding: 4px; background: #fff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 14px 34px rgba(0,0,0,.12); }
+.lang-switch-menu.is-left { right: auto; left: 0; }
+.lang-switch-menu a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: #3f3f46; text-decoration: none; }
+.lang-switch-menu a:hover { background: #f4f4f5; color: #18181b; }
+.lang-switch-menu a.is-active { font-weight: 600; color: #18181b; }
+.lang-switch-menu a svg { margin-left: auto; color: var(--billio-primary, #6d28d9); }
+.lang-switch-code { width: 26px; font-size: 11px; font-weight: 700; color: #a1a1aa; }
+</style>
+<script>
+/* Ferme le menu de langue au clic ailleurs. */
+if (!window.__langSwitchBound) {
+    window.__langSwitchBound = true;
+    document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.lang-switch[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
+}
+</script>

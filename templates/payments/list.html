@@ -1,0 +1,555 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Ce qui est encaissé, ce qui reste à encaisser, et quoi faire maintenant{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+{{ open_invoices_data|json_script:"pay-open-invoices" }}
+<div class="space-y-6" x-data="paymentsPage()">
+    <form x-ref="csrfForm" class="hidden">{% csrf_token %}</form>
+
+    <div class="flex items-center justify-end gap-2">
+        {% include "components/export_menu.html" with table="payments" %}
+        <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2" @click="newMethodModal = true">
+            <i data-lucide="landmark" class="w-4 h-4"></i> Moyen de paiement
+        </button>
+        <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg inline-flex items-center gap-2" @click="openRecord()">
+            <i data-lucide="plus" class="w-4 h-4"></i> Enregistrer un paiement
+        </button>
+    </div>
+
+    {% if flow %}
+    <!-- ===================== Trésorerie ===================== -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="kpi-premium">
+            <p class="kpi-label">Encaissé ce mois-ci</p>
+            <p class="kpi-value">{{ flow.kpis.collected|money }}</p>
+            {% include "dashboard/_kpi_trend.html" with trend=flow.kpis.collected_trend %}
+        </div>
+        <div class="kpi-premium">
+            <p class="kpi-label">Reste à encaisser</p>
+            <p class="kpi-value">{{ flow.kpis.to_collect|money }}</p>
+            <p class="text-xs text-gray-500 mt-2">{{ flow.kpis.open_count }} facture{{ flow.kpis.open_count|pluralize }} en attente</p>
+        </div>
+        <div class="kpi-premium">
+            <p class="kpi-label">En retard</p>
+            <p class="kpi-value {% if flow.kpis.late %}pay-late-value{% endif %}">{{ flow.kpis.late|money }}</p>
+            <p class="text-xs text-gray-500 mt-2">{% if flow.kpis.late_count %}{{ flow.kpis.late_count }} facture{{ flow.kpis.late_count|pluralize }} échue{{ flow.kpis.late_count|pluralize }}{% else %}Aucun retard{% endif %}</p>
+        </div>
+        <div class="kpi-premium">
+            <p class="kpi-label">Délai moyen de paiement</p>
+            <p class="kpi-value">{% if flow.kpis.avg_delay is not None %}{{ flow.kpis.avg_delay }} j{% else %}—{% endif %}</p>
+            <p class="text-xs text-gray-500 mt-2">{% if flow.kpis.paid_count %}Sur {{ flow.kpis.paid_count }} facture{{ flow.kpis.paid_count|pluralize }} payée{{ flow.kpis.paid_count|pluralize }} (12 mois){% else %}Pas encore de facture payée{% endif %}</p>
+        </div>
+    </section>
+
+    <section class="pay-card">
+        <div class="pay-card-head">
+            <div>
+                <h2 class="pay-card-title">Encaissements</h2>
+                <p class="pay-card-sub">6 derniers mois et prévision à 3 mois · {{ flow.expected_3m|money }} attendus</p>
+            </div>
+            <div class="pay-legend"><span><i class="pay-dot pay-dot--in"></i> Encaissé</span><span><i class="pay-dot pay-dot--exp"></i> Attendu</span></div>
+        </div>
+        <div class="pay-chart">
+            {% for point in flow.series %}
+            <div class="pay-bar-col{% if point.is_current %} is-current{% endif %}{% if point.is_future %} is-future{% endif %}"
+                 title="{{ point.label }} — encaissé {{ point.collected|money }}{% if point.expected %} · attendu {{ point.expected|money }}{% endif %}">
+                <span class="pay-bar-value">{% if point.collected or point.expected %}{{ point.collected|add:point.expected|amount }}{% endif %}</span>
+                <div class="pay-bar-track">
+                    <span class="pay-bar pay-bar--exp" style="height: {{ point.expected_pct }}%"></span>
+                    <span class="pay-bar pay-bar--in" style="height: {{ point.collected_pct }}%"></span>
+                </div>
+                <span class="pay-bar-label">{{ point.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ===================== À encaisser ===================== -->
+    <section class="pay-card">
+        <div class="pay-card-head">
+            <div>
+                <h2 class="pay-card-title">À encaisser</h2>
+                <p class="pay-card-sub">Factures envoyées non soldées, de la plus urgente à la plus lointaine</p>
+            </div>
+        </div>
+        {% if flow.queue.overdue or flow.queue.week or flow.queue.later %}
+        {% for bucket, label, rows in queue_buckets %}
+        {% if rows %}
+        <p class="pay-group pay-group--{{ bucket }}">{{ label }} <span>{{ rows|length }}</span></p>
+        <div class="pay-rows">
+            {% for invoice in rows %}
+            <div class="pay-row">
+                <div class="pay-row-main">
+                    <a href="{% url 'invoices:invoice-edit' invoice.id %}" class="pay-row-title">{{ invoice.invoice_number }} · {{ invoice.client.name|default:"—" }}</a>
+                    <p class="pay-row-meta">
+                        {% if bucket == 'overdue' %}<span class="pay-late">{{ invoice.days_late }} j de retard</span> · échue le {{ invoice.due_date|date:"d/m/Y" }}
+                        {% else %}Échéance le {{ invoice.due_date|date:"d/m/Y" }}{% endif %}
+                        {% if invoice.status == 'viewed' %} · <span class="pay-viewed">consultée</span>{% endif %}
+                        {% if invoice.last_reminder_at %} · relancée le {{ invoice.last_reminder_at|date:"d/m" }}{% endif %}
+                    </p>
+                </div>
+                <div class="pay-row-amount">
+                    <strong>{{ invoice.remaining|money }}</strong>
+                    {% if invoice.is_partial %}<small>sur {{ invoice.total_amount|money }} · partiel</small>{% endif %}
+                </div>
+                <div class="pay-row-actions">
+                    <button type="button" class="pay-icon-btn" title="Relancer par email" @click="remind('{{ invoice.id }}', '{{ invoice.invoice_number }}')"><i data-lucide="send" class="w-4 h-4"></i></button>
+                    <button type="button" class="pay-icon-btn" title="Copier le lien de paiement" @click="copyLink('{% url 'invoices:public-invoice-payment' invoice.id %}')"><i data-lucide="link" class="w-4 h-4"></i></button>
+                    <button type="button" class="pay-btn" @click="openRecord('{{ invoice.id }}')">Encaisser</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <div class="pay-empty"><i data-lucide="party-popper" class="w-5 h-5"></i><p>Tout est encaissé. Aucune facture en attente de paiement.</p></div>
+        {% endif %}
+
+        {% if flow.upcoming %}
+        <p class="pay-group pay-group--planned">Prévu, pas encore facturé <span>{{ flow.upcoming|length }}</span></p>
+        <div class="pay-rows">
+            {% for item in flow.upcoming %}
+            <a href="{{ item.url }}" class="pay-row pay-row--link">
+                <div class="pay-row-main">
+                    <p class="pay-row-title">{{ item.label }} · {{ item.client }}</p>
+                    <p class="pay-row-meta">{{ item.kind }} · {{ item.source }}{% if item.due_date %} · prévu le {{ item.due_date|date:"d/m/Y" }}{% endif %}</p>
+                </div>
+                <div class="pay-row-amount"><strong>{{ item.amount|money }}</strong></div>
+                <div class="pay-row-actions"><i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i></div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- ===================== Historique ===================== -->
+    <section class="pay-card">
+        <div class="pay-card-head"><div><h2 class="pay-card-title">Encaissements récents</h2></div></div>
+        {% if recent_payments %}
+        <div class="overflow-x-auto">
+            <table class="billio-table">
+                <thead>
+                    <tr><th>Facture</th><th>Client</th><th>Moyen</th><th class="text-right">Montant</th><th>Statut</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                    {% for payment in recent_payments %}
+                    <tr>
+                        <td><a href="{% url 'invoices:invoice-edit' payment.invoice_id %}" class="text-sm font-medium hover:underline">{{ payment.invoice.invoice_number }}</a></td>
+                        <td><span class="text-sm text-gray-600">{{ payment.invoice.client.name }}</span></td>
+                        <td><span class="text-sm text-gray-600">{{ payment.payment_method.name|default:payment.provider|default:"—" }}</span>{% if payment.provider_payment_id %}<br><span class="text-xs text-gray-400">Réf. {{ payment.provider_payment_id }}</span>{% endif %}</td>
+                        <td class="text-right"><span class="text-sm font-semibold">{{ payment.amount|money:payment.currency }}</span></td>
+                        <td>
+                            <span class="status-badge status-badge--{% if payment.status == 'completed' %}paid{% elif payment.status == 'failed' %}overdue{% else %}draft{% endif %}">{{ payment.get_status_display }}</span>
+                        </td>
+                        <td><span class="text-xs text-gray-500">{{ payment.payment_date|default:payment.created_at|date:"d/m/Y" }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="pay-empty"><p>Aucun encaissement pour le moment.</p></div>
+        {% endif %}
+    </section>
+
+    <!-- ===================== Moyens de paiement ===================== -->
+    <section class="pay-card">
+        <div class="pay-card-head">
+            <div><h2 class="pay-card-title">Moyens de paiement</h2><p class="pay-card-sub">Comment vos clients peuvent vous régler</p></div>
+        </div>
+        {% if payment_methods %}
+        <div class="overflow-x-auto">
+            <table class="billio-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Type</th>
+                        <th>Détails</th>
+                        <th>Statut</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for method in payment_methods %}
+                    <tr>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-semibold" style="color: var(--billio-text);">{{ method.name }}</p>
+                                {% if method.is_default %}
+                                <span class="status-badge status-badge--sent">Défaut</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td><span class="text-sm text-gray-600">{{ method.get_method_type_display }}</span></td>
+                        <td>
+                            <span class="text-xs text-gray-500">
+                                {% if method.iban %}IBAN •••• {{ method.iban|slice:"-4:" }}{% elif method.bank_name %}{{ method.bank_name }}{% else %}—{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if method.is_active %}
+                            <span class="status-badge status-badge--paid">Actif</span>
+                            {% else %}
+                            <span class="status-badge status-badge--cancelled">Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">
+                            <div class="relative inline-block" x-data="{ open: false }" @keydown.escape.window="open = false">
+                                <button type="button" class="billio-table-action-btn" title="Options" @click="open = !open">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z"></path>
+                                    </svg>
+                                </button>
+                                <div
+                                    x-show="open"
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                                    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                                    x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
+                                    x-cloak
+                                    @click.away="open = false"
+                                    class="absolute right-0 mt-2 w-52 dropdown-panel z-20"
+                                >
+                                    <div class="dropdown-section">
+                                        <button type="button" class="dropdown-item" @click="openEdit({{ method.id }}, '{{ method.name|escapejs }}', '{{ method.method_type }}', '{{ method.bank_name|default:''|escapejs }}', '{{ method.account_holder|default:''|escapejs }}', '{{ method.iban|default:''|escapejs }}', '{{ method.bic|default:''|escapejs }}', {{ method.is_active|yesno:'true,false' }}); open = false;">
+                                            Modifier
+                                        </button>
+                                        {% if not method.is_default %}
+                                        <button type="button" class="dropdown-item" @click="setDefault({{ method.id }}); open = false;">
+                                            Définir par défaut
+                                        </button>
+                                        {% endif %}
+                                        <div class="dropdown-divider"></div>
+                                        <button type="button" class="dropdown-item dropdown-item-danger" @click="deleteMethod({{ method.id }}); open = false;">
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-10 text-center">
+            <h3 class="text-base font-semibold text-gray-900">Aucun moyen de paiement</h3>
+            <p class="text-sm text-gray-600 mt-2 max-w-md mx-auto">
+                Ajoutez un moyen de paiement (virement, carte, PayPal...) pour préciser comment vos clients peuvent vous régler.
+            </p>
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Enregistrer un paiement -->
+    <div x-show="recordModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="recordModal = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="recordModal = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">Enregistrer un paiement</h3>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" @click="recordModal = false">✕</button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <template x-if="!openInvoices.length">
+                        <p class="text-sm text-gray-600">Aucune facture envoyée n'attend de paiement.</p>
+                    </template>
+                    <template x-if="openInvoices.length">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="interactive-label">Facture</label>
+                                <select x-model="record.invoice_id" @change="record.amount = selectedInvoice() ? selectedInvoice().remaining : ''" class="interactive-input">
+                                    <template x-for="inv in openInvoices" :key="inv.id">
+                                        <option :value="inv.id" x-text="`${inv.number} · ${inv.client} — reste ${fmt(inv.remaining)}`"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="interactive-label">Montant reçu (€)</label>
+                                    <input type="number" step="0.01" min="0.01" x-model="record.amount" class="interactive-input">
+                                    <p class="text-xs mt-1" :class="isPartial() ? 'text-amber-600' : 'text-gray-500'"
+                                       x-text="isPartial() ? `Paiement partiel — il restera ${fmt(selectedInvoice().remaining - record.amount)}` : 'Solde la facture'"></p>
+                                </div>
+                                <div>
+                                    <label class="interactive-label">Date de réception</label>
+                                    <input type="date" x-model="record.date" :max="today" class="interactive-input">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="interactive-label">Moyen</label>
+                                    <select x-model="record.method_type" class="interactive-input">
+                                        <option value="bank_transfer">Virement</option>
+                                        <option value="check">Chèque</option>
+                                        <option value="cash">Espèces</option>
+                                        <option value="credit_card">Carte bancaire</option>
+                                        <option value="paypal">PayPal</option>
+                                        <option value="stripe">Stripe</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="interactive-label">Référence <span class="interactive-hint">Optionnel</span></label>
+                                    <input type="text" x-model="record.reference" class="interactive-input" placeholder="N° de virement, de chèque…">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="interactive-label">Note <span class="interactive-hint">Optionnel</span></label>
+                                <input type="text" x-model="record.notes" class="interactive-input">
+                            </div>
+                        </div>
+                    </template>
+                    <p x-show="recordError" x-cloak x-text="recordError" class="text-sm text-red-600"></p>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="recordModal = false">Annuler</button>
+                    <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" :disabled="!!(saving || !openInvoices.length)" @click="saveRecord()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pay-toast" x-show="toast" x-cloak x-transition x-text="toast"></div>
+
+    <!-- New payment method modal -->
+    <div x-show="newMethodModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="newMethodModal = false" @open-new-method-modal.window="newMethodModal = true">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="newMethodModal = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">Nouveau moyen de paiement</h3>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" @click="newMethodModal = false">✕</button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
+                        <input type="text" x-model="newMethod.name" class="interactive-input" placeholder="Ex. Compte pro BNP">
+                    </div>
+                    <div>
+                        <label class="interactive-label">Type</label>
+                        <select x-model="newMethod.method_type" class="interactive-input">
+                            {% for value, label in payment_method_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="interactive-label">Banque</label>
+                            <input type="text" x-model="newMethod.bank_name" class="interactive-input">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Titulaire</label>
+                            <input type="text" x-model="newMethod.account_holder" class="interactive-input">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="interactive-label">IBAN</label>
+                            <input type="text" x-model="newMethod.iban" class="interactive-input">
+                        </div>
+                        <div>
+                            <label class="interactive-label">BIC</label>
+                            <input type="text" x-model="newMethod.bic" class="interactive-input">
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" class="custom-checkbox" x-model="newMethod.is_default"><span>Définir par défaut</span></label>
+                    <p x-show="newMethodError" x-cloak x-text="newMethodError" class="text-sm text-red-600"></p>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="newMethodModal = false">Annuler</button>
+                    <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" @click="createMethod()">Créer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit payment method modal -->
+    <div x-show="editMethodModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="editMethodModal = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="editMethodModal = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">Modifier moyen de paiement</h3>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" @click="editMethodModal = false">✕</button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
+                        <input type="text" x-model="editMethod.name" class="interactive-input">
+                    </div>
+                    <div>
+                        <label class="interactive-label">Type</label>
+                        <select x-model="editMethod.method_type" class="interactive-input">
+                            {% for value, label in payment_method_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="interactive-label">Banque</label>
+                            <input type="text" x-model="editMethod.bank_name" class="interactive-input">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Titulaire</label>
+                            <input type="text" x-model="editMethod.account_holder" class="interactive-input">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="interactive-label">IBAN</label>
+                            <input type="text" x-model="editMethod.iban" class="interactive-input">
+                        </div>
+                        <div>
+                            <label class="interactive-label">BIC</label>
+                            <input type="text" x-model="editMethod.bic" class="interactive-input">
+                        </div>
+                    </div>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" class="custom-checkbox" x-model="editMethod.is_active"><span>Moyen actif</span></label>
+                    <p x-show="editMethodError" x-cloak x-text="editMethodError" class="text-sm text-red-600"></p>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="editMethodModal = false">Annuler</button>
+                    <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" @click="saveMethodEdit()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function paymentsPage() {
+        return {
+            recordModal: false,
+            saving: false,
+            recordError: '',
+            toast: '',
+            today: '{{ today }}',
+            openInvoices: JSON.parse(document.getElementById('pay-open-invoices').textContent),
+            record: { invoice_id: '', amount: '', date: '{{ today }}', method_type: 'bank_transfer', reference: '', notes: '' },
+            fmt(v) { return Number(v || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }); },
+            selectedInvoice() { return this.openInvoices.find((i) => i.id === this.record.invoice_id); },
+            isPartial() { const inv = this.selectedInvoice(); return !!(inv && Number(this.record.amount) > 0 && Number(this.record.amount) < Number(inv.remaining) - 0.009); },
+            flash(message) { this.toast = message; clearTimeout(this._t); this._t = setTimeout(() => { this.toast = ''; }, 3200); },
+            openRecord(id) {
+                const inv = this.openInvoices.find((i) => i.id === id) || this.openInvoices[0];
+                this.record = { invoice_id: inv ? inv.id : '', amount: inv ? inv.remaining : '', date: this.today, method_type: 'bank_transfer', reference: '', notes: '' };
+                this.recordError = '';
+                this.recordModal = true;
+            },
+            async saveRecord() {
+                this.recordError = '';
+                this.saving = true;
+                const body = new URLSearchParams(this.record);
+                try {
+                    const response = await fetch('{% url "payments:record-payment" %}', { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) { this.recordError = data.error || 'Enregistrement impossible.'; return; }
+                    this.recordModal = false;
+                    this.flash(data.message);
+                    setTimeout(() => window.location.reload(), 900);
+                } finally { this.saving = false; }
+            },
+            async remind(id, number) {
+                const response = await fetch(`{% url "payments:send-payment-reminder" "00000000-0000-0000-0000-000000000000" %}`.replace('00000000-0000-0000-0000-000000000000', id), { method: 'POST', headers: { 'X-CSRFToken': this.csrf() } });
+                const data = await response.json().catch(() => ({}));
+                this.flash(response.ok && data.ok ? data.message : (data.error || `Relance de ${number} impossible.`));
+                if (response.ok && data.ok) setTimeout(() => window.location.reload(), 1200);
+            },
+            async copyLink(path) {
+                const url = window.location.origin + path;
+                try { await navigator.clipboard.writeText(url); this.flash('Lien de paiement copié.'); }
+                catch (e) { window.prompt('Lien de paiement :', url); }
+            },
+            newMethodModal: false,
+            newMethod: { name: '', method_type: 'bank_transfer', bank_name: '', account_holder: '', iban: '', bic: '', is_default: false },
+            newMethodError: '',
+            editMethodModal: false,
+            editMethod: { id: null, name: '', method_type: 'bank_transfer', bank_name: '', account_holder: '', iban: '', bic: '', is_active: true },
+            editMethodError: '',
+            csrf() {
+                return this.$refs.csrfForm?.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+            },
+            openEdit(id, name, method_type, bank_name, account_holder, iban, bic, is_active) {
+                this.editMethod = { id, name, method_type, bank_name, account_holder, iban, bic, is_active };
+                this.editMethodError = '';
+                this.editMethodModal = true;
+            },
+            async createMethod() {
+                this.newMethodError = '';
+                if (!this.newMethod.name) {
+                    this.newMethodError = 'Nom requis.';
+                    return;
+                }
+                const payload = new URLSearchParams();
+                Object.entries(this.newMethod).forEach(([k, v]) => payload.set(k, typeof v === 'boolean' ? (v ? 'true' : 'false') : (v || '')));
+
+                const response = await fetch('{% url "payments:payment-method-quick-create" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'X-CSRFToken': this.csrf() },
+                    body: payload.toString(),
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    this.newMethodError = data.error || 'Impossible de créer le moyen de paiement.';
+                    return;
+                }
+                window.location.reload();
+            },
+            async saveMethodEdit() {
+                this.editMethodError = '';
+                if (!this.editMethod.name) {
+                    this.editMethodError = 'Nom requis.';
+                    return;
+                }
+                const payload = new URLSearchParams();
+                Object.entries(this.editMethod).forEach(([k, v]) => {
+                    if (k === 'id') return;
+                    payload.set(k, typeof v === 'boolean' ? (v ? 'true' : 'false') : (v || ''));
+                });
+
+                const response = await fetch(`/payments/methods/quick-update/${this.editMethod.id}/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'X-CSRFToken': this.csrf() },
+                    body: payload.toString(),
+                });
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    this.editMethodError = data.error || 'Mise à jour impossible.';
+                    return;
+                }
+                window.location.reload();
+            },
+            async setDefault(id) {
+                const response = await fetch(`/payments/methods/quick-set-default/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': this.csrf() },
+                });
+                if (response.ok) window.location.reload();
+            },
+            async deleteMethod(id) {
+                if (!confirm('Supprimer ce moyen de paiement ?')) return;
+                const response = await fetch(`/payments/methods/quick-delete/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': this.csrf() },
+                });
+                if (response.ok) window.location.reload();
+            },
+        };
+    }
+    </script>
+</div>
+{% endblock %}

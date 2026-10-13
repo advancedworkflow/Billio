@@ -1,0 +1,229 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Documents - Billio{% endblock %}
+{% block page_title %}Documents{% endblock %}
+{% block page_subtitle %}Vos documents, factures et devis — et les modèles pour en créer de nouveaux{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/documents-editor.css' %}?v=2.2">
+<style>{{ canvas_css|safe }}</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ tab: '{{ tab }}', typeFilter: 'all', q: '' }"
+     x-init="$watch('tab', (t) => history.replaceState(null, '', t === 'modeles' ? '?tab=modeles' : location.pathname))">
+    {% csrf_token %}
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="tabs-pills">
+            <button type="button" class="tab-pill" :class="tab === 'documents' ? 'tab-pill-active' : ''" @click="tab = 'documents'">
+                Mes documents <span class="text-xs opacity-60">{{ documents|length }}</span>
+            </button>
+            <button type="button" class="tab-pill" :class="tab === 'modeles' ? 'tab-pill-active' : ''" @click="tab = 'modeles'">
+                Modèles <span class="text-xs opacity-60">{{ template_count }}</span>
+            </button>
+        </div>
+        <button type="button" class="btn-primary-black inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" @click="tab = 'modeles'" x-show="tab === 'documents'">
+            <i data-lucide="plus" class="w-4 h-4"></i> Nouveau document
+        </button>
+    </div>
+
+    <!-- ===================== Mes documents ===================== -->
+    <div x-show="tab === 'documents'" class="space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="tabs-pills">
+                <button type="button" class="tab-pill" :class="typeFilter === 'all' ? 'tab-pill-active' : ''" @click="typeFilter = 'all'">Tous</button>
+                <button type="button" class="tab-pill" :class="typeFilter === 'document' ? 'tab-pill-active' : ''" @click="typeFilter = 'document'">Documents</button>
+                <button type="button" class="tab-pill" :class="typeFilter === 'invoice' ? 'tab-pill-active' : ''" @click="typeFilter = 'invoice'">Factures</button>
+                <button type="button" class="tab-pill" :class="typeFilter === 'quote' ? 'tab-pill-active' : ''" @click="typeFilter = 'quote'">Devis</button>
+                <button type="button" class="tab-pill" :class="typeFilter === 'favorite' ? 'tab-pill-active' : ''" @click="typeFilter = 'favorite'">Favoris</button>
+            </div>
+            <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm" style="border-color: var(--billio-border); background: #fff;">
+                <i data-lucide="search" class="w-4 h-4" style="color: var(--billio-text-muted);"></i>
+                <input type="search" x-model="q" placeholder="Rechercher" class="outline-none bg-transparent w-44">
+            </label>
+        </div>
+
+        <div class="billio-table-wrap">
+            {% if documents %}
+            <table class="billio-table">
+                <thead>
+                    <tr>
+                        <th>Document</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr x-data='{ fav: {{ doc.is_favorite|yesno:"true,false" }}, text: "{{ doc.title|default:doc.number|escapejs }} {{ doc.number|escapejs }} {{ doc.client|escapejs }}".toLowerCase() }'
+                        x-show="(typeFilter === 'all' || typeFilter === '{{ doc.type }}' || (typeFilter === 'favorite' && fav)) && (!q || text.includes(q.toLowerCase()))">
+                        <td>
+                            <p class="font-semibold">{{ doc.title|default:doc.number }}</p>
+                            <p class="text-xs" style="color: var(--billio-muted);">{{ doc.type_label }} · {{ doc.number }}</p>
+                        </td>
+                        <td>{{ doc.client }}</td>
+                        <td>{{ doc.date|date:"d/m/Y"|default:"—" }}</td>
+                        <td>{% if doc.amount %}{{ doc.amount }} €{% else %}—{% endif %}</td>
+                        <td><span class="status-badge status-badge--{{ doc.status }}">{{ doc.status }}</span></td>
+                        <td>
+                            <div class="flex items-center gap-1">
+                                {% if doc.view_url %}
+                                <a href="{{ doc.view_url }}" title="Voir" class="p-1.5 rounded-lg hover:bg-gray-100" style="color: var(--billio-text-muted);">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </a>
+                                {% endif %}
+                                {% if doc.edit_url %}
+                                <a href="{{ doc.edit_url }}" title="Modifier" class="p-1.5 rounded-lg hover:bg-gray-100" style="color: var(--billio-text-muted);">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </a>
+                                {% endif %}
+                                {% if doc.favorite_url %}
+                                <button type="button" title="Mettre en favoris" class="p-1.5 rounded-lg hover:bg-gray-100"
+                                        :style="fav ? 'color: var(--billio-primary);' : 'color: var(--billio-text-muted);'"
+                                        @click="
+                                            fav = !fav;
+                                            fetch('{{ doc.favorite_url }}', {
+                                                method: 'POST',
+                                                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                                            }).catch(() => { fav = !fav; });
+                                        ">
+                                    <i data-lucide="star" class="w-4 h-4" :fill="fav ? 'currentColor' : 'none'"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="billio-table-empty">Aucun document pour le moment. <button type="button" class="underline font-medium" @click="tab = 'modeles'">Choisir un modèle</button></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ===================== Modèles ===================== -->
+    <div x-show="tab === 'modeles'" x-cloak class="space-y-8">
+        <div>
+            <h2 class="dash-panel-title mb-3">Partir d'un modèle</h2>
+            <div class="doc-template-grid">
+                <form method="post" action="{% url 'documents:document-create' %}" class="doc-template-card">
+                    {% csrf_token %}
+                    <button type="submit" class="doc-thumb doc-thumb--blank" style="height: {{ thumb_width|add:78 }}px;">
+                        <span class="doc-template-blank-icon"><i data-lucide="plus" class="w-6 h-6"></i></span>
+                        <span class="font-semibold text-sm">Page blanche</span>
+                        <span class="text-xs" style="color: var(--billio-text-muted);">Canvas libre</span>
+                    </button>
+                    <div class="doc-template-card-footer">
+                        <div><p class="font-semibold text-sm">Canvas vierge</p><p class="text-xs" style="color: var(--billio-text-muted);">Textes, formes, tableaux</p></div>
+                    </div>
+                </form>
+                {% for template in system_templates %}
+                {% include "documents/_template_card.html" with template=template badge="" %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <h2 class="dash-panel-title mb-3">Mes modèles</h2>
+            {% if my_templates %}
+            <div class="doc-template-grid">
+                {% for template in my_templates %}
+                {% include "documents/_template_card.html" with template=template badge="Personnel" %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm" style="color: var(--billio-muted);">Aucun modèle personnel pour l'instant. Ouvrez un document et cliquez sur « Enregistrer comme modèle » pour en créer un.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ===================== Nouveau document depuis un modèle ===================== -->
+    {{ fill_clients|json_script:"doc-fill-clients" }}
+    <div class="docfill-backdrop" x-data="docFill()" x-show="open" x-cloak @doc-fill.window="start($event.detail)"
+         @keydown.escape.window="open = false" @click.self="open = false">
+        <form class="docfill" method="post" :action="url">
+            {% csrf_token %}
+            <header>
+                <div><p class="docfill-kicker">Nouveau document</p><h3 x-text="name"></h3></div>
+                <button type="button" @click="open = false" aria-label="Fermer"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </header>
+            <div class="docfill-body">
+                <label class="docfill-field"><span>Client</span>
+                    <select name="client_id" x-model="clientId">
+                        <option value="">Aucun pour l'instant</option>
+                        <template x-for="c in clients" :key="c.id"><option :value="c.id" x-text="c.name" :selected="c.id === clientId"></option></template>
+                    </select>
+                    <small>Son nom, ses coordonnées et son dernier devis / sa dernière facture remplissent le document.</small>
+                </label>
+                <label class="docfill-field"><span>Titre</span><input name="title" :placeholder="name" maxlength="200"></label>
+                <template x-if="fields.length">
+                    <div class="docfill-fields">
+                        <p class="docfill-section">Champs du modèle</p>
+                        <template x-for="f in fields" :key="f.id">
+                            <label class="docfill-field">
+                                <span><span x-text="f.label"></span><b x-show="f.required" class="docfill-req">*</b></span>
+                                <template x-if="f.type === 'choice'">
+                                    <select :name="'fv_' + f.id" :required="f.required">
+                                        <option value="">Choisir…</option>
+                                        <template x-for="o in f.options" :key="o"><option :value="o" x-text="o" :selected="o === f.value"></option></template>
+                                    </select>
+                                </template>
+                                <template x-if="f.type !== 'choice'">
+                                    <input :name="'fv_' + f.id" :type="f.type === 'date' ? 'date' : (f.type === 'number' ? 'number' : 'text')"
+                                           :value="f.value" :required="f.required" :inputmode="f.type === 'money' ? 'decimal' : null"
+                                           :placeholder="f.type === 'money' ? 'Montant en €' : 'À remplir'">
+                                </template>
+                                <small x-show="f.help" x-text="f.help"></small>
+                            </label>
+                        </template>
+                    </div>
+                </template>
+                <p class="docfill-hint" x-show="!fields.length">Ce modèle n'a pas de champ à remplir : tout se complète avec les infos du client et de votre entreprise.</p>
+            </div>
+            <footer>
+                <button type="button" class="docfill-btn" @click="open = false">Annuler</button>
+                <button type="submit" class="docfill-btn docfill-btn--primary">Créer le document</button>
+            </footer>
+        </form>
+    </div>
+</div>
+<script>
+function docFill() {
+    const params = new URLSearchParams(location.search);
+    return {
+        open: false, url: '', name: '', fields: [],
+        clients: JSON.parse(document.getElementById('doc-fill-clients').textContent),
+        clientId: params.get('client') || '',
+        start(detail) {
+            Object.assign(this, { url: detail.url, name: detail.name, fields: detail.fields || [], open: true });
+            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+        },
+    };
+}
+</script>
+<style>
+.docfill-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(24,24,27,.35); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.docfill { width: min(480px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.18); overflow: hidden; }
+.docfill header { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 10px; }
+.docfill header h3 { font-size: 16px; font-weight: 600; }
+.docfill-kicker { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #a1a1aa; font-weight: 600; }
+.docfill-body { padding: 6px 20px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.docfill-field { display: flex; flex-direction: column; gap: 5px; }
+.docfill-field > span { font-size: 12.5px; font-weight: 500; color: #3f3f46; }
+.docfill-field small { font-size: 11.5px; color: #a1a1aa; }
+.docfill-field input, .docfill-field select { padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 9px; font-size: 13.5px; background: #fff; }
+.docfill-field input:focus, .docfill-field select:focus { outline: none; border-color: #6d28d9; box-shadow: 0 0 0 3px rgba(109,40,217,.1); }
+.docfill-fields { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; border-top: 1px solid #f4f4f5; }
+.docfill-section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #71717a; font-weight: 600; margin-top: 10px; }
+.docfill-req { color: #dc2626; margin-left: 3px; }
+.docfill-hint { font-size: 12.5px; color: #71717a; background: #fafafa; border-radius: 10px; padding: 10px 12px; }
+.docfill footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #f4f4f5; }
+.docfill-btn { padding: 8px 14px; border-radius: 9px; border: 1px solid #e4e4e7; font-size: 13px; font-weight: 500; }
+.docfill-btn--primary { background: #18181b; border-color: #18181b; color: #fff; }
+</style>
+{% endblock %}

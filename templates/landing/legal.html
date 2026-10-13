@@ -1,0 +1,189 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - Billio</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=1.6" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; color: var(--billio-text); background: var(--billio-bg); }
+        .legal-doc { background: #fff; border: 1px solid var(--billio-border); border-radius: 1.25rem; padding: 2.5rem 2rem; }
+        @media (max-width: 640px) { .legal-doc { padding: 1.75rem 1.25rem; } }
+        .legal-doc h1 { font-family: var(--font-titles); font-weight: 800; font-size: 2rem; letter-spacing: -0.02em; margin-bottom: .25rem; }
+        .legal-doc h2 { font-family: var(--font-titles); font-weight: 700; font-size: 1.2rem; margin: 2rem 0 .6rem; }
+        .legal-doc p, .legal-doc li { font-size: .975rem; line-height: 1.7; color: #3f3f46; }
+        .legal-doc p { margin-bottom: .75rem; }
+        .legal-doc ul { list-style: disc; padding-left: 1.25rem; margin-bottom: .75rem; }
+        .legal-doc table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; font-size: .9rem; }
+        .legal-doc th, .legal-doc td { text-align: left; padding: .55rem .6rem; border-bottom: 1px solid var(--billio-border); vertical-align: top; }
+        .legal-doc th { font-weight: 600; color: var(--billio-text); }
+        .legal-doc a { color: var(--billio-primary); font-weight: 500; }
+        .legal-tabs a { padding: .45rem .9rem; border-radius: 999px; font-size: .875rem; font-weight: 500; color: var(--billio-text-muted); }
+        .legal-tabs a.is-active { background: var(--billio-primary-soft); color: var(--billio-primary); }
+        .legal-todo { background: #fef9c3; border-radius: .25rem; padding: 0 .2rem; }
+    </style>
+</head>
+<body>
+    <header class="max-w-3xl mx-auto px-4 pt-6 flex items-center justify-between gap-4">
+        <a href="{% url 'landing:home' %}" class="flex items-center gap-2 font-bold text-lg" style="font-family: var(--font-titles);">
+            {% include "components/logo_mark.html" with class="w-7 h-7" %} billio
+        </a>
+        <a href="{% url 'accounts:login' %}" class="text-sm font-semibold" style="color: var(--billio-primary);">Connexion</a>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+        <nav class="legal-tabs flex flex-wrap gap-1 mb-6" aria-label="Pages légales">
+            <a href="{% url 'landing:legal-notice' %}" class="{% if page == 'mentions' %}is-active{% endif %}">Mentions légales</a>
+            <a href="{% url 'landing:terms' %}" class="{% if page == 'cgu' %}is-active{% endif %}">CGU</a>
+            <a href="{% url 'landing:privacy' %}" class="{% if page == 'confidentialite' %}is-active{% endif %}">Confidentialité</a>
+        </nav>
+
+        <article class="legal-doc" translate="no" lang="fr">
+            <h1>{{ page_title }}</h1>
+            <p class="text-sm" style="color: var(--billio-text-muted);">Dernière mise à jour : {{ legal.updated_at|date:"j F Y" }}</p>
+
+            {% if page == 'mentions' %}
+            <h2>Éditeur du service</h2>
+            <p>Le site et le service Billio sont édités par <strong>{{ legal.company }}</strong>, {{ legal.legal_form }} au capital de {{ legal.capital }}, immatriculée au RCS de {{ legal.rcs }} sous le numéro {{ legal.siren }}, dont le siège social est situé {{ legal.address }}.</p>
+            <p>Numéro de TVA intracommunautaire : {{ legal.vat }}<br>Contact : <a href="mailto:{{ legal.email }}">{{ legal.email }}</a></p>
+            <p>Directeur de la publication : {{ legal.director }}.</p>
+
+            <h2>Hébergement</h2>
+            <p>Le service est hébergé par <strong>{{ legal.host_name }}</strong>, {{ legal.host_address }}. Les données sont stockées dans les centres de données de l'hébergeur situés en {{ legal.host_location }}.</p>
+
+            <h2>Propriété intellectuelle</h2>
+            <p>La marque Billio, le logo, les textes, l'interface et le code du service sont la propriété de l'éditeur. Toute reproduction sans autorisation écrite est interdite. Les contenus que vous créez dans Billio (factures, devis, documents, logos) restent votre propriété.</p>
+
+            <h2>Données personnelles</h2>
+            <p>Le traitement de vos données est décrit dans la <a href="{% url 'landing:privacy' %}">politique de confidentialité</a>.</p>
+
+            {% elif page == 'cgu' %}
+            <h2>1. Objet</h2>
+            <p>Les présentes conditions générales d'utilisation (« CGU ») encadrent l'accès et l'utilisation du service Billio, logiciel en ligne de facturation, de devis, de suivi des paiements et de gestion de projets destiné aux professionnels (indépendants, entreprises, associations). Le service est édité par {{ legal.company }} (« l'éditeur »), voir les <a href="{% url 'landing:legal-notice' %}">mentions légales</a>.</p>
+            <p>Billio est réservé à un usage professionnel. En créant un compte, vous déclarez agir pour les besoins de votre activité professionnelle et accepter les présentes CGU.</p>
+
+            <h2>2. Compte</h2>
+            <ul>
+                <li>Vous fournissez des informations exactes et les tenez à jour (identité, entreprise, coordonnées).</li>
+                <li>Vous êtes responsable de la confidentialité de vos identifiants et de toute action réalisée depuis votre compte, y compris par les membres que vous invitez dans votre organisation.</li>
+                <li>Prévenez-nous sans délai à <a href="mailto:{{ legal.email }}">{{ legal.email }}</a> en cas d'utilisation non autorisée.</li>
+            </ul>
+
+            <h2>3. Offres, essai et paiement</h2>
+            <p>Les fonctionnalités et les prix des offres sont présentés sur la page Tarifs du site. Les prix sont indiqués hors taxes. Un abonnement payant est facturé à l'avance, au mois ou à l'année, par prélèvement sur le moyen de paiement enregistré ; il se renouvelle automatiquement jusqu'à sa résiliation. Une période d'essai peut être proposée : elle n'engage à rien et le passage à une offre payante nécessite votre accord.</p>
+            <p>En cas d'échec de paiement, l'accès aux fonctionnalités payantes peut être suspendu après relance. L'éditeur peut faire évoluer ses prix en vous prévenant au moins 30 jours à l'avance ; vous pouvez alors résilier avant l'application du nouveau prix.</p>
+
+            <h2>4. Vos obligations</h2>
+            <ul>
+                <li>Vous restez seul responsable des documents que vous émettez avec Billio (factures, devis, avoirs) : exactitude des montants, taux de TVA, mentions légales obligatoires et respect de vos obligations fiscales et comptables. Billio vous aide (numérotation continue, verrouillage des factures émises, mentions types) mais ne remplace pas un expert-comptable.</li>
+                <li>Vous vous engagez à ne pas utiliser le service à des fins illicites ou frauduleuses, à ne pas envoyer de messages non sollicités (spam) via les automatisations et à ne pas tenter de perturber ou de contourner la sécurité du service.</li>
+                <li>Les outils tiers que vous connectez (Stripe, messagerie, stockage…) sont soumis à leurs propres conditions ; vous êtes responsable des clés et accès que vous y renseignez.</li>
+            </ul>
+
+            <h2>5. Données de vos clients</h2>
+            <p>Pour les données personnelles de vos propres clients et contacts que vous enregistrez dans Billio, vous agissez en qualité de responsable de traitement et l'éditeur en qualité de sous-traitant au sens de l'article 28 du RGPD. L'éditeur s'engage à :</p>
+            <ul>
+                <li>ne traiter ces données que pour fournir le service et selon vos instructions ;</li>
+                <li>garantir la confidentialité des personnes habilitées à y accéder et mettre en œuvre des mesures de sécurité adaptées ;</li>
+                <li>ne faire appel qu'aux sous-traitants listés dans la <a href="{% url 'landing:privacy' %}">politique de confidentialité</a>, en vous informant de tout changement ;</li>
+                <li>vous aider à répondre aux demandes d'exercice des droits et vous notifier toute violation de données dans les meilleurs délais ;</li>
+                <li>supprimer ou vous restituer les données à la fin du contrat, sous réserve des obligations légales de conservation.</li>
+            </ul>
+
+            <h2>6. Disponibilité et support</h2>
+            <p>L'éditeur met en œuvre les moyens raisonnables pour assurer l'accès au service 24 h/24, sans garantie de disponibilité absolue (obligation de moyens). Des interruptions peuvent survenir pour maintenance, si possible annoncées à l'avance. Le support est assuré par email à <a href="mailto:{{ legal.email }}">{{ legal.email }}</a>.</p>
+
+            <h2>7. Responsabilité</h2>
+            <p>La responsabilité de l'éditeur ne peut être engagée qu'en cas de faute prouvée et est limitée aux dommages directs, dans la limite des sommes que vous avez versées au titre des douze derniers mois. Elle ne saurait être engagée pour les dommages indirects (perte de chiffre d'affaires, de clientèle, de données non sauvegardées par vos soins), ni pour le contenu des documents que vous émettez. Ces limites ne s'appliquent pas en cas de faute lourde ou intentionnelle.</p>
+
+            <h2>8. Propriété intellectuelle</h2>
+            <p>L'éditeur vous concède un droit d'utilisation du service, personnel, non exclusif et non cessible, pour la durée de votre abonnement. Vous conservez tous les droits sur vos contenus et accordez à l'éditeur le seul droit de les héberger et de les traiter pour fournir le service.</p>
+
+            <h2>9. Durée, résiliation et récupération des données</h2>
+            <p>Vous pouvez résilier à tout moment depuis votre compte ; la résiliation prend effet à la fin de la période déjà payée, sans remboursement de la période en cours. Avant la clôture, vous pouvez exporter vos données (factures en PDF, exports CSV). L'éditeur peut suspendre ou résilier un compte en cas de manquement grave aux présentes CGU, après mise en demeure restée sans effet pendant 15 jours (sans délai en cas de fraude ou d'atteinte à la sécurité).</p>
+            <p>Après la clôture, vos données sont supprimées dans un délai de 90 jours, à l'exception de celles que la loi impose de conserver.</p>
+
+            <h2>10. Modification des CGU</h2>
+            <p>L'éditeur peut modifier les présentes CGU. Les modifications substantielles vous sont notifiées par email au moins 30 jours avant leur entrée en vigueur ; si vous les refusez, vous pouvez résilier avant cette date.</p>
+
+            <h2>11. Droit applicable et litiges</h2>
+            <p>Les présentes CGU sont soumises au droit français. En cas de litige, les parties recherchent d'abord une solution amiable. À défaut, compétence exclusive est attribuée au {{ legal.court }}.</p>
+
+            {% else %}
+            <h2>Qui est responsable de vos données ?</h2>
+            <p>{{ legal.company }} (voir les <a href="{% url 'landing:legal-notice' %}">mentions légales</a>) est responsable du traitement des données de ses utilisateurs et des visiteurs du site. Pour les données de vos propres clients que vous saisissez dans Billio, vous êtes responsable de traitement et nous agissons comme sous-traitant (article 5 des <a href="{% url 'landing:terms' %}">CGU</a>).</p>
+            <p>Contact pour toute question sur vos données : <a href="mailto:{{ legal.dpo_email }}">{{ legal.dpo_email }}</a>.</p>
+
+            <h2>Données collectées et finalités</h2>
+            <table>
+                <thead><tr><th>Données</th><th>Pourquoi</th><th>Base légale</th></tr></thead>
+                <tbody>
+                    <tr><td>Nom, prénom, email, mot de passe (chiffré), entreprise, métier</td><td>Créer et sécuriser votre compte</td><td>Exécution du contrat</td></tr>
+                    <tr><td>Informations de votre entreprise (adresse, SIRET, TVA, IBAN, logo)</td><td>Les faire figurer sur vos factures et devis</td><td>Exécution du contrat</td></tr>
+                    <tr><td>Clients, factures, devis, paiements, projets, temps passé</td><td>Fournir le service</td><td>Exécution du contrat</td></tr>
+                    <tr><td>Données d'abonnement et de facturation de Billio</td><td>Vous facturer le service, tenir notre comptabilité</td><td>Contrat, obligation légale</td></tr>
+                    <tr><td>Journaux techniques (adresse IP, date, actions)</td><td>Sécurité, prévention de la fraude, diagnostic</td><td>Intérêt légitime</td></tr>
+                    <tr><td>Emails échangés avec le support</td><td>Vous répondre</td><td>Intérêt légitime</td></tr>
+                </tbody>
+            </table>
+            <p>Nous ne vendons pas vos données et ne les utilisons pas à des fins publicitaires.</p>
+
+            <h2>Durées de conservation</h2>
+            <ul>
+                <li>Compte et contenus : pendant toute la durée d'utilisation, puis 90 jours après la clôture du compte.</li>
+                <li>Factures et pièces comptables : 10 ans (article L123-22 du Code de commerce).</li>
+                <li>Journaux techniques : 12 mois.</li>
+                <li>Prospects (contact sans compte) : 3 ans après le dernier échange.</li>
+            </ul>
+
+            <h2>Destinataires et sous-traitants</h2>
+            <p>Vos données ne sont accessibles qu'aux personnes habilitées de l'éditeur et aux prestataires nécessaires au service :</p>
+            <ul>
+                <li>{{ legal.host_name }} : hébergement des serveurs et de la base de données ({{ legal.host_location }}) ;</li>
+                <li>Stripe : paiement de l'abonnement Billio et, si vous le connectez, paiement en ligne de vos factures ;</li>
+                <li>le service d'envoi d'emails utilisé pour les messages de la plateforme (mot de passe oublié, notifications) ;</li>
+                <li>Google, uniquement si vous choisissez la connexion avec Google ou connectez Google Drive / Agenda.</li>
+            </ul>
+            <p>Les outils que vous connectez vous-même (Intégrations) reçoivent les données que vous choisissez de leur envoyer. Lorsqu'un prestataire est situé hors de l'Union européenne, le transfert est encadré par les clauses contractuelles types de la Commission européenne ou une décision d'adéquation.</p>
+
+            <h2>Sécurité</h2>
+            <p>Connexions chiffrées (HTTPS), mots de passe hachés, accès cloisonnés par organisation, clés d'intégration stockées côté serveur, sauvegardes régulières. En cas de violation de données présentant un risque, nous prévenons la CNIL et les personnes concernées dans les délais légaux.</p>
+
+            <h2>Cookies</h2>
+            <p>Billio n'utilise que des cookies et un stockage local strictement nécessaires au fonctionnement : session de connexion, protection contre la falsification de requêtes (CSRF), langue choisie et préférences d'affichage. Aucun cookie publicitaire ni de mesure d'audience tierce n'est déposé ; ces cookies ne nécessitent donc pas votre consentement.</p>
+
+            <h2>Vos droits</h2>
+            <p>Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, ainsi que du droit de définir des directives sur leur sort après votre décès. Pour les exercer, écrivez à <a href="mailto:{{ legal.dpo_email }}">{{ legal.dpo_email }}</a> ; nous répondons sous un mois. Vous pouvez aussi introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>).</p>
+            {% endif %}
+        </article>
+    </main>
+
+    <footer class="max-w-3xl mx-auto px-4 pb-10 text-sm text-center" style="color: var(--billio-text-muted);">
+        © {% now "Y" %} Billio · <a href="{% url 'landing:legal-notice' %}">Mentions légales</a> · <a href="{% url 'landing:terms' %}">CGU</a> · <a href="{% url 'landing:privacy' %}">Confidentialité</a>
+    </footer>
+    <script>
+        // Repère visuellement les informations éditeur encore à compléter.
+        // (nœuds de texte uniquement : les liens mailto gardent leur attribut intact)
+        const walker = document.createTreeWalker(document.querySelector('.legal-doc'), NodeFilter.SHOW_TEXT);
+        const todo = [];
+        while (walker.nextNode()) if (walker.currentNode.nodeValue.includes('[À compléter')) todo.push(walker.currentNode);
+        todo.forEach((node) => {
+            const parts = node.nodeValue.split(/(\[À compléter : [^\]]+\])/);
+            const frag = document.createDocumentFragment();
+            parts.forEach((part) => {
+                if (!part) return;
+                if (part.startsWith('[À compléter')) {
+                    const mark = document.createElement('mark');
+                    mark.className = 'legal-todo';
+                    mark.textContent = part;
+                    frag.appendChild(mark);
+                } else frag.appendChild(document.createTextNode(part));
+            });
+            node.replaceWith(frag);
+        });
+    </script>
+</body>
+</html>

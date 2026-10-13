@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div style="position:fixed;top:16px;right:16px;z-index:60">{% include "components/language_switcher.html" %}</div>
+    <div class="max-w-2xl mx-auto px-4 py-10">
+        <div class="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold text-gray-900">Recu de paiement</h1>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Paye</span>
+            </div>
+
+            <p class="text-sm text-gray-500 mt-2">Recu {{ invoice.receipt_number|default:"-" }}</p>
+
+            <div class="mt-6 grid grid-cols-1 gap-3 text-sm">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Facture</span>
+                    <span class="font-medium text-gray-900">{{ invoice.invoice_number }}</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Client</span>
+                    <span class="font-medium text-gray-900">{{ invoice.client.name }}</span>
+                </div>
+                <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500">Montant regle</span>
+                    <span class="font-semibold text-gray-900">{{ invoice.total_amount }} {{ invoice.currency }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Date de paiement</span>
+                    <span class="font-medium text-gray-900">{{ invoice.paid_at|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                <a href="{% url 'invoices:public-invoice-receipt-download' invoice.id %}" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black transition">
+                    Telecharger le recu
+                </a>
+                <a href="{% url 'invoices:public-invoice-payment' invoice.id %}" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
+                    Retour facture
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

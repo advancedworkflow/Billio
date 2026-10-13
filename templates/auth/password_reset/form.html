@@ -1,0 +1,18 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Mot de passe oublié{% endblock %}
+{% block aside_title %}Pas de panique.{% endblock %}
+{% block aside_sub %}Indiquez votre email : nous vous envoyons un lien pour choisir un nouveau mot de passe.{% endblock %}
+{% block content %}
+<h2 class="auth-title">Mot de passe oublié</h2>
+<p class="auth-lead">Saisissez l'adresse email de votre compte Billio. Vous recevrez un lien valable 24 heures.</p>
+<form method="post" novalidate>
+    {% csrf_token %}
+    <label class="auth-field">
+        <span>Email</span>
+        <input class="auth-input" type="email" name="email" value="{{ form.email.value|default:'' }}" autocomplete="email" required autofocus>
+        {% for error in form.email.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+    </label>
+    <button type="submit" class="auth-submit-btn">Recevoir le lien</button>
+</form>
+<p class="mt-8 text-sm text-center text-gray-600"><a href="{% url 'accounts:login' %}" class="auth-link">← Retour à la connexion</a></p>
+{% endblock %}

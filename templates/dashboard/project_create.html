@@ -1,0 +1,62 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Nouveau projet - Billio{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block page_subtitle %}Créer un nouveau projet{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+        <form method="post">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Client *</label>
+                    <select name="client_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">Sélectionner un client</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.company_name|default:client.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Nom du projet *</label>
+                    <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Référence</label>
+                        <input type="text" name="reference" value="{{ next_reference }}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Phase de départ</label>
+                        <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            {% for value, label in status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Date de début</label>
+                        <input type="date" name="start_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 block mb-1">Date de livraison</label>
+                        <input type="date" name="delivery_date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Description</label>
+                    <textarea name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <a href="{% url 'dashboard:project-board' %}" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Annuler</a>
+                <button type="submit" class="btn-primary-black px-4 py-2 rounded-lg text-sm font-medium">Créer le projet</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

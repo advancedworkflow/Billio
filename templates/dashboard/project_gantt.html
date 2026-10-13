@@ -1,0 +1,520 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Gantt — {{ project.name }} - Billio{% endblock %}
+{% block page_title %}Projects{% endblock %}
+{% block page_subtitle %}{{ project.client.name }}{% endblock %}
+
+{% block content %}
+{{ gantt_data|json_script:"gantt-data" }}
+<div class="space-y-6" x-data="ganttPage('gantt-data')" x-init="init()">
+
+    <!-- En-tête -->
+    <div class="dash-panel">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background: var(--billio-primary-soft); color: var(--billio-primary);">
+                    <i data-lucide="gantt-chart-square" class="w-5 h-5"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold truncate" style="color: var(--billio-text);">{{ project.name }}</h1>
+                    <p class="text-sm mt-0.5" style="color: var(--billio-text-muted);">{{ project.client.name }} · Vue Gantt</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50" @click="scrollToToday()">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1.5"></i>
+                    Aujourd'hui
+                </button>
+                <a href="{% url 'dashboard:project-detail' project.id %}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 hover:bg-gray-50">
+                    <i data-lucide="list-checks" class="w-3.5 h-3.5 mr-1.5"></i>
+                    Vue Kanban
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gantt -->
+    <div class="dash-panel" x-show="data.groups && data.groups.length">
+        <div class="gantt-scroller" style="max-height: 70vh; overflow-y: auto;">
+            <!-- Colonne des libellés -->
+            <div class="gantt-list-col">
+                <div style="height: 3.75rem; border-bottom: 1px solid var(--billio-primary-soft-border); display: flex; align-items: center; padding: 0 0.75rem; position: sticky; top: 0; background: var(--billio-primary-soft); z-index: 2;">
+                    <span class="text-xs font-semibold" style="color: var(--billio-primary);">Jalons &amp; tâches</span>
+                </div>
+                <template x-for="g in data.groups" :key="g.id">
+                    <div>
+                        <div class="gantt-row gantt-row-header" :class="g.completed ? 'is-completed' : ''">
+                            <span class="gantt-row-diamond" :style="'background:' + g.color"></span>
+                            <span class="gantt-row-title" x-text="g.title"></span>
+                        </div>
+                        <template x-for="t in g.tasks" :key="t.id">
+                            <div class="gantt-row" style="padding-left: 1.5rem;">
+                                <span class="task-status-btn" :class="'is-' + t.status" style="pointer-events: none;">
+                                    <i x-show="t.status === 'done'" data-lucide="check" class="w-3 h-3"></i>
+                                </span>
+                                <span class="gantt-row-title flex-1" x-text="t.title"></span>
+                                <span x-show="t.assignee_initials" class="detail-avatar" x-text="t.assignee_initials"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Colonne timeline -->
+            <div class="gantt-timeline-col" x-ref="timelineCol">
+                <div :style="'width:' + totalWidthPx + 'px; position: relative;'">
+                    <div class="gantt-month-header">
+                        <template x-for="(mh, idx) in monthHeaders" :key="mh.key">
+                            <div class="gantt-month-header-cell" :class="'gantt-month-header-cell--' + (idx % 4)" :style="'width:' + mh.widthPx + 'px;'" x-text="mh.label"></div>
+                        </template>
+                    </div>
+                    <div class="gantt-day-header">
+                        <template x-for="dh in dayHeaders" :key="dh.key">
+                            <div class="gantt-day-header-cell" :class="{ 'is-today': dh.isToday, 'is-weekend': dh.isWeekend }" :style="'width:' + dayWidth + 'px;'" x-text="dh.day"></div>
+                        </template>
+                    </div>
+
+                    <div class="gantt-today-line" :style="'left:' + dayOffsetPx(data.today) + 'px; top: 3.75rem; bottom: 0;'">
+                        <span class="gantt-today-badge">Aujourd'hui</span>
+                    </div>
+
+                    <template x-if="selectedRange">
+                        <div class="gantt-range-highlight"
+                             :style="'left:' + dayOffsetPx(selectedRange.start) + 'px; width:' + barWidthPx(selectedRange.start, selectedRange.end) + 'px; --range-color:' + selectedRange.color + ';'">
+                            <span class="gantt-range-highlight-label" x-text="rangeLabel(selectedRange)"></span>
+                        </div>
+                    </template>
+
+                    <template x-for="g in data.groups" :key="g.id + '-track'">
+                        <div>
+                            <div class="gantt-row-track" @contextmenu.prevent="openRowMenu($event, g)" @click="selectedRange = null">
+                                <template x-if="g.start">
+                                    <div class="gantt-start-marker" :style="'left:' + dayOffsetPx(g.start) + 'px; background:' + g.color"></div>
+                                </template>
+                                <template x-if="g.due && !g.start">
+                                    <div class="gantt-start-marker" :style="'left:' + dayOffsetPx(g.due) + 'px; background:' + g.color"></div>
+                                </template>
+                                <template x-if="g.due && g.start">
+                                    <div class="gantt-bar gantt-bar--milestone"
+                                         :style="'left:' + dayOffsetPx(g.start) + 'px; width:' + barWidthPx(g.start, g.due) + 'px; background:' + g.color"
+                                         :class="[g.completed ? 'is-completed' : '', isSelected('milestone', g) ? 'is-selected' : '']"
+                                         :title="g.title + ' — ' + g.start + ' → ' + g.due"
+                                         @mousedown="startDrag($event, 'milestone-bar', 'move', g)"
+                                         @click.stop="openEditModal('milestone', g)">
+                                        <span class="gantt-bar-handle is-start" @mousedown.stop="startDrag($event, 'milestone-bar', 'resize-start', g)"></span>
+                                        <span class="truncate" x-text="g.title"></span>
+                                        <span class="gantt-bar-handle is-end" @mousedown.stop="startDrag($event, 'milestone-bar', 'resize-end', g)"></span>
+                                    </div>
+                                </template>
+                                <template x-if="g.due && !g.start">
+                                    <div class="gantt-milestone-diamond"
+                                         :class="[g.completed ? 'is-completed' : '', isSelected('milestone', g) ? 'is-selected' : '']"
+                                         :style="'left:' + dayOffsetPx(g.due) + 'px; background:' + g.color"
+                                         :title="g.title + ' — ' + g.due"
+                                         @mousedown="startDrag($event, 'milestone', 'move', g)"
+                                         @click.stop="openEditModal('milestone', g)">
+                                    </div>
+                                </template>
+                            </div>
+                            <template x-for="t in g.tasks" :key="t.id + '-track'">
+                                <div class="gantt-row-track" @contextmenu.prevent="openRowMenu($event, g)" @click="selectedRange = null">
+                                    <div class="gantt-start-marker" :style="'left:' + dayOffsetPx(t.start) + 'px; background:' + taskColor(t)"></div>
+                                    <div class="gantt-bar"
+                                         :class="[isSelected('task', t) ? 'is-selected' : '', t.status === 'done' ? 'is-done' : '', (t.is_late && t.status !== 'done') ? 'is-late' : '']"
+                                         :style="'left:' + dayOffsetPx(t.start) + 'px; width:' + barWidthPx(t.start, t.end) + 'px; background:' + taskColor(t)"
+                                         :title="t.title"
+                                         @mousedown="startDrag($event, 'task', 'move', t)"
+                                         @click.stop="openEditModal('task', t)">
+                                        <span class="gantt-bar-handle is-start" @mousedown.stop="startDrag($event, 'task', 'resize-start', t)"></span>
+                                        <span class="truncate" x-text="t.title"></span>
+                                        <span class="gantt-bar-handle is-end" @mousedown.stop="startDrag($event, 'task', 'resize-end', t)"></span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-panel text-center py-10" x-show="!data.groups || !data.groups.length">
+        <p class="text-sm" style="color: var(--billio-text-muted);">Aucun jalon ni tâche pour l'instant.</p>
+        <a href="{% url 'dashboard:project-detail' project.id %}" class="text-sm underline mt-2 inline-block">Ajouter des jalons et tâches</a>
+    </div>
+
+    <!-- Menu contextuel (clic droit sur une ligne du Gantt) : créer une tâche ou un jalon à cette date -->
+    <div x-show="rowMenu.open" x-cloak class="fixed inset-0 z-40" @click="rowMenu.open = false" @contextmenu.prevent="rowMenu.open = false" @keydown.escape.window="rowMenu.open = false">
+        <div class="absolute dropdown-panel z-50 min-w-[220px]" :style="`left:${rowMenu.x}px;top:${rowMenu.y}px;`" @click.stop>
+            <div class="dropdown-section">
+                <p class="px-3 pt-1 pb-2 text-xs font-semibold" style="color: var(--billio-text-muted);" x-text="rowMenu.dateLabel"></p>
+                <button type="button" class="dropdown-item" @click="createTaskAt()">
+                    <i data-lucide="list-checks" class="w-3.5 h-3.5"></i> Nouvelle tâche ici
+                </button>
+                <button type="button" class="dropdown-item" @click="createMilestoneAt()">
+                    <i data-lucide="flag" class="w-3.5 h-3.5"></i> Nouveau jalon ici
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup : édition rapide (tâche / jalon) -->
+    <div x-show="editModal.open" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="editModal.open = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="editModal.open = false; selectedRange = null"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
+                <h3 class="text-sm font-semibold mb-4" style="color: var(--billio-text);" x-text="editModal.kind === 'task' ? 'Modifier la tâche' : 'Modifier le jalon'"></h3>
+
+                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Titre</label>
+                <input type="text" x-model="editModal.form.title" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+
+                <template x-if="editModal.kind === 'task'">
+                    <div>
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Début</label>
+                                <input type="date" x-model="editModal.form.start" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Échéance</label>
+                                <input type="date" x-model="editModal.form.end" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            </div>
+                        </div>
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Statut</label>
+                        <select x-model="editModal.form.status" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+                            {% for value, label in task_status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Assigné</label>
+                        <select x-model="editModal.form.assignee_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+                            <option value="">—</option>
+                            {% for m in org_members %}
+                            <option value="{{ m.id }}">{{ m.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </template>
+
+                <template x-if="editModal.kind === 'milestone'">
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div>
+                            <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Début</label>
+                            <input type="date" x-model="editModal.form.start" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Échéance</label>
+                            <input type="date" x-model="editModal.form.due" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        </div>
+                    </div>
+                </template>
+
+                <div class="flex justify-between items-center gap-2 mt-2">
+                    <button type="button" class="text-xs text-red-600 font-medium" @click="deleteEditModalItem()">Supprimer</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button type="button" class="text-xs px-2 py-2" style="color: var(--billio-text-muted);" @click="editModal.open = false; selectedRange = null">Annuler</button>
+                        <button type="button" class="btn-primary-black px-3 py-2 rounded-lg text-xs font-medium" @click="saveEditModal()">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function ganttPage(jsonId) {
+    return {
+        data: { project: { start: '', end: '' }, today: '', groups: [] },
+        dayWidth: 28,
+        windowStart: null,
+        windowEnd: null,
+        totalDays: 0,
+        totalWidthPx: 0,
+        monthHeaders: [],
+        dayHeaders: [],
+        drag: null,
+        justDragged: false,
+        editModal: { open: false, kind: '', item: null, form: {} },
+        rowMenu: { open: false, x: 0, y: 0, group: null, date: '', dateLabel: '' },
+        selectedRange: null,
+
+        init() {
+            const el = document.getElementById(jsonId);
+            try { this.data = el ? JSON.parse(el.textContent || '{}') : {}; } catch (e) { this.data = {}; }
+            if (!this.data.groups) this.data.groups = [];
+            this.build();
+            this.$nextTick(() => {
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                this.scrollToToday();
+            });
+        },
+
+        build() {
+            const start = new Date((this.data.project.start || this.data.today) + 'T00:00:00');
+            const end = new Date((this.data.project.end || this.data.today) + 'T00:00:00');
+            let winStart = new Date(start); winStart.setDate(winStart.getDate() - 14);
+            let winEnd = new Date(end); winEnd.setDate(winEnd.getDate() + 14);
+            const minSpanDays = 90;
+            if (Math.round((winEnd - winStart) / 86400000) < minSpanDays) {
+                winEnd = new Date(winStart);
+                winEnd.setDate(winStart.getDate() + minSpanDays);
+            }
+            this.windowStart = winStart;
+            this.windowEnd = winEnd;
+            this.totalDays = Math.round((winEnd - winStart) / 86400000) + 1;
+            this.totalWidthPx = this.totalDays * this.dayWidth;
+
+            const headers = [];
+            let cursor = new Date(winStart);
+            while (cursor <= winEnd) {
+                const y = cursor.getFullYear();
+                const m = cursor.getMonth();
+                const monthStart = new Date(y, m, 1);
+                const monthEnd = new Date(y, m + 1, 0);
+                const segStart = cursor > monthStart ? cursor : monthStart;
+                const segEnd = monthEnd < winEnd ? monthEnd : winEnd;
+                const days = Math.round((segEnd - segStart) / 86400000) + 1;
+                headers.push({
+                    key: `${y}-${m}`,
+                    label: segStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+                    widthPx: days * this.dayWidth,
+                });
+                cursor = new Date(segEnd);
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            this.monthHeaders = headers;
+
+            const days = [];
+            let dcursor = new Date(winStart);
+            while (dcursor <= winEnd) {
+                const key = this.dateKey(dcursor);
+                days.push({
+                    key,
+                    day: dcursor.getDate(),
+                    isToday: key === this.data.today,
+                    isWeekend: dcursor.getDay() === 0 || dcursor.getDay() === 6,
+                });
+                dcursor.setDate(dcursor.getDate() + 1);
+            }
+            this.dayHeaders = days;
+        },
+
+        taskColor(t) {
+            if (t.status === 'done') return 'var(--billio-success)';
+            if (t.is_late) return 'var(--billio-danger)';
+            return t.color;
+        },
+
+        dateKey(d) {
+            const pad = (v) => String(v).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        },
+
+        scrollToToday() {
+            const col = this.$refs.timelineCol;
+            if (!col || !this.data.today) return;
+            const target = this.dayOffsetPx(this.data.today) - col.clientWidth / 2;
+            col.scrollLeft = Math.max(0, target);
+        },
+
+        dayOffsetPx(dateStr) {
+            if (!dateStr || !this.windowStart) return 0;
+            const d = new Date(dateStr + 'T00:00:00');
+            const days = Math.round((d - this.windowStart) / 86400000);
+            return days * this.dayWidth;
+        },
+
+        barWidthPx(startStr, endStr) {
+            const days = Math.round((new Date(endStr + 'T00:00:00') - new Date(startStr + 'T00:00:00')) / 86400000) + 1;
+            return Math.max(days, 1) * this.dayWidth;
+        },
+
+        addDays(dateStr, n) {
+            const d = new Date(dateStr + 'T00:00:00');
+            d.setDate(d.getDate() + n);
+            const pad = (v) => String(v).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        },
+
+        // --- Drag (déplacer / redimensionner une barre, déplacer un losange) ---
+        startDrag(evt, kind, mode, item) {
+            evt.preventDefault();
+            this.drag = {
+                kind, mode, item,
+                startX: evt.clientX,
+                origStart: item.start || item.due,
+                origEnd: item.end || item.due,
+                deltaDays: 0,
+            };
+            this._onDragMove = (e) => this.handleDragMove(e);
+            this._onDragUp = (e) => this.handleDragUp(e);
+            document.addEventListener('mousemove', this._onDragMove);
+            document.addEventListener('mouseup', this._onDragUp);
+        },
+        handleDragMove(e) {
+            if (!this.drag) return;
+            const dx = e.clientX - this.drag.startX;
+            const deltaDays = Math.round(dx / this.dayWidth);
+            this.drag.deltaDays = deltaDays;
+            const item = this.drag.item;
+            if (this.drag.kind === 'milestone') {
+                item.due = this.addDays(this.drag.origStart, deltaDays);
+                return;
+            }
+            const endField = this.drag.kind === 'milestone-bar' ? 'due' : 'end';
+            if (this.drag.mode === 'move') {
+                item.start = this.addDays(this.drag.origStart, deltaDays);
+                item[endField] = this.addDays(this.drag.origEnd, deltaDays);
+            } else if (this.drag.mode === 'resize-start') {
+                let newStart = this.addDays(this.drag.origStart, deltaDays);
+                if (newStart > item[endField]) newStart = item[endField];
+                item.start = newStart;
+            } else if (this.drag.mode === 'resize-end') {
+                let newEnd = this.addDays(this.drag.origEnd, deltaDays);
+                if (newEnd < item.start) newEnd = item.start;
+                item[endField] = newEnd;
+            }
+        },
+        handleDragUp() {
+            document.removeEventListener('mousemove', this._onDragMove);
+            document.removeEventListener('mouseup', this._onDragUp);
+            if (!this.drag) return;
+            const moved = this.drag.deltaDays !== 0;
+            const { kind, item } = this.drag;
+            this.drag = null;
+            this.justDragged = moved;
+            setTimeout(() => { this.justDragged = false; }, 0);
+            if (!moved) return;
+            if (kind === 'milestone' || kind === 'milestone-bar') {
+                this.persistMilestone(item);
+            } else {
+                this.persistTask(item);
+            }
+        },
+        async persistTask(task) {
+            await fetch(`/dashboard/tasks/${task.id}/update/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+                body: new URLSearchParams({ start_date: task.start, due_date: task.end }),
+            });
+        },
+        async persistMilestone(m) {
+            const body = { title: m.title, due_date: m.due };
+            if (m.start) body.start_date = m.start;
+            await fetch(`/dashboard/milestones/${m.milestone_id}/update/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+                body: new URLSearchParams(body),
+            });
+        },
+
+        // --- Emphase graphique de la période (interval) d'une tâche/jalon cliqué ---
+        selectRange(kind, item) {
+            const start = kind === 'milestone' ? (item.start || item.due) : item.start;
+            const end = kind === 'milestone' ? (item.due || item.start) : (item.end || item.start);
+            const id = kind + '-' + (item.milestone_id ?? item.id);
+            this.selectedRange = { id, start, end, color: item.color };
+        },
+        isSelected(kind, item) {
+            if (!this.selectedRange) return false;
+            const id = kind + '-' + (item.milestone_id ?? item.id);
+            return this.selectedRange.id === id;
+        },
+        rangeLabel(r) {
+            const days = Math.round((new Date(r.end + 'T00:00:00') - new Date(r.start + 'T00:00:00')) / 86400000) + 1;
+            const fmt = (s) => new Date(s + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+            return r.start === r.end ? `${fmt(r.start)} · 1 j` : `${fmt(r.start)} → ${fmt(r.end)} · ${days} j`;
+        },
+
+        // --- Popup d'édition rapide ---
+        openEditModal(kind, item) {
+            if (this.justDragged) return;
+            this.selectRange(kind, item);
+            this.editModal.kind = kind;
+            this.editModal.item = item;
+            if (kind === 'task') {
+                this.editModal.form = {
+                    title: item.title, start: item.start, end: item.end,
+                    status: item.status, assignee_id: item.assignee_id || '',
+                };
+            } else {
+                this.editModal.form = { title: item.title, start: item.start || '', due: item.due || '' };
+            }
+            this.editModal.open = true;
+        },
+        async saveEditModal() {
+            const f = this.editModal.form;
+            const item = this.editModal.item;
+            if (this.editModal.kind === 'task') {
+                await fetch(`/dashboard/tasks/${item.id}/update/`, {
+                    method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+                    body: new URLSearchParams({ title: f.title, start_date: f.start, due_date: f.end, assignee_id: f.assignee_id }),
+                });
+                if (f.status !== item.status) {
+                    await fetch(`/dashboard/tasks/${item.id}/status/`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'status=' + encodeURIComponent(f.status),
+                    });
+                }
+            } else {
+                await fetch(`/dashboard/milestones/${item.milestone_id}/update/`, {
+                    method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
+                    body: new URLSearchParams({ title: f.title, start_date: f.start, due_date: f.due }),
+                });
+            }
+            window.location.reload();
+        },
+        async deleteEditModalItem() {
+            if (!(await billioConfirm({ title: 'Supprimer cet élément ?', message: 'Cette action est définitive.', confirmLabel: 'Supprimer', tone: 'danger' }))) return;
+            const item = this.editModal.item;
+            if (this.editModal.kind === 'task') {
+                await fetch(`/dashboard/tasks/${item.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            } else {
+                await fetch(`/dashboard/milestones/${item.milestone_id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            }
+            window.location.reload();
+        },
+
+        // --- Clic droit sur une ligne du Gantt : créer une tâche ou un jalon à la date cliquée ---
+        openRowMenu(evt, group) {
+            const col = this.$refs.timelineCol;
+            const rect = col.getBoundingClientRect();
+            const x = evt.clientX - rect.left + col.scrollLeft;
+            const dayIndex = Math.floor(x / this.dayWidth);
+            const d = new Date(this.windowStart);
+            d.setDate(d.getDate() + dayIndex);
+            const date = this.dateKey(d);
+            this.rowMenu = {
+                open: true, x: evt.clientX, y: evt.clientY, group, date,
+                dateLabel: d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+            };
+        },
+        async createTaskAt() {
+            const rm = this.rowMenu;
+            this.rowMenu.open = false;
+            const body = new URLSearchParams({
+                title: 'Nouvelle tâche', start_date: rm.date, due_date: rm.date,
+                milestone_id: rm.group.milestone_id || '',
+            });
+            await fetch('{% url "dashboard:task-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            window.location.reload();
+        },
+        async createMilestoneAt() {
+            const rm = this.rowMenu;
+            this.rowMenu.open = false;
+            const body = new URLSearchParams({ title: 'Nouveau jalon', start_date: rm.date, due_date: rm.date });
+            await fetch('{% url "dashboard:milestone-create" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+            });
+            window.location.reload();
+        },
+    };
+}
+</script>
+{% endblock %}

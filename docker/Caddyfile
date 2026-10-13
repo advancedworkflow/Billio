@@ -1,0 +1,17 @@
+# Reverse proxy HTTPS (certificat Let's Encrypt automatique) devant Billio.
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 25MB
+	}
+	# Fichiers déposés, seulement si aucun bucket S3 n'est configuré (sinon liens signés du bucket).
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+	reverse_proxy web:8000
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

@@ -1,0 +1,28 @@
+{% extends "auth/_layout.html" %}
+{% block title %}Nouveau mot de passe{% endblock %}
+{% block content %}
+{% if validlink %}
+<h2 class="auth-title">Nouveau mot de passe</h2>
+<p class="auth-lead">Choisissez un mot de passe que vous n'utilisez pas ailleurs.</p>
+<form method="post" novalidate>
+    {% csrf_token %}
+    <label class="auth-field">
+        <span>Nouveau mot de passe</span>
+        <input class="auth-input" type="password" name="new_password1" autocomplete="new-password" required autofocus>
+        {% for error in form.new_password1.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+        <div class="auth-help">{{ form.new_password1.help_text|safe }}</div>
+    </label>
+    <label class="auth-field">
+        <span>Confirmez le mot de passe</span>
+        <input class="auth-input" type="password" name="new_password2" autocomplete="new-password" required>
+        {% for error in form.new_password2.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+    </label>
+    <button type="submit" class="auth-submit-btn">Enregistrer le mot de passe</button>
+</form>
+{% else %}
+<div class="auth-icon"><i data-lucide="link-2-off" class="w-6 h-6"></i></div>
+<h2 class="auth-title">Lien expiré</h2>
+<p class="auth-lead">Ce lien n'est plus valable : il a déjà servi ou date de plus de 24 heures. Demandez-en un nouveau.</p>
+<a href="{% url 'accounts:password-reset' %}" class="auth-submit-btn">Recevoir un nouveau lien</a>
+{% endif %}
+{% endblock %}

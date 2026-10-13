@@ -1,0 +1,101 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Client Portal - Billio{% endblock %}
+{% block page_title %}Client Portal{% endblock %}
+{% block page_subtitle %}Aperçu de l'espace dédié que voient vos clients{% endblock %}
+
+{% block content %}
+<div class="dash-modular">
+    <div class="dash-panel dash-span-4">
+        <h2 class="dash-panel-title mb-4">Vos clients</h2>
+        {% if clients %}
+        <div class="space-y-1.5">
+            {% for client in clients %}
+            <a
+                href="?client={{ client.id }}"
+                class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left"
+                {% if selected_client.id == client.id %}style="background: var(--billio-nav-active-bg, rgba(0,0,0,0.05));"{% endif %}
+            >
+                <span class="billio-table-avatar">{{ client.name|slice:":2"|upper }}</span>
+                <span class="text-sm font-medium truncate">{{ client.name }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-sm" style="color: var(--billio-muted);">Aucun client pour le moment — le portail s'active automatiquement dès votre premier client.</p>
+        {% endif %}
+    </div>
+
+    <div class="dash-span-8">
+        {% if selected_client %}
+        <div class="client-portal-mock">
+            <div class="hero-window-chrome" style="border-radius: 1rem 1rem 0 0;">
+                <span class="hero-window-dot hero-window-dot--red"></span>
+                <span class="hero-window-dot hero-window-dot--yellow"></span>
+                <span class="hero-window-dot hero-window-dot--green"></span>
+                <span class="hero-window-title">/dashboard/public/{{ selected_client.portal_token }}/</span>
+            </div>
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <span class="billio-table-avatar">
+                            {{ selected_client.name|slice:":2"|upper }}
+                        </span>
+                        <div>
+                            <p class="text-sm font-semibold">Espace client</p>
+                            <p class="text-xs" style="color: var(--billio-muted);">Projets, factures, devis — accès sans compte Billio</p>
+                        </div>
+                    </div>
+                    <button type="button"
+                            data-copy-link="{% url 'dashboard:public-portal-overview' selected_client.portal_token %}"
+                            onclick="copyPortalLink(this)"
+                            class="btn-secondary-yellow px-3 py-2 rounded-lg text-xs font-medium">
+                        Copier le lien
+                    </button>
+                </div>
+                {% if documents %}
+                <div class="billio-table-wrap mb-5">
+                    <table class="billio-table">
+                        <thead>
+                            <tr><th>Document</th><th>Statut</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td class="font-semibold">{{ doc.label }}</td>
+                                <td><span class="status-badge status-badge--{{ doc.status }}">{{ doc.status_display }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-sm mb-5" style="color: var(--billio-muted);">Aucun devis ou facture envoyé à ce client pour le moment.</p>
+                {% endif %}
+                <a href="{% url 'dashboard:public-portal-overview' selected_client.portal_token %}" target="_blank"
+                   class="btn-primary-black px-4 py-2.5 text-sm font-medium rounded-lg inline-flex items-center gap-2">
+                    <i data-lucide="external-link" class="w-4 h-4"></i> Ouvrir l'espace client
+                </a>
+            </div>
+        </div>
+        <p class="text-xs mt-4" style="color: var(--billio-muted);">
+            Ceci est le vrai lien envoyé au client — aucune inscription n'est requise de son côté.
+        </p>
+        {% else %}
+        <p class="text-sm" style="color: var(--billio-muted);">Sélectionnez un client pour voir son espace.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function copyPortalLink(btn) {
+    const url = window.location.origin + btn.dataset.copyLink;
+    navigator.clipboard.writeText(url).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Lien copié !';
+        setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+}
+</script>
+{% endblock %}

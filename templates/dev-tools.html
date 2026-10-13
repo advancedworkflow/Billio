@@ -1,0 +1,280 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outils de Développement - Billio</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="{% static 'css/app.css' %}?v=1.3" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="{% static 'js/app.js' %}?v=1.0"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <div class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-6">
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="text-gray-400 hover:text-gray-600 p-2 rounded-md hover:bg-gray-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </a>
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-900">🛠️ Outils de Développement</h1>
+                            <p class="text-sm text-gray-500 mt-1">Guide complet pour utiliser les outils de développement de Billio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="space-y-8">
+
+                <!-- Introduction -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">🎯 Introduction</h2>
+                    <p class="text-gray-600 mb-4">
+                        Billio inclut des outils de développement puissants pour vous permettre de modifier et visualiser
+                        les changements en temps réel. Ces outils sont parfaits pour le développement, les tests et l'optimisation.
+                    </p>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-start">
+                            <div class="text-blue-600 mt-1">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-blue-800 font-medium">Mode Sécurisé</h3>
+                                <p class="text-blue-700 text-sm mt-1">
+                                    Les outils de développement ne sont disponibles qu'en mode démo et ne modifient pas les données réelles.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accessing Dev Mode -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">🚀 Accès au Mode Développement</h2>
+
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">1. Page de Démo</h3>
+                            <p class="text-gray-600 mb-2">Rendez-vous sur la page de démonstration :</p>
+                            <code class="bg-gray-100 px-3 py-1 rounded text-sm">http://127.0.0.1:8000/invoices/demo/</code>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">2. Activer le Mode Édition</h3>
+                            <p class="text-gray-600 mb-2">Ajoutez <code class="bg-gray-100 px-2 py-1 rounded text-sm">?edit=1</code> à l'URL :</p>
+                            <code class="bg-gray-100 px-3 py-1 rounded text-sm block">http://127.0.0.1:8000/invoices/demo/?edit=1</code>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">3. Ou utilisez le bouton</h3>
+                            <p class="text-gray-600">Cliquez sur "🛠️ Mode Édition" dans la bannière bleue de la page démo.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dev Toolbar -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">🔧 Barre d'Outils de Développement</h2>
+
+                    <div class="bg-gray-900 text-white rounded-lg p-4 mb-4">
+                        <div class="flex justify-between items-center text-sm">
+                            <div class="flex items-center space-x-4">
+                                <span class="font-bold">🛠️ Mode Édition - Billio</span>
+                                <button class="bg-gray-700 px-2 py-1 rounded text-xs">Grille</button>
+                                <button class="bg-gray-700 px-2 py-1 rounded text-xs">Contours</button>
+                                <button class="bg-gray-700 px-2 py-1 rounded text-xs">Info</button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span>Page: /invoices/demo/ | User: Anonyme</span>
+                                <a href="?edit=0" class="bg-red-600 px-2 py-1 rounded text-xs">Quitter</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">🎯 Grille</h3>
+                            <p class="text-gray-600 text-sm">Affiche une grille de référence pour aligner les éléments.</p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">📦 Contours</h3>
+                            <p class="text-gray-600 text-sm">Met en évidence tous les éléments avec des bordures colorées.</p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">ℹ️ Info</h3>
+                            <p class="text-gray-600 text-sm">Affiche les informations CSS des éléments survolés.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Editing -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">✏️ Édition en Direct</h2>
+
+                    <p class="text-gray-600 mb-4">
+                        Les éléments marqués avec un indicateur d'édition peuvent être modifiés en temps réel.
+                    </p>
+
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-start">
+                            <div class="text-yellow-600 mt-1">⚠️</div>
+                            <div class="ml-3">
+                                <h3 class="text-yellow-800 font-medium">Limitations</h3>
+                                <p class="text-yellow-700 text-sm mt-1">
+                                    L'édition en direct est actuellement en mode démonstration.
+                                    Les changements ne sont pas sauvegardés de manière permanente.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Éléments éditables</h3>
+                            <ul class="list-disc list-inside text-gray-600 space-y-1">
+                                <li>Titres et sous-titres</li>
+                                <li>Textes descriptifs</li>
+                                <li>Contenus statiques</li>
+                            </ul>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Comment éditer</h3>
+                            <ol class="list-decimal list-inside text-gray-600 space-y-1">
+                                <li>Survolez un élément avec un contour bleu</li>
+                                <li>Cliquez sur le bouton ✏️ qui apparaît</li>
+                                <li>Modifiez le contenu dans la fenêtre modale</li>
+                                <li>Cliquez sur "Sauvegarder"</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">⌨️ Raccourcis Clavier</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">Navigation</h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Basculer grille:</span>
+                                    <kbd class="bg-gray-100 px-2 py-1 rounded">G</kbd>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Basculer contours:</span>
+                                    <kbd class="bg-gray-100 px-2 py-1 rounded">O</kbd>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Info éléments:</span>
+                                    <kbd class="bg-gray-100 px-2 py-1 rounded">I</kbd>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">Édition</h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Annuler:</span>
+                                    <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl+Z</kbd>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Sauvegarder:</span>
+                                    <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl+S</kbd>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Endpoints -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">🔌 Points d'API pour les Outils</h2>
+
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Sauvegarde des modifications</h3>
+                            <code class="bg-gray-100 px-3 py-1 rounded text-sm block mb-2">POST /api/dev-tools/save-changes/</code>
+                            <p class="text-gray-600 text-sm">Sauvegarde les modifications d'éléments éditables.</p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Export des styles</h3>
+                            <code class="bg-gray-100 px-3 py-1 rounded text-sm block mb-2">GET /api/dev-tools/export-css/</code>
+                            <p class="text-gray-600 text-sm">Exporte les styles personnalisés au format CSS.</p>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Reset des modifications</h3>
+                            <code class="bg-gray-100 px-3 py-1 rounded text-sm block mb-2">POST /api/dev-tools/reset/</code>
+                            <p class="text-gray-600 text-sm">Remet à zéro toutes les modifications temporaires.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Getting Help -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">🆘 Besoin d'aide ?</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">📖 Documentation</h3>
+                            <p class="text-gray-600 text-sm mb-3">
+                                Consultez la documentation complète dans le dossier docs/.
+                            </p>
+                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm">Voir la documentation →</a>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-2">🐛 Signaler un bug</h3>
+                            <p class="text-gray-600 text-sm mb-3">
+                                Trouvé un problème avec les outils de développement ?
+                            </p>
+                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm">Signaler un bug →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Add keyboard shortcuts for dev tools
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        switch(e.key.toLowerCase()) {
+            case 'g':
+                e.preventDefault();
+                BillioUtils.toggleGrid();
+                break;
+            case 'o':
+                e.preventDefault();
+                BillioUtils.toggleOutlines();
+                break;
+            case 'i':
+                e.preventDefault();
+                BillioUtils.showElementInfo();
+                break;
+        }
+    });
+    </script>
+</body>
+</html>

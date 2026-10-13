@@ -1,0 +1,20 @@
+{% comment %}
+Menu « Exporter » d'un tableau (invoices | payments) : CSV toujours, Google Sheets et Notion
+si le plugin est connecté. Paramètre : table.
+{% endcomment %}
+<details class="bp-menu">
+    <summary class="bp-btn"><i data-lucide="download" class="w-4 h-4"></i> Exporter</summary>
+    <div class="bp-menu-panel">
+        <button type="button" onclick="billioPlugins.exportTable('{{ table }}', 'csv', this)"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Fichier CSV <small>Excel</small></button>
+        {% if 'google-drive' in connected_plugins %}
+        <button type="button" onclick="billioPlugins.exportTable('{{ table }}', 'drive', this)"><i data-lucide="sheet" class="w-4 h-4"></i> Google Sheets <small>Drive</small></button>
+        {% endif %}
+        {% if 'notion' in connected_plugins %}
+        <button type="button" onclick="billioPlugins.exportTable('{{ table }}', 'notion', this)"><i data-lucide="database" class="w-4 h-4"></i> Base Notion <small>mise à jour</small></button>
+        {% endif %}
+        {% if 'google-drive' not in connected_plugins or 'notion' not in connected_plugins %}
+        <div class="bp-menu-sep"></div>
+        <a href="{% url 'integrations:integrations-page' %}"><i data-lucide="puzzle" class="w-4 h-4"></i> Connecter Drive ou Notion</a>
+        {% endif %}
+    </div>
+</details>

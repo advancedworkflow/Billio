@@ -1,0 +1,819 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Billio - Dashboard{% endblock %}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
+    {# Alpine.js : masquer tout [x-cloak] tant que le JS n’est pas prêt (évite le flash des modales / menus) #}
+    <style>[x-cloak]{display:none !important;}</style>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&family=Newsreader:wght@500;600&display=optional" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=4.4" rel="stylesheet">
+    <link href="{% static 'css/dashboard-premium.css' %}?v=3.31" rel="stylesheet">
+    <link href="{% static 'css/plugins.css' %}?v=1.0" rel="stylesheet">
+    <link href="{% static 'css/time-widget.css' %}?v=1.0" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="{% static 'js/app.js' %}?v=2.1"></script>
+    <script src="{% static 'js/plugins.js' %}?v=1.0" defer></script>
+    <script src="{% static 'js/dashboard.js' %}?v=3.3" defer></script>
+    {% if user.is_authenticated %}<script src="{% static 'js/time-widget.js' %}?v=1.1" defer></script>{% endif %}
+    {% block extra_head %}{% endblock %}
+</head>
+<body
+    class="billio-dashboard flex min-h-screen"
+    x-data="{
+        sidebarOpen: false,
+        profileDropdown: false,
+        aiDockOpen: false,
+        focusMode: false,
+        sidebarCollapsed: (() => { try { return localStorage.getItem('billio-sidebar-collapsed') === '1'; } catch (e) { return false; } })(),
+        sidebarReady: false,
+        toggleSidebarCollapsed() {
+            this.sidebarCollapsed = !this.sidebarCollapsed;
+            try { localStorage.setItem('billio-sidebar-collapsed', this.sidebarCollapsed ? '1' : '0'); } catch (e) {}
+        },
+        workspaceOpen: (() => { try { return localStorage.getItem('billio-workspace-open') !== '0'; } catch (e) { return true; } })(),
+    }"
+    x-init="$nextTick(() => { sidebarReady = true })"
+    x-effect="(() => { try { localStorage.setItem('billio-workspace-open', workspaceOpen ? '1' : '0'); } catch (e) {} })()"
+>
+    {% csrf_token %}
+    <!-- Sidebar - Only for authenticated users -->
+    {% if user.is_authenticated %}
+    <aside
+        class="billio-sidebar fixed top-0 left-0 z-40 h-screen w-56 flex flex-col border-r"
+        x-show="!focusMode"
+        :class="{
+            'hidden md:flex': !sidebarOpen,
+            'flex': sidebarOpen,
+            'md:w-16': sidebarCollapsed,
+            'md:w-56': !sidebarCollapsed,
+            'sidebar-collapsed': sidebarCollapsed
+        }"
+    >
+            <div class="billio-sidebar-header sidebar-header shrink-0 border-b">
+                <a
+                    href="{% url 'dashboard:dashboard-home' %}"
+                    class="sidebar-brand flex items-center gap-2.5 px-3 py-3 min-h-[3.25rem] min-w-0"
+                    :class="sidebarCollapsed ? 'md:justify-center md:px-2' : 'justify-center md:justify-start'"
+                >
+                    <span class="billio-brand-mark shrink-0">{% include "components/logo_mark_on_violet.html" with class="w-[21px] h-[21px]" %}</span>
+                    <span class="billio-brand-name text-lg truncate md:hidden">Billio</span>
+                    <span class="billio-brand-name text-lg truncate hidden md:inline" x-show="!sidebarCollapsed">Billio</span>
+                </a>
+            </div>
+
+        <nav class="flex-1 overflow-y-auto overflow-x-hidden pt-2 pb-3">
+            <a href="{% url 'dashboard:dashboard-home' %}" title="Home" class="{% if request.resolver_match.url_name == 'dashboard-home' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="house" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Home</span>
+            </a>
+            <a href="{% url 'clients:client-list' %}" title="Clients" class="{% if 'client' in request.resolver_match.url_name %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="users-round" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Clients</span>
+            </a>
+            <a href="{% url 'dashboard:project-board' %}" title="Projects" class="{% if request.resolver_match.url_name == 'project-board' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="folder-kanban" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Projects</span>
+            </a>
+            <a href="{% url 'dashboard:documents-list' %}" title="Documents" class="{% if request.resolver_match.url_name == 'documents-list' or request.resolver_match.url_name == 'document-gallery' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="files" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Documents</span>
+            </a>
+
+            <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
+            <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Facturation</div>
+            <a href="{% url 'invoices:invoice-list' %}" title="Invoices" class="{% if 'invoice' in request.resolver_match.url_name %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="receipt" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Invoices</span>
+            </a>
+            <a href="{% url 'invoices:quote-list' %}" title="Devis" class="{% if 'quote' in request.resolver_match.url_name %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="file-pen-line" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Devis</span>
+            </a>
+            <a href="{% url 'payments:payments-page' %}" title="Paiements" class="{% if request.resolver_match.url_name == 'payments-page' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="banknote" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Paiements</span>
+            </a>
+            <a href="{% url 'invoices:product-list' %}" title="Produits" class="{% if request.resolver_match.url_name == 'product-list' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="tags" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Produits</span>
+            </a>
+
+            <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
+            <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Espace de travail</div>
+
+            <div
+                class="{% if request.resolver_match.url_name in 'activity-timeline,deliverables-list,resources-center' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 cursor-pointer select-none"
+                @click="workspaceOpen = !workspaceOpen"
+            >
+                <i data-lucide="briefcase" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium flex-1">Workspace</span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 shrink-0 sidebar-nav-text transition-transform" :class="workspaceOpen ? '' : '-rotate-90'"></i>
+            </div>
+            <div
+                x-show="workspaceOpen"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="sidebar-nav-text"
+            >
+                <a href="{% url 'dashboard:activity-timeline' %}" title="Timeline" class="{% if request.resolver_match.url_name == 'activity-timeline' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 py-2 rounded-lg mx-2 pl-9 pr-4 transition-colors">
+                    <i data-lucide="calendar-clock" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span class="sidebar-nav-text text-sm font-medium">Timeline</span>
+                </a>
+                <a href="{% url 'dashboard:deliverables-list' %}" title="Deliverables" class="{% if request.resolver_match.url_name == 'deliverables-list' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 py-2 rounded-lg mx-2 pl-9 pr-4 transition-colors">
+                    <i data-lucide="package-check" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span class="sidebar-nav-text text-sm font-medium">Deliverables</span>
+                </a>
+                <a href="{% url 'dashboard:resources-center' %}" title="Ressources" class="{% if request.resolver_match.url_name == 'resources-center' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 py-2 rounded-lg mx-2 pl-9 pr-4 transition-colors">
+                    <i data-lucide="book-open" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span class="sidebar-nav-text text-sm font-medium">Ressources</span>
+                </a>
+            </div>
+
+            <a href="{% url 'dashboard:automation-builder' %}" title="Automation" class="{% if request.resolver_match.url_name == 'automation-builder' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="workflow" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Automation</span>
+            </a>
+            <a href="{% url 'dashboard:analytics-home' %}" title="Reports" class="{% if request.resolver_match.url_name == 'analytics-home' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="chart-pie" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Reports</span>
+            </a>
+            <a href="{% url 'templates_app:template-list' %}" title="Templates" class="{% if 'template' in request.resolver_match.url_name %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="palette" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Templates</span>
+            </a>
+            <a href="{% url 'dashboard:client-portal-preview' %}" title="Portail client" class="{% if request.resolver_match.url_name == 'client-portal-preview' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="door-open" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Portail client</span>
+            </a>
+
+            <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
+            <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Système</div>
+            <a href="{% url 'subscriptions:billing' %}" title="Abonnement" class="{% if request.resolver_match.app_name == 'subscriptions' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="gem" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Abonnement</span>
+            </a>
+            <a href="{% url 'accounts:user-settings' %}?tab=dev" title="API" class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="braces" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">API</span>
+            </a>
+            <a href="{% url 'integrations:integrations-page' %}" title="Intégrations" class="{% if request.resolver_match.url_name == 'integrations-page' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="puzzle" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Intégrations</span>
+            </a>
+            <a href="{% url 'accounts:user-settings' %}" title="Settings" class="{% if 'settings' in request.resolver_match.url_name %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Settings</span>
+            </a>
+        </nav>
+    </aside>
+    {% endif %}
+
+    <!-- Main Layout -->
+    <main
+        class="flex-1 flex flex-col min-w-0 max-w-full{% if not user.is_authenticated %} md:ml-0{% endif %}"
+        {% if user.is_authenticated %}:class="(sidebarReady ? 'transition-[margin] duration-200 ease-out ' : '') + (focusMode ? 'md:ml-0' : (sidebarCollapsed ? 'md:ml-16' : 'md:ml-56'))"{% endif %}
+    >
+        <!-- Top Bar -->
+        <header
+            id="dashboard-app-header"
+            class="billio-header dash-header-premium fixed top-0 left-0 right-0 z-30 border-b px-3 sm:px-6 py-2.5 sm:py-3 min-w-0 max-w-[100vw] overflow-x-clip overflow-y-visible{% if not user.is_authenticated %} md:left-0{% endif %}"
+            x-show="!focusMode"
+            {% if user.is_authenticated %}:class="(sidebarReady ? 'transition-[left] duration-200 ease-out ' : '') + (sidebarCollapsed ? 'md:left-16' : 'md:left-56')"{% endif %}
+        >
+            <div class="flex flex-row items-center justify-between gap-3 min-w-0 max-w-full">
+                <div class="min-w-0 flex-1 flex items-center gap-2 sm:gap-3">
+                {% if user.is_authenticated %}
+                <button
+                    type="button"
+                    class="billio-icon-btn md:hidden shrink-0 p-2 rounded-lg"
+                    @click="sidebarOpen = true"
+                    aria-label="Ouvrir le menu"
+                >
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <button
+                    type="button"
+                    class="billio-icon-btn hidden md:inline-flex shrink-0 p-2 rounded-lg"
+                    @click="toggleSidebarCollapsed()"
+                    :title="sidebarCollapsed ? 'Étendre le menu' : 'Replier le menu'"
+                    aria-label="Replier ou étendre le menu latéral"
+                >
+                    <i data-lucide="panel-left-close" class="w-5 h-5 transition-transform duration-200" :class="sidebarCollapsed ? 'rotate-180' : ''"></i>
+                </button>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                {% if request.resolver_match.url_name == 'dashboard-home' %}
+                    <p class="dash-header-greeting leading-tight">Bonjour {{ user.first_name|default:user.username }} 👋</p>
+                    <p class="dash-header-sub leading-tight">Voici votre activité aujourd'hui.</p>
+                {% else %}
+                    <h1 class="billio-page-title text-sm sm:text-base lg:text-lg truncate leading-tight">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <p class="billio-page-subtitle text-xs truncate leading-tight mt-0 empty:hidden">{% block page_subtitle %}Vue d'ensemble de votre activité{% endblock %}</p>
+                {% endif %}
+                </div>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 overflow-x-auto lg:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {% if user.is_authenticated %}
+                        <button type="button" data-cmd-open class="dash-search-trigger shrink-0" aria-label="Rechercher">
+                            <i data-lucide="search" class="w-4 h-4 shrink-0"></i>
+                            <span class="hidden sm:inline">Rechercher…</span>
+                            <span class="sm:hidden">Search</span>
+                            <kbd class="dash-kbd hidden sm:inline">⌘K</kbd>
+                        </button>
+
+                        {% block header_finance_chip %}{% endblock %}
+
+                        <!-- Chrono -->
+                        <div class="relative shrink-0" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                            <button type="button" data-bt-chip @click="open = !open" class="bt-chip billio-icon-btn p-2 rounded-xl transition-all duration-150" :aria-expanded="open.toString()" aria-label="Chrono" title="Chrono">
+                                <i data-lucide="timer" class="w-5 h-5"></i>
+                                <span data-bt-chip-time></span>
+                            </button>
+                            <div class="bt-panel" x-show="open" x-cloak x-transition.opacity.duration.150ms>
+                                <div data-bt-mount data-bt-detach></div>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="aiDockOpen = !aiDockOpen" aria-label="Ouvrir Billio AI" class="billio-icon-btn relative p-2 rounded-xl transition-all duration-150 shrink-0" :class="aiDockOpen ? 'ai-dock-trigger-active' : ''">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </button>
+
+                        {% if request.resolver_match.url_name != 'invoice-create' %}
+                        <a href="{% url 'invoices:invoice-create' %}" aria-label="Nouvelle facture" class="btn-secondary-yellow px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-150 inline-flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
+                            <i data-lucide="plus" class="w-4 h-4 shrink-0"></i>
+                            <span class="hidden sm:inline">Nouvelle facture</span>
+                        </a>
+                        {% endif %}
+
+                        {% include "components/language_switcher.html" %}
+
+                        <!-- Notifications Dropdown -->
+                        <div
+                            class="relative"
+                            x-data="notificationsMenu()"
+                            x-init="init()"
+                            @keydown.escape.window="open = false"
+                            @click.outside="open = false"
+                        >
+                            <button
+                                @click="open = !open"
+                                class="billio-icon-btn relative p-2 rounded-xl transition-all duration-150"
+                                aria-label="Ouvrir les notifications"
+                            >
+                                <i data-lucide="bell" class="w-5 h-5"></i>
+                                <span
+                                    x-show="unreadCount() > 0"
+                                    x-cloak
+                                    x-transition
+                                    class="billio-badge-count absolute right-0.5 top-0.5 min-w-[1.1rem] h-[1.1rem] px-0.5 rounded-full text-[9px] font-semibold leading-[1.1rem] border text-center scale-90 origin-top-right"
+                                    x-text="unreadCount()"
+                                ></span>
+                            </button>
+
+                            <div
+                                x-show="open"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-180"
+                                x-transition:enter-start="transform opacity-0 scale-95 -translate-y-1"
+                                x-transition:enter-end="transform opacity-100 scale-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-120"
+                                x-transition:leave-start="transform opacity-100 scale-100 translate-y-0"
+                                x-transition:leave-end="transform opacity-0 scale-95 -translate-y-1"
+                                class="absolute right-0 mt-3 w-[23rem] notification-pop-card z-50"
+                            >
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                                    <h3 class="text-base font-semibold text-gray-900">Notifications</h3>
+                                    <button @click="open = false" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div class="px-3 py-3 border-b border-gray-100 flex items-center gap-2 flex-wrap">
+                                    <button @click="activeTab = 'all'" :class="activeTab === 'all' ? 'notification-chip-active' : 'notification-chip'" class="notification-chip">Toutes</button>
+                                    <button @click="activeTab = 'payment'" :class="activeTab === 'payment' ? 'notification-chip-active' : 'notification-chip'" class="notification-chip">Paiements</button>
+                                    <button @click="activeTab = 'invoice'" :class="activeTab === 'invoice' ? 'notification-chip-active' : 'notification-chip'" class="notification-chip">Factures</button>
+                                    <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'notification-chip-active' : 'notification-chip'" class="notification-chip">Système</button>
+                                </div>
+
+                                <div class="max-h-80 overflow-y-auto py-1">
+                                    <template x-if="loaded && filteredNotifications.length === 0">
+                                        <div class="px-4 py-8 text-center">
+                                            <p class="text-sm text-gray-500">Aucune notification pour ce filtre.</p>
+                                        </div>
+                                    </template>
+
+                                    <template x-for="item in filteredNotifications" :key="item.id">
+                                        <button class="notification-row w-full text-left" @click="openNotification(item)">
+                                            <div class="flex items-start gap-3">
+                                                <div class="notification-icon" :class="iconClass(item.category)">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-sm font-medium text-gray-900 truncate" x-text="item.title"></p>
+                                                    <p class="text-xs text-gray-500 truncate mt-0.5" x-text="item.message"></p>
+                                                </div>
+                                                <div class="flex flex-col items-end gap-1 ml-2">
+                                                    <span class="text-xs text-gray-400 whitespace-nowrap" x-text="item.timeLabel"></span>
+                                                    <span x-show="!item.is_read" class="w-2 h-2 rounded-full" style="background: var(--billio-primary);"></span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </template>
+                                </div>
+
+                                <div class="px-4 py-3 border-t border-gray-100 bg-gray-50/80">
+                                    <a href="{% url 'dashboard:activity-timeline' %}" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">Voir toute l'activité</a>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            if (!window.notificationsMenu) {
+                                window.notificationsMenu = function () {
+                                    return {
+                                        open: false,
+                                        activeTab: 'all',
+                                        notifications: [],
+                                        loaded: false,
+                                        pollTimer: null,
+                                        init() {
+                                            this.load();
+                                            this.pollTimer = setInterval(() => this.load(), 20000);
+                                        },
+                                        categoryOf(type) {
+                                            if (type === 'payment_received') return 'payment';
+                                            if (type === 'invoice_sent' || type === 'invoice_viewed' || type === 'invoice_overdue') return 'invoice';
+                                            return 'system';
+                                        },
+                                        timeAgo(iso) {
+                                            const diffMs = Date.now() - new Date(iso).getTime();
+                                            const mins = Math.floor(diffMs / 60000);
+                                            if (mins < 1) return "à l'instant";
+                                            if (mins < 60) return `${mins} min`;
+                                            const hours = Math.floor(mins / 60);
+                                            if (hours < 24) return `${hours} h`;
+                                            return `${Math.floor(hours / 24)} j`;
+                                        },
+                                        load() {
+                                            fetch('/dashboard/api/notifications/', { credentials: 'same-origin' })
+                                                .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+                                                .then((data) => {
+                                                    const results = data.results || data;
+                                                    this.notifications = results.map((n) => ({
+                                                        id: n.id,
+                                                        title: n.title,
+                                                        message: n.message,
+                                                        is_read: n.is_read,
+                                                        category: this.categoryOf(n.notification_type),
+                                                        related_invoice: n.related_invoice,
+                                                        timeLabel: this.timeAgo(n.created_at),
+                                                    }));
+                                                    this.loaded = true;
+                                                })
+                                                .catch(() => { this.loaded = true; });
+                                        },
+                                        get filteredNotifications() {
+                                            if (this.activeTab === 'all') return this.notifications;
+                                            return this.notifications.filter((n) => n.category === this.activeTab);
+                                        },
+                                        unreadCount() {
+                                            return this.notifications.filter((n) => !n.is_read).length;
+                                        },
+                                        iconClass(category) {
+                                            if (category === 'invoice') return 'notification-icon-invoice';
+                                            if (category === 'payment') return 'notification-icon-payment';
+                                            return 'notification-icon-system';
+                                        },
+                                        markRead(item) {
+                                            if (item.is_read) return;
+                                            item.is_read = true;
+                                            const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+                                            fetch(`/dashboard/api/notifications/${item.id}/`, {
+                                                method: 'PATCH',
+                                                credentials: 'same-origin',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRFToken': csrf ? csrf.value : '',
+                                                },
+                                                body: JSON.stringify({ is_read: true }),
+                                            }).catch(() => {});
+                                        },
+                                        openNotification(item) {
+                                            this.markRead(item);
+                                            if (item.related_invoice) {
+                                                window.location.href = `/invoices/${item.related_invoice}/preview/`;
+                                            }
+                                        },
+                                    };
+                                };
+                            }
+                        </script>
+
+                        <!-- Profile Dropdown -->
+                        <div
+                            class="relative"
+                            x-data="{
+                                open: false,
+                                closeTimer: null,
+                                openMenu() {
+                                    if (this.closeTimer) clearTimeout(this.closeTimer);
+                                    this.open = true;
+                                },
+                                scheduleClose() {
+                                    this.closeTimer = setTimeout(() => { this.open = false; }, 160);
+                                },
+                                countryFlag(name) {
+                                    return typeof window.countryFlagEmoji === 'function' ? window.countryFlagEmoji(name) : '🌍';
+                                }
+                            }"
+                            @mouseenter="openMenu()"
+                            @mouseleave="scheduleClose()"
+                            @keydown.escape.window="open = false"
+                        >
+                            <button @click="open = !open" class="billio-profile-trigger flex items-center gap-2 p-2 rounded-xl transition-colors border border-transparent">
+                                <div class="profile-avatar-ring">
+                                    <div class="profile-avatar-inner">
+                                        {% if user.avatar %}<img src="{{ user.avatar.url }}" alt="" class="w-full h-full rounded-full object-cover">{% else %}<span class="text-sm font-semibold text-gray-700">{{ user.get_full_name|slice:":2"|upper|default:user.username|slice:":2"|upper }}</span>{% endif %}
+                                    </div>
+                                </div>
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-120" x-transition:enter-start="transform opacity-0 scale-95 -translate-y-1" x-transition:enter-end="transform opacity-100 scale-100 translate-y-0" x-transition:leave="transition ease-in duration-90" x-transition:leave-start="transform opacity-100 scale-100 translate-y-0" x-transition:leave-end="transform opacity-0 scale-95 -translate-y-1" class="absolute right-0 mt-2.5 w-72 profile-menu-panel z-50" @mouseenter="openMenu()" @mouseleave="scheduleClose()">
+                                <div class="profile-menu-head">
+                                    <div class="profile-avatar-ring profile-avatar-ring-lg">
+                                        <div class="profile-avatar-inner">
+                                            {% if user.avatar %}<img src="{{ user.avatar.url }}" alt="" class="w-full h-full rounded-full object-cover">{% else %}<span class="text-sm font-semibold text-gray-700">{{ user.get_full_name|slice:":2"|upper|default:user.username|slice:":2"|upper }}</span>{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-base font-semibold text-gray-900 truncate">{{ user.get_full_name|default:user.username }}</p>
+                                        <p class="text-sm text-gray-500 truncate">{{ user.email }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="px-3 py-3 border-b border-gray-100 bg-gray-50/70">
+                                    <div class="profile-info-grid">
+                                        <div class="profile-info-item">
+                                            <p class="profile-info-label">Rôle</p>
+                                            <p class="profile-info-value">{{ user.get_role_display|default:"Non défini" }}</p>
+                                        </div>
+                                        <div class="profile-info-item">
+                                            <p class="profile-info-label">Téléphone</p>
+                                            <p class="profile-info-value">{{ user.phone|default:"Non défini" }}</p>
+                                        </div>
+                                        <div class="profile-info-item">
+                                            <p class="profile-info-label">Pays</p>
+                                            <p class="profile-info-value inline-flex items-center gap-2 min-w-0">
+                                                <span class="text-base leading-none shrink-0" x-text="countryFlag('{{ user.profile.country|default:''|escapejs }}')"></span>
+                                                <span class="truncate">{{ user.profile.country|default:"Non défini" }}</span>
+                                            </p>
+                                        </div>
+                                        <div class="profile-info-item">
+                                            <p class="profile-info-label">Membre depuis</p>
+                                            <p class="profile-info-value">{{ user.date_joined|date:"d/m/Y" }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="profile-info-address mt-2">
+                                        <p class="profile-info-label">Adresse</p>
+                                        <p class="profile-info-value truncate">{{ user.profile.address|default:"Non définie" }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="dropdown-section px-2 pt-2 pb-1">
+                                <a href="{% url 'accounts:user-profile' %}" @click="open = false" class="profile-menu-item profile-menu-item-active">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                    Mon profil
+                                </a>
+
+                                <a href="{% url 'accounts:user-settings' %}" @click="open = false" class="profile-menu-item">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    Paramètres
+                                </a>
+                                <a href="#" @click="open = false" class="profile-menu-item">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4v-4z"/>
+                                    </svg>
+                                    Community
+                                </a>
+                                <a href="#" @click="open = false" class="profile-menu-item">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Help center
+                                </a>
+                                </div>
+
+                                <div class="dropdown-divider"></div>
+
+                                <div class="dropdown-section px-2 pt-1 pb-2">
+                                <a href="{% url 'accounts:logout' %}" @click="open = false" class="profile-menu-item profile-menu-item-danger">
+                                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                    </svg>
+                                    Se déconnecter
+                                </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="flex items-center space-x-4">
+                            <div class="billio-demo-banner rounded-lg px-3 py-2">
+                                <div class="flex items-center space-x-2">
+                                    <svg class="w-4 h-4 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                    </svg>
+                                    <span class="text-sm font-medium">Mode démo</span>
+                                </div>
+                            </div>
+
+                            <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm">
+                                <svg class="w-4 h-4 mr-2 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                </svg>
+                                Se connecter
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+            <!-- Content Layout -->
+            <div class="flex-1 flex flex-col min-h-0 min-w-0 max-w-full">
+                <!-- Main Content Area (min-w-0 : les colonnes flex des pages type éditeur facture peuvent rétrécir sans overflow horizontal) -->
+                {# pt-24 ne suffit plus : le bandeau est sur 2 lignes &lt; lg (titre + actions). Marge = hauteur barre + marge de respiration. #}
+                <main class="flex-1 min-w-0 max-w-full p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-clip" :class="focusMode ? 'pt-6' : 'pt-24 lg:pt-20'">
+                    {% if billing_alert %}
+                    <div class="mb-4 rounded-xl border px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-3" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
+                        <span><strong>Paiement de votre abonnement refusé.</strong> {% if billing_alert.in_grace_period %}Mettez à jour votre carte avant le {{ billing_alert.grace_ends_at|date:"j F" }} pour garder votre forfait <span translate="no">{{ billing_alert.plan.name }}</span>.{% else %}Votre compte applique les limites du forfait Free jusqu'à la régularisation.{% endif %}</span>
+                        <a href="{% url 'subscriptions:billing' %}" class="font-semibold underline">Régulariser</a>
+                    </div>
+                    {% endif %}
+                    {% block content %}{% endblock %}
+                </main>
+            </div>
+        </main>
+
+        {% if user.is_authenticated %}
+        <button
+            type="button"
+            x-show="focusMode"
+            x-cloak
+            @click="focusMode = false"
+            @keydown.escape.window="focusMode = false"
+            class="focus-mode-exit"
+        >
+            <i data-lucide="minimize-2" class="w-4 h-4"></i>
+            Quitter le mode focus
+            <kbd class="dash-kbd">ESC</kbd>
+        </button>
+        {% endif %}
+
+    <!-- Mobile sidebar overlay -->
+    <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-50 bg-gray-600 opacity-75 backdrop-blur-sm md:hidden"></div>
+
+    <!-- Command Palette -->
+    <div id="cmd-palette" class="hidden" role="dialog" aria-label="Palette de commandes">
+        <div class="cmd-palette-backdrop" data-cmd-backdrop></div>
+        <div class="cmd-palette">
+            <div class="cmd-palette-input-wrap">
+                <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                <input type="text" data-cmd-input class="cmd-palette-input" placeholder="Rechercher une action…" autocomplete="off">
+                <kbd class="dash-kbd">ESC</kbd>
+            </div>
+            <div class="cmd-palette-recents" data-cmd-recents></div>
+            <div class="cmd-palette-list" data-cmd-list>
+                <a href="{% url 'invoices:invoice-create' %}" data-cmd-item data-cmd-label="créer facture nouvelle" class="cmd-palette-item">
+                    <i data-lucide="file-plus" class="w-4 h-4"></i>
+                    Créer facture
+                </a>
+                <a href="{% url 'invoices:quote-create' %}" data-cmd-item data-cmd-label="créer devis" class="cmd-palette-item">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    Créer devis
+                </a>
+                <a href="{% url 'clients:client-list' %}" data-cmd-item data-cmd-label="créer client clients" class="cmd-palette-item">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    Créer client
+                </a>
+                <a href="{% url 'dashboard:project-board' %}" data-cmd-item data-cmd-label="projects projets kanban" class="cmd-palette-item">
+                    <i data-lucide="kanban-square" class="w-4 h-4"></i>
+                    Voir les projets
+                </a>
+                <a href="{% url 'documents:document-gallery' %}" data-cmd-item data-cmd-label="document proposition contrat bienvenue template" class="cmd-palette-item">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    Créer un document
+                </a>
+                <a href="{% url 'dashboard:documents-list' %}" data-cmd-item data-cmd-label="documents" class="cmd-palette-item">
+                    <i data-lucide="folder-open" class="w-4 h-4"></i>
+                    Voir documents
+                </a>
+                <a href="{% url 'dashboard:activity-timeline' %}" data-cmd-item data-cmd-label="timeline activité" class="cmd-palette-item">
+                    <i data-lucide="history" class="w-4 h-4"></i>
+                    Voir la timeline
+                </a>
+                <a href="{% url 'dashboard:automation-builder' %}" data-cmd-item data-cmd-label="automation regle workflow" class="cmd-palette-item">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                    Créer une automatisation
+                </a>
+                <a href="{% url 'dashboard:resources-center' %}" data-cmd-item data-cmd-label="ressources calculateur tjm tva" class="cmd-palette-item">
+                    <i data-lucide="calculator" class="w-4 h-4"></i>
+                    Centre de ressources
+                </a>
+                <a href="{% url 'dashboard:client-portal-preview' %}" data-cmd-item data-cmd-label="client portal espace client" class="cmd-palette-item">
+                    <i data-lucide="globe" class="w-4 h-4"></i>
+                    Portail client
+                </a>
+                <a href="{% url 'invoices:invoice-list' %}" data-cmd-item data-cmd-label="factures rechercher" class="cmd-palette-item">
+                    <i data-lucide="receipt-text" class="w-4 h-4"></i>
+                    Voir factures
+                </a>
+                <a href="{% url 'dashboard:analytics-home' %}" data-cmd-item data-cmd-label="analytics paiements reports" class="cmd-palette-item">
+                    <i data-lucide="wallet" class="w-4 h-4"></i>
+                    Voir paiements
+                </a>
+                <a href="{% url 'accounts:user-settings' %}" data-cmd-item data-cmd-label="paramètres settings" class="cmd-palette-item">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    Paramètres
+                </a>
+                <a href="{% url 'invoices:invoice-list' %}?export=1" data-cmd-item data-cmd-label="exporter export" class="cmd-palette-item">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    Exporter
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_authenticated %}
+    <!-- AI Assistant Dock -->
+    <div x-show="aiDockOpen" x-cloak class="ai-dock-layer">
+        <div
+            x-show="aiDockOpen"
+            x-transition:enter="transition-opacity ease-linear duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-linear duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="aiDockOpen = false"
+            class="ai-dock-backdrop"
+        ></div>
+        <div
+            x-data="{
+                messages: [
+                    { role: 'ai', text: 'Bonjour ! L’assistant Billio arrive bientôt. En attendant, voici des raccourcis vers les actions les plus courantes.' }
+                ],
+                busy: false,
+                input: '',
+                usedPrompts: [],
+                run(key, label, reply, href) {
+                    if (this.busy) return;
+                    this.usedPrompts.push(key);
+                    this.messages.push({ role: 'user', text: label });
+                    this.busy = true;
+                    setTimeout(() => {
+                        this.messages.push({ role: 'ai', text: reply, done: true, href: href });
+                        this.busy = false;
+                        this.$nextTick(() => { this.$refs.scrollArea.scrollTop = this.$refs.scrollArea.scrollHeight; });
+                    }, 900);
+                },
+                send() {
+                    if (!this.input.trim() || this.busy) return;
+                    this.messages.push({ role: 'user', text: this.input.trim() });
+                    this.input = '';
+                    this.busy = true;
+                    setTimeout(() => {
+                        this.messages.push({ role: 'ai', text: 'Cette fonctionnalité arrive bientôt — Billio AI pourra bientôt agir directement sur votre demande.' });
+                        this.busy = false;
+                        this.$nextTick(() => { this.$refs.scrollArea.scrollTop = this.$refs.scrollArea.scrollHeight; });
+                    }, 900);
+                }
+            }"
+            x-show="aiDockOpen"
+            x-transition:enter="transition ease-out duration-220"
+            x-transition:enter-start="transform translate-x-full"
+            x-transition:enter-end="transform translate-x-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="transform translate-x-0"
+            x-transition:leave-end="transform translate-x-full"
+            class="ai-dock"
+            @keydown.escape.window="aiDockOpen = false"
+        >
+            <div class="ai-dock-header">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="ai-dock-icon"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+                    <div class="min-w-0">
+                        <p class="ai-dock-title">Billio AI</p>
+                        <p class="ai-dock-subtitle">Assistant — bientôt disponible</p>
+                    </div>
+                </div>
+                <button type="button" @click="aiDockOpen = false" class="billio-icon-btn p-1.5 rounded-lg shrink-0" aria-label="Fermer">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="ai-dock-body" x-ref="scrollArea">
+                <template x-for="(msg, i) in messages" :key="i">
+                    <div class="ai-dock-msg" :class="msg.role === 'user' ? 'ai-dock-msg--user' : 'ai-dock-msg--ai'">
+                        <p x-text="msg.text"></p>
+                        <a x-show="msg.done && msg.href" :href="msg.href" class="ai-dock-msg-link">Voir →</a>
+                    </div>
+                </template>
+                <div class="ai-dock-msg ai-dock-msg--ai" x-show="busy" x-cloak>
+                    <span class="ai-dock-typing"><span></span><span></span><span></span></span>
+                </div>
+            </div>
+
+            <div class="ai-dock-prompts">
+                <button type="button" class="ai-dock-prompt-btn" :disabled="busy" @click="run('invoice', 'Créer une facture', 'J’ouvre l’éditeur de facture : choisissez le client et ajoutez vos lignes.', '{% url 'invoices:invoice-create' %}')">
+                    <i data-lucide="file-plus" class="w-3.5 h-3.5"></i>
+                    <span>Créer une facture</span>
+                    <span class="ai-dock-prompt-done" x-show="usedPrompts.includes('invoice')" x-cloak>✓ fait</span>
+                </button>
+                <button type="button" class="ai-dock-prompt-btn" :disabled="busy" @click="run('contract', 'Créer un document', 'Choisissez un modèle (proposition, contrat, bienvenue…) dans la galerie.', '{% url 'documents:document-gallery' %}')">
+                    <i data-lucide="file-signature" class="w-3.5 h-3.5"></i>
+                    <span>Créer un document</span>
+                    <span class="ai-dock-prompt-done" x-show="usedPrompts.includes('contract')" x-cloak>✓ fait</span>
+                </button>
+                <button type="button" class="ai-dock-prompt-btn" :disabled="busy" @click="run('summary', 'Voir mes projets', 'Vos projets, leurs tâches et leurs échéances sont sur le tableau des projets.', '{% url 'dashboard:project-board' %}')">
+                    <i data-lucide="list-tree" class="w-3.5 h-3.5"></i>
+                    <span>Voir mes projets</span>
+                    <span class="ai-dock-prompt-done" x-show="usedPrompts.includes('summary')" x-cloak>✓ fait</span>
+                </button>
+            </div>
+
+            <form class="ai-dock-input-wrap" @submit.prevent="send()">
+                <input type="text" x-model="input" class="ai-dock-input" placeholder="Demandez quelque chose à Billio AI…" autocomplete="off">
+                <button type="submit" class="ai-dock-send" :disabled="busy" aria-label="Envoyer">
+                    <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_authenticated %}
+    <!-- Quick Actions Dock -->
+    <div class="quick-dock" x-data="quickDock()" :class="[placement, drag && drag.moved ? 'is-dragging' : '']" :style="style" @keydown.escape.window="open = false" @click.outside="open = false">
+        <div
+            class="quick-dock-menu"
+            x-show="open"
+            x-cloak
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 transform translate-y-2 scale-95"
+            x-transition:enter-end="opacity-100 transform translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 transform translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 transform translate-y-2 scale-95"
+        >
+            <a href="{% url 'invoices:invoice-create' %}" class="quick-dock-item" @click="open = false">
+                <span class="quick-dock-item-icon"><i data-lucide="file-plus" class="w-4 h-4"></i></span> Nouvelle facture
+            </a>
+            <a href="{% url 'invoices:quote-create' %}" class="quick-dock-item" @click="open = false">
+                <span class="quick-dock-item-icon"><i data-lucide="file-text" class="w-4 h-4"></i></span> Nouveau devis
+            </a>
+            <a href="{% url 'clients:client-list' %}" class="quick-dock-item" @click="open = false">
+                <span class="quick-dock-item-icon"><i data-lucide="user-plus" class="w-4 h-4"></i></span> Nouveau client
+            </a>
+            <a href="{% url 'dashboard:project-board' %}" class="quick-dock-item" @click="open = false">
+                <span class="quick-dock-item-icon"><i data-lucide="kanban-square" class="w-4 h-4"></i></span> Nouveau projet
+            </a>
+            <a href="{% url 'documents:document-gallery' %}" class="quick-dock-item" @click="open = false">
+                <span class="quick-dock-item-icon"><i data-lucide="file-text" class="w-4 h-4"></i></span> Nouveau document
+            </a>
+            <button type="button" class="quick-dock-item quick-dock-item--muted" x-show="pos" @click="resetPosition()">
+                <span class="quick-dock-item-icon"><i data-lucide="corner-down-right" class="w-4 h-4"></i></span> Replacer le bouton
+            </button>
+        </div>
+        <button type="button" class="quick-dock-fab" x-ref="fab" @click="toggle()" @pointerdown="startDrag($event)" @pointermove="onDrag($event)" @pointerup="endDrag()" @pointercancel="endDrag()" :aria-expanded="open.toString()" aria-label="Actions rapides" title="Actions rapides — glisser pour déplacer">
+            <i data-lucide="plus" class="w-5 h-5 quick-dock-fab-icon" :class="open ? 'is-rotated' : ''"></i>
+        </button>
+    </div>
+    {% endif %}
+</body>
+</html>

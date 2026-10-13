@@ -1,0 +1,160 @@
+<div class="billio-table-wrap">
+    <table class="billio-table">
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th>N° Facture</th>
+                <th>Échéance</th>
+                <th class="text-right">Montant</th>
+                <th>Statut</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td>
+                    <div class="flex items-center gap-3">
+                        <div class="billio-table-avatar">{{ invoice.client.name|slice:":2"|upper }}</div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold truncate" style="color: var(--billio-text);">{{ invoice.client.name }}</p>
+                            <p class="text-xs truncate" style="color: var(--billio-text-muted);">{{ invoice.title|default:"Facture" }}</p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="text-sm font-medium">{{ invoice.invoice_number }}</span>{% if invoice.invoice_type == 'credit_note' %} <span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">Avoir</span>{% endif %}
+                </td>
+                <td>
+                    <span class="text-sm {% if invoice.status == 'overdue' %}text-red-600 font-medium{% else %}text-gray-600{% endif %}">{{ invoice.due_date|date:"d M Y" }}</span>
+                </td>
+                <td class="text-right">
+                    <span class="text-sm font-semibold">{{ invoice.total_amount|floatformat:2 }} €</span>
+                </td>
+                <td>
+                    <span class="status-badge status-badge--{{ invoice.status }}">{% if invoice.status == 'draft' %}Brouillon{% elif invoice.status == 'sent' %}Envoyée{% elif invoice.status == 'viewed' %}Consultée{% elif invoice.status == 'paid' %}Payée{% elif invoice.status == 'overdue' %}En retard{% elif invoice.status == 'cancelled' %}Annulée{% else %}{{ invoice.get_status_display }}{% endif %}</span>
+                    {% if invoice.status == 'draft' and invoice.scheduled_send_at %}
+                    <span class="text-xs block mt-1" style="color: var(--billio-text-muted);" title="Envoi programmé">📅 {{ invoice.scheduled_send_at|date:"d/m H:i" }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">
+                    <div class="relative inline-block" x-data="{ open: false }" @click.away="open = false">
+                        <button
+                            type="button"
+                            class="billio-table-action-btn"
+                            title="Actions"
+                            @click="open = !open"
+                        >
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="6" r="1.6"></circle>
+                                <circle cx="12" cy="12" r="1.6"></circle>
+                                <circle cx="12" cy="18" r="1.6"></circle>
+                            </svg>
+                        </button>
+                        <div
+                            x-show="open"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
+                            class="absolute right-0 mt-1 w-56 dropdown-panel z-20"
+                        >
+                            <div class="dropdown-section">
+                                {% if invoice.status == 'draft' %}
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="sendInvoice('{{ invoice.id }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 12L3.269 3.126A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.874L6 12zm0 0h7.5"></path>
+                                    </svg>
+                                    Envoyer la facture
+                                </button>
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="scheduleInvoiceSend('{{ invoice.id }}', {% if invoice.scheduled_send_at %}'{{ invoice.scheduled_send_at|date:"Y-m-d\TH:i" }}'{% else %}null{% endif %})">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    {% if invoice.scheduled_send_at %}Modifier l'envoi programmé{% else %}Programmer l'envoi{% endif %}
+                                </button>
+                                {% endif %}
+                                {% if invoice.invoice_type == 'sale' %}
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="copyShareLink('{% url 'invoices:public-invoice-payment' invoice.id %}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.684 13.342C9.886 14.555 11.729 14.696 13.093 13.689L15.4 11.985m-7.48-1.97L5.613 8.31C4.25 7.303 2.407 7.444 1.205 8.658a3.357 3.357 0 000 4.72c1.202 1.213 3.045 1.354 4.408.347l2.307-1.704m4.374.004l2.307 1.704c1.363 1.007 3.206.866 4.408-.347a3.357 3.357 0 000-4.72c-1.202-1.214-3.045-1.355-4.408-.348L12.294 10.02"></path>
+                                    </svg>
+                                    Partager le lien de paiement
+                                </button>
+                                {% endif %}
+                                {% if invoice.invoice_type == 'sale' and invoice.status in 'sent,viewed,overdue' %}
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="markInvoicePaid('{{ invoice.id }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Marquer comme payée
+                                </button>
+                                {% endif %}
+                                <a href="{% url 'invoices:invoice-preview' invoice.id %}" class="dropdown-item">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    Prévisualiser
+                                </a>
+                                <a href="{% url 'invoices:invoice-edit' invoice.id %}" class="dropdown-item">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    Modifier
+                                </a>
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="duplicateInvoice('{{ invoice.id }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Dupliquer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not invoices %}
+    <div class="billio-table-empty">
+        <svg class="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Aucune facture trouvée
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated and not is_limited %}
+<div class="flex items-center justify-between px-1 py-3">
+    <p class="text-sm" style="color: var(--billio-text-muted);">
+        Affichage de <span class="font-medium" style="color: var(--billio-text);">{{ page_obj.start_index }}</span> à <span class="font-medium" style="color: var(--billio-text);">{{ page_obj.end_index }}</span> sur <span class="font-medium" style="color: var(--billio-text);">{{ paginator.count }}</span> résultats
+    </p>
+    <nav class="flex items-center gap-1" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}" class="billio-table-action-btn" aria-label="Précédent">
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+        </a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-semibold" style="background: var(--billio-primary-soft); color: var(--billio-primary);">{{ num }}</span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <a href="?page={{ num }}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm hover:bg-gray-50" style="color: var(--billio-text-muted);">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}" class="billio-table-action-btn" aria-label="Suivant">
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+        </a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}

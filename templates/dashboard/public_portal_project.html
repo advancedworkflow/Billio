@@ -1,0 +1,279 @@
+{% extends "dashboard/_portal_base.html" %}
+
+{% block extra_head %}
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<style>[x-cloak] { display: none !important; }</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="{ changesFormOpen: null }">
+    <a href="{% url 'dashboard:public-portal-overview' client.portal_token %}" class="pt-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour à l'espace client</a>
+
+    <!-- En-tête du projet -->
+    <section class="pt-card pt-card-pad mb-8">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+            <div class="min-w-0">
+                <h1 class="pt-hello break-words">{{ project.name }}</h1>
+                {% if project.description %}<p class="pt-sub max-w-2xl">{{ project.description }}</p>{% endif %}
+            </div>
+            <span class="pt-badge {% if project.progress_percent >= 100 %}pt-badge--ok{% else %}pt-badge--accent{% endif %}">{{ project.status_label }}</span>
+        </div>
+        <div class="flex items-center gap-3 mt-5 max-w-md">
+            <div class="pt-progress flex-1"><span style="width: {{ project.progress_percent }}%"></span></div>
+            <span class="text-sm tabular-nums" style="color: var(--pt-muted);">{{ project.progress_percent }} % terminé</span>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-2 space-y-8">
+
+            <!-- Livrables -->
+            <section>
+                <h2 class="pt-section-title">Livrables</h2>
+                <div class="space-y-3">
+                    {% for d in deliverables %}
+                    <article class="pt-card {% if d.status == 'submitted' %}pt-todo{% endif %}">
+                        <div class="pt-card-pad">
+                            <div class="flex items-start justify-between gap-3 flex-wrap">
+                                <div class="min-w-0">
+                                    <p class="font-semibold break-words">{{ d.title }}</p>
+                                    {% if d.description %}<p class="text-sm mt-1" style="color: var(--pt-muted);">{{ d.description }}</p>{% endif %}
+                                </div>
+                                <span class="pt-badge {% if d.status == 'approved' %}pt-badge--ok{% elif d.status == 'changes_requested' %}pt-badge--danger{% elif d.status == 'submitted' %}pt-badge--warn{% endif %}">
+                                    {% if d.status == 'submitted' %}À valider{% else %}{{ d.get_status_display }}{% endif %}
+                                </span>
+                            </div>
+
+                            {% if d.files.all %}
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                {% for f in d.files.all %}
+                                <a href="{{ f.file.url }}" target="_blank" rel="noopener" class="pt-btn pt-btn--ghost"><i data-lucide="paperclip" class="w-3.5 h-3.5"></i> {{ f.name }}</a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if d.status == 'submitted' and portal_full %}
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <form method="post" action="{% url 'dashboard:public-portal-deliverable-approve' client.portal_token d.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="pt-btn"><i data-lucide="check" class="w-3.5 h-3.5"></i> Approuver</button>
+                                </form>
+                                <button type="button" class="pt-btn pt-btn--ghost" @click="changesFormOpen = changesFormOpen === {{ d.id }} ? null : {{ d.id }}">Demander des modifications</button>
+                            </div>
+                            <form x-show="changesFormOpen === {{ d.id }}" x-cloak method="post" action="{% url 'dashboard:public-portal-deliverable-request-changes' client.portal_token d.id %}" class="mt-3 space-y-2">
+                                {% csrf_token %}
+                                <textarea name="reason" rows="3" placeholder="Qu'est-ce qui doit changer ?" class="pt-input"></textarea>
+                                <button type="submit" class="pt-btn">Envoyer la demande</button>
+                            </form>
+                            {% endif %}
+
+                            {% if d.status == 'changes_requested' and d.change_request_reason %}
+                            <p class="text-sm mt-3 px-3 py-2 rounded-lg" style="background: var(--pt-danger-soft); color: var(--pt-danger);">Votre demande : « {{ d.change_request_reason }} »</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="px-5 py-4 space-y-3" style="border-top: 1px solid var(--pt-line); background: #fcfcfd; border-radius: 0 0 14px 14px;">
+                            {% for c in d.comments.all %}
+                            <div class="text-sm">
+                                <span class="font-semibold">{{ c.author_name }}</span>
+                                <span style="color: var(--pt-faint);">· {% if c.author_type == 'client' %}vous{% else %}équipe{% endif %}</span>
+                                <p class="mt-0.5" style="color: #3f3f46;">{{ c.body }}</p>
+                            </div>
+                            {% endfor %}
+                            {% if portal_full %}
+                            <form method="post" action="{% url 'dashboard:public-portal-comment-create' client.portal_token d.id %}" class="flex gap-2">
+                                {% csrf_token %}
+                                <input type="text" name="body" placeholder="Écrire un commentaire…" class="pt-input flex-1" required>
+                                <button type="submit" class="pt-btn pt-btn--ghost">Envoyer</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </article>
+                    {% empty %}
+                    <div class="pt-card"><p class="pt-empty">Aucun livrable partagé pour l'instant.</p></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Étapes clés -->
+            {% if milestones %}
+            <section>
+                <h2 class="pt-section-title">Étapes clés</h2>
+                <div class="pt-card pt-list">
+                    {% for m in milestones %}
+                    <div class="pt-row items-start" x-data="{ formOpen: false, fields: {{ m.form_fields_json|safe }} }">
+                        <span class="pt-step {% if m.is_completed %}is-done{% elif m.is_late %}is-late{% endif %}">
+                            {% if m.is_completed %}<i data-lucide="check" class="w-3.5 h-3.5"></i>{% endif %}
+                        </span>
+                        <div class="pt-row-main">
+                            <div class="flex items-start justify-between gap-3 flex-wrap">
+                                <p class="font-medium break-words">{{ m.title }}</p>
+                                <span class="pt-badge {% if m.is_completed %}pt-badge--ok{% elif m.is_late %}pt-badge--danger{% endif %}">
+                                    {% if m.is_completed %}Terminée{% elif m.is_late %}En retard{% else %}À venir{% endif %}
+                                </span>
+                            </div>
+                            {% if m.start_date or m.due_date %}
+                            <p class="pt-row-meta">{% if m.start_date %}{{ m.start_date|date:"d M" }} → {% endif %}{{ m.due_date|date:"d M Y" }}</p>
+                            {% endif %}
+                            {% if m.description %}<p class="text-sm mt-1" style="color: var(--pt-muted);">{{ m.description }}</p>{% endif %}
+
+                            {% if m.tasks_total %}
+                            <div class="flex items-center gap-3 mt-2 max-w-sm">
+                                <div class="pt-progress flex-1"><span style="width: {{ m.progress_percent }}%"></span></div>
+                                <span class="text-xs tabular-nums" style="color: var(--pt-muted);">{{ m.tasks_done }}/{{ m.tasks_total }} tâche{{ m.tasks_total|pluralize }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if project.billing_mode == 'per_milestone' and m.amount %}
+                            <div class="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg" style="background: #fafafa; border: 1px solid var(--pt-line);">
+                                <span class="font-semibold tabular-nums">{{ m.amount }} €</span>
+                                {% if m.is_paid %}
+                                <span class="pt-badge pt-badge--ok">Payé{% if m.paid_at %} le {{ m.paid_at|date:"d/m/Y" }}{% endif %}</span>
+                                {% elif card_payment %}
+                                <form method="post" action="{% url 'dashboard:public-portal-milestone-pay' client.portal_token m.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="pt-btn">Payer par carte</button>
+                                </form>
+                                {% else %}
+                                <span class="text-xs" style="color: var(--pt-muted);">{% if client.organization.iban %}Par virement · IBAN {{ client.organization.iban }}{% else %}À régler selon les modalités convenues{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            {% if m.form_fields and portal_full %}
+                            <button type="button" class="text-sm font-medium mt-2" style="color: var(--pt-accent);" @click="formOpen = !formOpen">
+                                <span x-text="formOpen ? 'Fermer le formulaire' : 'Répondre au formulaire'"></span>
+                            </button>
+                            <form x-show="formOpen" x-cloak method="post" action="{% url 'dashboard:public-portal-milestone-form-update' client.portal_token m.id %}" class="mt-2 space-y-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="fields" :value="JSON.stringify(fields)">
+                                <template x-for="(f, idx) in fields" :key="idx">
+                                    <div>
+                                        <label class="pt-label" x-text="f.label"></label>
+                                        <textarea x-model="f.answer" rows="2" class="pt-input"></textarea>
+                                    </div>
+                                </template>
+                                <button type="submit" class="pt-btn">Envoyer</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Spécifications (brief) -->
+            {% for section in brief_sections %}
+            <section x-data="{ editingBrief: false, fields: {{ section.fields_json|safe }} }">
+                <h2 class="pt-section-title">
+                    Spécifications — {{ section.phase_label }}
+                    {% if portal_full %}<button type="button" class="normal-case tracking-normal text-sm font-medium" style="color: var(--pt-accent);" @click="editingBrief = !editingBrief">
+                        <span x-text="editingBrief ? 'Annuler' : 'Modifier'"></span>
+                    </button>{% endif %}
+                </h2>
+                <div class="pt-card pt-card-pad">
+                    <div x-show="!editingBrief" class="space-y-4">
+                        <template x-for="f in fields" :key="f.label">
+                            <div>
+                                <p class="pt-label" x-text="f.label"></p>
+                                <p :class="f.answer ? '' : 'italic'" :style="f.answer ? '' : 'color: var(--pt-faint)'" x-text="f.answer || 'Pas encore renseigné.'"></p>
+                            </div>
+                        </template>
+                    </div>
+                    <form x-show="editingBrief" x-cloak method="post" action="{% url 'dashboard:public-portal-project-brief-update' client.portal_token project.id %}" class="space-y-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="phase" value="{{ section.phase }}">
+                        <input type="hidden" name="fields" :value="JSON.stringify(fields)">
+                        <template x-for="(f, idx) in fields" :key="idx">
+                            <div>
+                                <label class="pt-label" x-text="f.label"></label>
+                                <textarea x-model="f.answer" rows="2" class="pt-input"></textarea>
+                            </div>
+                        </template>
+                        <button type="submit" class="pt-btn">Enregistrer</button>
+                    </form>
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+
+        <!-- Colonne latérale -->
+        <div class="space-y-8">
+            {% if meetings %}
+            <section>
+                <h2 class="pt-section-title">Réunions</h2>
+                <div class="pt-card pt-list">
+                    {% for meeting in meetings %}
+                    <div class="pt-row">
+                        <div class="text-center shrink-0" style="width: 40px;">
+                            <p class="text-xs uppercase" style="color: var(--pt-muted);">{{ meeting.scheduled_at|date:"M" }}</p>
+                            <p class="text-lg font-semibold leading-tight">{{ meeting.scheduled_at|date:"d" }}</p>
+                        </div>
+                        <div class="pt-row-main">
+                            <p class="pt-row-title">{{ meeting.title }}</p>
+                            <p class="pt-row-meta">{{ meeting.scheduled_at|date:"H:i" }} · {{ meeting.duration_minutes }} min</p>
+                        </div>
+                        {% if meeting.status == 'completed' %}
+                        <span class="pt-badge pt-badge--ok">Terminée</span>
+                        {% elif meeting.location %}
+                        <a href="{{ meeting.location }}" target="_blank" rel="noopener" class="pt-btn">Rejoindre</a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <section>
+                <h2 class="pt-section-title">Fichiers</h2>
+                <div class="pt-card">
+                    <div class="pt-list">
+                        {% for f in files %}
+                        <a href="{{ f.file.url }}" target="_blank" rel="noopener" class="pt-row">
+                            <span class="pt-row-icon"><i data-lucide="file" class="w-4 h-4"></i></span>
+                            <div class="pt-row-main">
+                                <p class="pt-row-title">{{ f.name }}</p>
+                                <p class="pt-row-meta">{% if f.uploaded_by_client %}Envoyé par vous{% else %}Partagé par l'équipe{% endif %}</p>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <p class="pt-empty">Aucun fichier pour l'instant.</p>
+                        {% endfor %}
+                    </div>
+                    {% if portal_full %}
+                    <form method="post" action="{% url 'dashboard:public-portal-project-file-upload' client.portal_token project.id %}" enctype="multipart/form-data" class="px-5 py-4" style="border-top: 1px solid var(--pt-line);"
+                          x-data="{ name: '' }">
+                        {% csrf_token %}
+                        <p class="text-xs mb-2" style="color: var(--pt-muted);">Déposez vos documents, visuels ou références pour l'équipe.</p>
+                        <label class="pt-drop">
+                            <input type="file" name="file" required class="sr-only" @change="name = $event.target.files[0] ? $event.target.files[0].name : ''">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                            <span x-text="name || 'Choisir un fichier'"></span>
+                        </label>
+                        <button type="submit" class="pt-btn mt-2 w-full justify-center" x-show="name" x-cloak>Envoyer</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </section>
+
+            {% if timeline_events %}
+            <section>
+                <h2 class="pt-section-title">Activité</h2>
+                <div class="pt-card pt-card-pad">
+                    <ol class="pt-timeline">
+                        {% for event in timeline_events %}
+                        <li class="{% if event.is_milestone %}is-key{% endif %}">
+                            <p class="text-sm font-medium">{{ event.title }}</p>
+                            {% if event.description %}<p class="text-sm" style="color: var(--pt-muted);">{{ event.description }}</p>{% endif %}
+                            <p class="text-xs mt-0.5" style="color: var(--pt-faint);">{{ event.date|date:"d M Y · H:i" }}</p>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

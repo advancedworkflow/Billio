@@ -1,0 +1,175 @@
+{% extends "dashboard/_portal_base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+    <div>
+        <h1 class="pt-hello">Bonjour {{ client.get_display_name }}</h1>
+        <p class="pt-sub">Suivez vos projets, validez les livrables et retrouvez tous vos documents.</p>
+    </div>
+
+    {% if pending_deliverables or invoices_to_pay or pending_forms %}
+    <section>
+        <h2 class="pt-section-title">À faire <span class="pt-badge pt-badge--warn">{{ todo_count }}</span></h2>
+        <div class="pt-card pt-todo pt-list">
+            {% for d in pending_deliverables %}
+            <div class="pt-row">
+                <span class="pt-row-icon"><i data-lucide="package-check" class="w-4 h-4"></i></span>
+                <div class="pt-row-main">
+                    <p class="pt-row-title">Valider « {{ d.title }} »</p>
+                    <p class="pt-row-meta">Livrable · {{ d.project.name }}</p>
+                </div>
+                <a href="{% url 'dashboard:public-portal-project-detail' client.portal_token d.project_id %}" class="pt-btn">Voir le livrable</a>
+            </div>
+            {% endfor %}
+            {% for f in pending_forms %}
+            <div class="pt-row">
+                <span class="pt-row-icon"><i data-lucide="clipboard-list" class="w-4 h-4"></i></span>
+                <div class="pt-row-main">
+                    <p class="pt-row-title">Compléter « {{ f.title }} »</p>
+                    <p class="pt-row-meta">Formulaire · {{ f.fields|length }} question{{ f.fields|length|pluralize }}{% if f.project %} · {{ f.project.name }}{% endif %}</p>
+                </div>
+                <a href="{% url 'dashboard:public-client-form' f.token %}" class="pt-btn">Répondre</a>
+            </div>
+            {% endfor %}
+            {% for invoice in invoices_to_pay %}
+            <div class="pt-row">
+                <span class="pt-row-icon"><i data-lucide="receipt-text" class="w-4 h-4"></i></span>
+                <div class="pt-row-main">
+                    <p class="pt-row-title">Régler la facture {{ invoice.invoice_number }} — {{ invoice.total_amount|floatformat:2 }} €</p>
+                    <p class="pt-row-meta">{% if invoice.status == 'overdue' %}En retard · échéance dépassée le {{ invoice.due_date|date:"d/m/Y" }}{% else %}À régler avant le {{ invoice.due_date|date:"d/m/Y" }}{% endif %}</p>
+                </div>
+                <a href="{% url 'invoices:public-invoice-payment' invoice.id %}" class="pt-btn">Payer</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="pt-card pt-metrics">
+        <div class="pt-metric">
+            <p class="pt-metric-label">Solde à régler</p>
+            <p class="pt-metric-value">{{ balance_due|floatformat:2 }} €</p>
+            <p class="pt-metric-note">{% if invoices_to_pay %}{{ invoices_to_pay|length }} facture{{ invoices_to_pay|length|pluralize }} en attente{% else %}Tout est réglé{% endif %}</p>
+        </div>
+        <div class="pt-metric">
+            <p class="pt-metric-label">Projets en cours</p>
+            <p class="pt-metric-value">{{ active_projects_count }}</p>
+            <p class="pt-metric-note">{{ completed_projects_count }} livré{{ completed_projects_count|pluralize }}</p>
+        </div>
+        <div class="pt-metric">
+            <p class="pt-metric-label">Avancement moyen</p>
+            <p class="pt-metric-value">{{ average_progress }} %</p>
+            <div class="pt-progress mt-2"><span style="width: {{ average_progress }}%"></span></div>
+        </div>
+        <div class="pt-metric">
+            <p class="pt-metric-label">Prochaine échéance</p>
+            {% if next_milestone %}
+            <p class="pt-metric-value">{{ next_milestone.due_date|date:"d M" }}</p>
+            <p class="pt-metric-note" title="{{ next_milestone.title }}">{{ next_milestone.title }}</p>
+            {% else %}
+            <p class="pt-metric-value pt-metric-value--muted">Aucune</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section class="lg:col-span-2">
+            <h2 class="pt-section-title">Projets</h2>
+            <div class="pt-card pt-list">
+                {% for project in projects %}
+                <a href="{% url 'dashboard:public-portal-project-detail' client.portal_token project.id %}" class="pt-row">
+                    <span class="pt-row-icon"><i data-lucide="folder" class="w-4 h-4"></i></span>
+                    <div class="pt-row-main">
+                        <div class="flex items-center gap-2">
+                            <p class="pt-row-title">{{ project.name }}</p>
+                            <span class="pt-badge {% if project.progress_percent >= 100 %}pt-badge--ok{% else %}pt-badge--accent{% endif %}">{{ project.status_label }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2">
+                            <div class="pt-progress flex-1"><span style="width: {{ project.progress_percent }}%"></span></div>
+                            <span class="text-xs tabular-nums" style="color: var(--pt-muted);">{{ project.progress_percent }} %</span>
+                        </div>
+                    </div>
+                    <span class="pt-row-end"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+                </a>
+                {% empty %}
+                <p class="pt-empty">Aucun projet pour le moment.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="space-y-8">
+            <section>
+                <h2 class="pt-section-title">Documents</h2>
+                <div class="pt-card">
+                    {% if invoices or quotes or documents %}
+                        {% if invoices %}
+                        <p class="pt-group-label">Factures</p>
+                        <div class="pt-list">
+                            {% for invoice in invoices %}
+                            <a href="{% url 'invoices:public-invoice-payment' invoice.id %}" class="pt-row">
+                                <div class="pt-row-main">
+                                    <p class="pt-row-title">{{ invoice.invoice_number }}</p>
+                                    <p class="pt-row-meta">{{ invoice.total_amount|floatformat:2 }} € · {{ invoice.issue_date|date:"d/m/Y" }}</p>
+                                </div>
+                                <span class="pt-badge {% if invoice.status == 'paid' %}pt-badge--ok{% elif invoice.status == 'overdue' %}pt-badge--danger{% elif invoice.status == 'cancelled' %}{% else %}pt-badge--warn{% endif %}">{{ invoice.get_status_display }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% if quotes %}
+                        <p class="pt-group-label">Devis</p>
+                        <div class="pt-list">
+                            {% for quote in quotes %}
+                            <a href="{% url 'invoices:public-quote-view' quote.id %}" class="pt-row">
+                                <div class="pt-row-main">
+                                    <p class="pt-row-title">{{ quote.quote_number }}</p>
+                                    <p class="pt-row-meta">{{ quote.total_amount|floatformat:2 }} € · {{ quote.issue_date|date:"d/m/Y" }}</p>
+                                </div>
+                                <span class="pt-badge {% if quote.status == 'accepted' %}pt-badge--ok{% elif quote.status == 'rejected' or quote.status == 'expired' %}pt-badge--danger{% else %}pt-badge--accent{% endif %}">{{ quote.get_status_display }}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% if documents %}
+                        <p class="pt-group-label">Autres documents</p>
+                        <div class="pt-list">
+                            {% for doc in documents %}
+                            <a href="{% url 'dashboard:public-portal-document-view' portal_token=client.portal_token document_id=doc.id %}" class="pt-row">
+                                <div class="pt-row-main">
+                                    <p class="pt-row-title">{{ doc.title }}</p>
+                                    <p class="pt-row-meta">{{ doc.get_document_type_display }} · {{ doc.created_at|date:"d/m/Y" }}</p>
+                                </div>
+                                <span class="pt-row-end"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                    <p class="pt-empty">Aucun document pour le moment.</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            {% if upcoming_meetings %}
+            <section>
+                <h2 class="pt-section-title">Réunions à venir</h2>
+                <div class="pt-card pt-list">
+                    {% for meeting in upcoming_meetings %}
+                    <a href="{% url 'dashboard:public-portal-project-detail' client.portal_token meeting.project_id %}" class="pt-row">
+                        <div class="text-center shrink-0" style="width: 40px;">
+                            <p class="text-xs uppercase" style="color: var(--pt-muted);">{{ meeting.scheduled_at|date:"M" }}</p>
+                            <p class="text-lg font-semibold leading-tight">{{ meeting.scheduled_at|date:"d" }}</p>
+                        </div>
+                        <div class="pt-row-main">
+                            <p class="pt-row-title">{{ meeting.title }}</p>
+                            <p class="pt-row-meta">{{ meeting.scheduled_at|date:"H:i" }} · {{ meeting.project.name }}</p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

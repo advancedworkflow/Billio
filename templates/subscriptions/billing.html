@@ -1,0 +1,187 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Abonnement - Billio{% endblock %}
+{% block page_title %}Abonnement{% endblock %}
+{% block page_subtitle %}Votre forfait Billio, votre consommation et les autres forfaits{% endblock %}
+
+{% block content %}
+<style>
+    .bl { display: flex; flex-direction: column; gap: 24px; max-width: 1180px; }
+    .bl-card { background: var(--billio-card, #fff); border: 1px solid var(--billio-border); border-radius: 16px; padding: 22px; }
+    .bl-alert { border-radius: 12px; padding: 14px 16px; font-size: 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .bl-alert--warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .bl-alert--danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .bl-alert--info { background: var(--billio-primary-soft); border: 1px solid var(--billio-primary-soft-border); color: var(--billio-primary-hover); }
+    .bl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+    @media (max-width: 720px) { .bl-head { grid-template-columns: 1fr; } }
+    .bl-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--billio-text-muted); }
+    .bl-plan { font-family: var(--font-titles); font-weight: 800; font-size: 28px; letter-spacing: -.02em; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .bl-plan small { font-family: var(--font-body, Inter); font-size: 15px; font-weight: 500; color: var(--billio-text-muted); letter-spacing: 0; }
+    .bl-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .bl-pill--ok { background: #dcfce7; color: #166534; }
+    .bl-pill--warn { background: #fef3c7; color: #92400e; }
+    .bl-pill--muted { background: #f4f4f5; color: #52525b; }
+    .bl-meta { margin-top: 6px; font-size: 14px; color: var(--billio-text-muted); }
+    .bl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .bl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; border: 1px solid var(--billio-border-strong); background: #fff; color: var(--billio-text); cursor: pointer; white-space: nowrap; }
+    .bl-btn:hover { background: var(--billio-bg); }
+    .bl-btn--primary { background: var(--billio-primary); border-color: var(--billio-primary); color: #fff; }
+    .bl-btn--primary:hover { background: var(--billio-primary-hover); }
+    .bl-btn--ghost { border-color: transparent; background: transparent; color: var(--billio-text-muted); }
+    .bl-btn[disabled] { opacity: .55; cursor: not-allowed; }
+    .bl-usage { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 18px; }
+    .bl-meter { display: flex; flex-direction: column; gap: 6px; }
+    .bl-meter-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+    .bl-meter-top span:last-child { font-variant-numeric: tabular-nums; color: var(--billio-text-muted); white-space: nowrap; }
+    .bl-bar { height: 6px; border-radius: 99px; background: #f1f0f5; overflow: hidden; }
+    .bl-bar i { display: block; height: 100%; background: var(--billio-primary); border-radius: 99px; }
+    .bl-meter.is-high .bl-bar i { background: #d97706; }
+    .bl-meter.is-full .bl-bar i { background: #d97706; }
+    .bl-meter.is-full .bl-meter-top span:last-child { color: #b45309; font-weight: 600; }
+    .bl-plans { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    @media (max-width: 1180px) { .bl-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 760px) { .bl-plans { grid-template-columns: 1fr; } }
+    .bl-tier { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 14px; border: 1px solid var(--billio-border); background: var(--billio-card, #fff); scroll-margin-top: 90px; }
+    .bl-tier.is-popular { border-color: var(--billio-primary); box-shadow: 0 0 0 3px var(--billio-primary-soft); }
+    .bl-tier.is-current { background: var(--billio-primary-soft); border-color: var(--billio-primary-soft-border); }
+    .bl-tier:target { box-shadow: 0 0 0 3px var(--billio-cta); }
+    .bl-tier-name { font-family: var(--font-titles); font-weight: 700; font-size: 17px; }
+    .bl-price { font-family: var(--font-titles); font-weight: 800; font-size: 30px; letter-spacing: -.02em; }
+    .bl-price small { font-family: var(--font-body, Inter); font-size: 13px; font-weight: 500; color: var(--billio-text-muted); }
+    .bl-tagline { font-size: 13px; color: var(--billio-text-muted); line-height: 1.45; min-height: 38px; }
+    .bl-badge { position: absolute; top: -10px; right: 14px; background: var(--billio-primary); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+    .bl-tier form, .bl-tier .bl-btn { margin-top: auto; width: 100%; }
+    .bl-tier form .bl-btn { width: 100%; }
+    .bl-table-wrap { overflow-x: auto; }
+    .bl-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
+    .bl-table th, .bl-table td { padding: 10px 12px; border-bottom: 1px solid var(--billio-border); text-align: center; }
+    .bl-table th:first-child, .bl-table td:first-child { text-align: left; }
+    .bl-table thead th { font-family: var(--font-titles); font-size: 14px; position: sticky; top: 0; background: var(--billio-card, #fff); }
+    .bl-table td { font-variant-numeric: tabular-nums; }
+    .bl-table .is-current { background: var(--billio-primary-soft); }
+    .bl-yes { color: #15803d; font-weight: 700; }
+    .bl-no { color: #a1a1aa; }
+    .bl-note { font-size: 13px; color: var(--billio-text-muted); }
+    .bl-h2 { font-family: var(--font-titles); font-weight: 700; font-size: 18px; margin: 0 0 4px; }
+</style>
+
+<div class="bl">
+    {% if subscription.status == 'past_due' or subscription.status == 'unpaid' %}
+    <div class="bl-alert bl-alert--danger">
+        <span><strong>Le paiement de votre abonnement a échoué.</strong>
+        {% if subscription.in_grace_period %}Vous gardez votre forfait {{ subscription.plan.name }} jusqu'au {{ subscription.grace_ends_at|date:"j F Y" }} : mettez à jour votre carte pour éviter de repasser aux limites du forfait Free.{% else %}Votre compte applique les limites du forfait Free jusqu'à la régularisation.{% endif %}</span>
+        {% if is_owner and stripe_ready %}<form method="post" action="{% url 'subscriptions:portal' %}">{% csrf_token %}<button class="bl-btn bl-btn--primary" type="submit">Mettre à jour ma carte</button></form>{% endif %}
+    </div>
+    {% elif subscription.cancel_at_period_end and subscription.grants_plan %}
+    <div class="bl-alert bl-alert--warn">
+        <span>Abonnement résilié : votre forfait {{ subscription.plan.name }} reste actif jusqu'au <strong>{{ subscription.current_period_end|date:"j F Y" }}</strong>, puis votre compte passera au forfait Free. Vos données sont conservées.</span>
+        {% if is_owner %}<form method="post" action="{% url 'subscriptions:resume' %}">{% csrf_token %}<button class="bl-btn" type="submit">Annuler la résiliation</button></form>{% endif %}
+    </div>
+    {% endif %}
+    {% if not is_owner %}
+    <div class="bl-alert bl-alert--info"><span>Le forfait est géré par le propriétaire de votre organisation, {{ owner.get_full_name|default:owner.email }}.</span></div>
+    {% elif not stripe_ready %}
+    <div class="bl-alert bl-alert--info"><span>Le paiement en ligne des forfaits n'est pas encore activé sur cette installation de Billio.</span></div>
+    {% endif %}
+
+    <section class="bl-card">
+        <div class="bl-head">
+            <div>
+                <div class="bl-eyebrow">Forfait actuel</div>
+                <div class="bl-plan"><span translate="no">{{ current_plan.name }}</span>
+                    <small>{% if current_plan.is_free %}Gratuit{% else %}{{ current_plan.price_monthly|floatformat:"-2" }} € HT / mois{% endif %}</small>
+                    {% if subscription.grants_plan and not current_plan.is_free %}
+                        {% if subscription.status == 'past_due' %}<span class="bl-pill bl-pill--warn">Paiement en retard</span>
+                        {% elif subscription.cancel_at_period_end %}<span class="bl-pill bl-pill--warn">Résilié en fin de période</span>
+                        {% elif subscription.comped %}<span class="bl-pill bl-pill--ok">Offert</span>
+                        {% else %}<span class="bl-pill bl-pill--ok">Actif</span>{% endif %}
+                    {% endif %}
+                </div>
+                <p class="bl-meta">
+                    {% if subscription.grants_plan and subscription.current_period_end and not current_plan.is_free %}
+                        {% if subscription.cancel_at_period_end %}Fin le {{ subscription.current_period_end|date:"j F Y" }}.{% else %}Prochain renouvellement le {{ subscription.current_period_end|date:"j F Y" }}.{% endif %}
+                    {% elif subscription.comped and subscription.grants_plan %}Forfait offert, sans facturation.{% else %}Sans engagement : passez à un forfait payant quand vous en avez besoin.{% endif %}
+                </p>
+            </div>
+            {% if is_owner and stripe_ready and subscription.stripe_customer_id %}
+            <div class="bl-actions">
+                <form method="post" action="{% url 'subscriptions:portal' %}">{% csrf_token %}<button class="bl-btn" type="submit"><i data-lucide="credit-card" class="w-4 h-4"></i> Paiement et factures</button></form>
+                {% if paid_active and not subscription.cancel_at_period_end %}
+                <form method="post" action="{% url 'subscriptions:cancel' %}" data-confirm="Résilier l'abonnement ?" data-confirm-message="Vous gardez votre forfait jusqu'à la fin de la période payée, puis votre compte passe au forfait Free. Aucune donnée n'est supprimée.">{% csrf_token %}<button class="bl-btn bl-btn--ghost" type="submit">Résilier</button></form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if usage %}
+        <div class="bl-usage">
+            {% for row in usage %}
+            <div class="bl-meter{% if row.full %} is-full{% elif row.percent >= 80 %} is-high{% endif %}">
+                <div class="bl-meter-top"><span>{{ row.label|capfirst }}</span><span>{{ row.display }}</span></div>
+                <div class="bl-bar"><i style="width: {% if row.limit is None %}0{% else %}{{ row.percent }}{% endif %}%"></i></div>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="bl-note" style="margin-top: 14px;">Les limites comptent toutes vos organisations. Atteindre une limite ne supprime rien : seules les nouvelles créations sont bloquées.</p>
+        {% endif %}
+    </section>
+
+    <section>
+        <h2 class="bl-h2">Les forfaits</h2>
+        <p class="bl-note" style="margin-bottom: 16px;">Prix hors taxes, facturés chaque mois. Changement de forfait au prorata, résiliation à tout moment.</p>
+        <div class="bl-plans">
+            {% for plan in plans %}
+            <article class="bl-tier{% if plan.is_popular %} is-popular{% endif %}{% if plan.pk == current_plan.pk %} is-current{% endif %}" id="{{ plan.code }}">
+                {% if plan.is_popular %}<span class="bl-badge">Le plus choisi</span>{% endif %}
+                <div class="bl-tier-name" translate="no">{{ plan.name }}</div>
+                <div class="bl-price">{% if plan.is_free %}0 €{% else %}{{ plan.price_monthly|floatformat:"-2" }} €{% endif %} <small>HT / mois</small></div>
+                <p class="bl-tagline">{{ plan.tagline }}</p>
+                {% if plan.pk == current_plan.pk %}
+                    <button class="bl-btn" type="button" disabled>Forfait actuel</button>
+                {% elif not is_owner %}
+                    <button class="bl-btn" type="button" disabled>Géré par le propriétaire</button>
+                {% elif plan.is_free %}
+                    {% if paid_active and not subscription.cancel_at_period_end %}
+                    <form method="post" action="{% url 'subscriptions:choose' plan.code %}" data-confirm="Passer au forfait Free ?" data-confirm-message="Votre abonnement est résilié en fin de période payée. Au-delà des limites du forfait Free, vos données restent consultables mais vous ne pourrez plus en créer de nouvelles.">{% csrf_token %}<button class="bl-btn" type="submit">Passer au Free</button></form>
+                    {% else %}
+                    <button class="bl-btn" type="button" disabled>Inclus</button>
+                    {% endif %}
+                {% elif not stripe_ready %}
+                    <button class="bl-btn" type="button" disabled>Bientôt disponible</button>
+                {% elif paid_active %}
+                    <form method="post" action="{% url 'subscriptions:choose' plan.code %}" data-confirm="Passer au forfait {{ plan.name }} ?" data-confirm-message="Le changement est immédiat ; la différence de prix est calculée au prorata sur votre prochaine facture.">{% csrf_token %}<button class="bl-btn{% if plan.price_monthly > current_plan.price_monthly %} bl-btn--primary{% endif %}" type="submit">{% if plan.price_monthly > current_plan.price_monthly %}Passer au <span translate="no">{{ plan.name }}</span>{% else %}Descendre au <span translate="no">{{ plan.name }}</span>{% endif %}</button></form>
+                {% else %}
+                    <form method="post" action="{% url 'subscriptions:choose' plan.code %}">{% csrf_token %}<button class="bl-btn bl-btn--primary" type="submit">Choisir <span translate="no">{{ plan.name }}</span></button></form>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="bl-card">
+        <h2 class="bl-h2">Comparatif détaillé</h2>
+        <div class="bl-table-wrap">
+            <table class="bl-table">
+                <thead><tr><th></th>{% for plan in plans %}<th class="{% if plan.pk == current_plan.pk %}is-current{% endif %}" translate="no">{{ plan.name }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                    <tr><td>Prix HT / mois</td>{% for plan in plans %}<td class="{% if plan.pk == current_plan.pk %}is-current{% endif %}"><strong>{{ plan.price_monthly|floatformat:"-2" }} €</strong></td>{% endfor %}</tr>
+                    {% for row in comparison %}
+                    <tr><td>{{ row.label }}</td>{% for cell in row.cells %}<td class="{% if cell.current %}is-current{% endif %}">{% if cell.text %}{{ cell.text }}{% elif cell.yes %}<span class="bl-yes" aria-label="Inclus">✓</span>{% else %}<span class="bl-no" aria-label="Non inclus">—</span>{% endif %}</td>{% endfor %}</tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<script>
+    // Confirmation Billio avant les changements de forfait et la résiliation.
+    document.querySelectorAll('form[data-confirm]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            if (form.dataset.confirmed) return;
+            event.preventDefault();
+            const ok = await billioConfirm({ title: form.dataset.confirm, message: form.dataset.confirmMessage, confirmLabel: 'Confirmer', icon: 'gem' });
+            if (ok) { form.dataset.confirmed = '1'; form.submit(); }
+        });
+    });
+</script>
+{% endblock %}

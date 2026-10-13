@@ -1,0 +1,75 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>{% block title %}Billio{% endblock %} - Billio</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=1.6" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 17px; color: var(--billio-text); }
+        .auth-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .auth-shell { grid-template-columns: 5fr 7fr; } }
+        .auth-aside { display: none; position: relative; overflow: hidden; padding: 3rem; background: var(--billio-gradient-premium); color: #fff; flex-direction: column; justify-content: space-between; }
+        @media (min-width: 1024px) { .auth-aside { display: flex; } }
+        .auth-logo { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+        .auth-logo-badge { width: 2.25rem; height: 2.25rem; border-radius: 0.6rem; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; }
+        .auth-logo-text { font-family: var(--font-titles); font-weight: 700; font-size: 1.125rem; letter-spacing: -0.02em; color: #fff; }
+        .auth-aside-title { font-family: var(--font-titles); font-weight: 700; letter-spacing: -0.03em; font-size: 2.5rem; line-height: 1.15; }
+        .auth-aside-sub { color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.6; max-width: 22rem; }
+        .auth-form-side { display: flex; align-items: center; justify-content: center; padding: 3rem 1.5rem; background: #fff; }
+        .auth-form-wrap { width: 100%; max-width: 26rem; }
+        .auth-mobile-logo { display: flex; }
+        @media (min-width: 1024px) { .auth-mobile-logo { display: none; } }
+        .auth-title { font-family: var(--font-titles); font-weight: 700; font-size: 1.875rem; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+        .auth-lead { color: #374151; font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.55; }
+        .auth-field { display: block; margin-bottom: 1rem; }
+        .auth-field span { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .auth-input { width: 100%; height: 3.25rem; padding: 0 1rem; font-size: 1rem; font-weight: 500; border: 1.5px solid var(--billio-border); border-radius: 0.75rem; transition: border-color .2s, box-shadow .2s; }
+        .auth-input:focus { outline: none; border-color: var(--billio-primary); box-shadow: 0 0 0 4px var(--billio-primary-soft); }
+        .auth-error { margin-top: 0.4rem; font-size: 0.875rem; color: var(--billio-error); }
+        .auth-help { margin-top: 0.4rem; font-size: 0.8125rem; color: var(--billio-text-muted); }
+        .auth-help ul { margin: 0; padding-left: 1.1rem; list-style: disc; }
+        .auth-alert { border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .auth-alert--error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .auth-alert--success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .auth-submit-btn { display: flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%; padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.95rem; color: var(--billio-text); background: linear-gradient(135deg, var(--billio-cta) 0%, var(--billio-cta-hover) 100%); border: none; border-radius: 0.65rem; text-decoration: none; transition: transform .15s; }
+        .auth-submit-btn:hover { transform: translateY(-1px); }
+        .auth-link { color: var(--billio-primary); font-weight: 600; }
+        .auth-link:hover { color: var(--billio-primary-hover); }
+        .auth-icon { width: 3rem; height: 3rem; border-radius: 0.9rem; display: flex; align-items: center; justify-content: center; background: var(--billio-primary-soft); color: var(--billio-primary); margin-bottom: 1.25rem; }
+    </style>
+</head>
+<body class="text-[#111827] min-h-screen">
+    <div style="position:fixed;top:16px;right:16px;z-index:60">{% include "components/language_switcher.html" %}</div>
+    <div class="auth-shell">
+        <aside class="auth-aside">
+            <a href="/" class="auth-logo">
+                <span class="auth-logo-badge">{% include "components/logo_mark_dark.html" with class="w-5 h-5" %}</span>
+                <span class="auth-logo-text">Billio</span>
+            </a>
+            <div>
+                <h1 class="auth-aside-title mb-4">{% block aside_title %}Votre activité, en ordre.{% endblock %}</h1>
+                <p class="auth-aside-sub">{% block aside_sub %}Factures, devis, paiements et projets au même endroit.{% endblock %}</p>
+            </div>
+        </aside>
+        <main class="auth-form-side">
+            <div class="auth-form-wrap">
+                <a href="/" class="auth-logo auth-mobile-logo mb-8">
+                    <span class="auth-logo-badge" style="background: var(--billio-primary); border: none;">{% include "components/logo_mark_on_violet.html" with class="w-5 h-5" %}</span>
+                    <span class="auth-logo-text" style="color: var(--billio-text);">Billio</span>
+                </a>
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    <script>window.lucide && lucide.createIcons();</script>
+</body>
+</html>

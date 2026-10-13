@@ -1,0 +1,53 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Deliverables - Billio{% endblock %}
+{% block page_title %}Deliverables{% endblock %}
+{% block page_subtitle %}Tous vos livrables, tous projets confondus{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+        <form method="get" class="flex flex-wrap gap-3">
+            <select name="status" class="modern-select dropdown-custom creation-dropdown px-3 py-2 border border-gray-300 rounded-lg focus:outline-none" onchange="this.form.submit()">
+                <option value="">Tous les statuts</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="billio-table-wrap">
+        <table class="billio-table">
+            <thead>
+                <tr>
+                    <th>Livrable</th>
+                    <th>Projet</th>
+                    <th>Client</th>
+                    <th>Statut</th>
+                    <th>Échéance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in deliverables %}
+                <tr>
+                    <td><a href="{% url 'dashboard:project-detail' d.project_id %}" class="text-sm font-medium text-gray-900 hover:underline">{{ d.title }}</a></td>
+                    <td><span class="text-sm" style="color: var(--billio-text-muted);">{{ d.project.name }}</span></td>
+                    <td><span class="text-sm" style="color: var(--billio-text-muted);">{{ d.project.client.name }}</span></td>
+                    <td>
+                        <span class="status-badge status-badge--{% if d.status == 'approved' %}accepted{% elif d.status == 'changes_requested' %}rejected{% elif d.status == 'submitted' %}viewed{% else %}sent{% endif %}">
+                            {{ d.get_status_display }}
+                        </span>
+                    </td>
+                    <td><span class="text-sm" style="color: var(--billio-text-muted);">{{ d.due_date|date:"d M Y"|default:"—" }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="billio-table-empty">Aucun livrable pour le moment.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

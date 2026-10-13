@@ -1,0 +1,78 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>body { font-family: Inter, system-ui, sans-serif; background: #f4f4f5; color: #18181b; }</style>
+</head>
+<body>
+<main class="max-w-3xl mx-auto px-4 py-10">
+    <header class="flex items-center gap-3 mb-6">
+        {% if organization.logo %}<img src="{{ organization.logo.url }}" alt="" class="w-10 h-10 rounded-xl object-cover">
+        {% else %}<span class="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center font-semibold">{{ organization.name|slice:":1"|upper }}</span>{% endif %}
+        <div>
+            <h1 class="text-xl font-semibold" translate="no">{{ organization.name }}</h1>
+            <p class="text-sm text-gray-500">Prendre rendez-vous</p>
+        </div>
+    </header>
+
+    {% if messages %}{% for message in messages %}<p class="mb-4 text-sm rounded-xl px-4 py-3 bg-red-50 text-red-700">{{ message }}</p>{% endfor %}{% endif %}
+    {% if config.intro %}<p class="mb-5 text-gray-600 whitespace-pre-line" translate="no">{{ config.intro }}</p>{% endif %}
+
+    <section class="bg-white rounded-2xl border border-gray-200 p-6 space-y-6" x-data="{ slot: '' }">
+        {% if types|length > 1 %}
+        <div>
+            <p class="text-sm font-semibold mb-2">Motif du rendez-vous</p>
+            <div class="flex flex-wrap gap-2">
+                {% for i, t in types %}
+                <a href="?type={{ i }}" class="px-3 py-2 rounded-xl border text-sm {% if i == type_index %}border-gray-900 bg-gray-900 text-white{% else %}border-gray-200 hover:border-gray-400{% endif %}" translate="no">{{ t.name }} · {{ t.duration }} min</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-sm"><strong translate="no">{{ appointment_type.name }}</strong> · {{ appointment_type.duration }} min{% if config.location %} · <span translate="no">{{ config.location }}</span>{% endif %}</p>
+        {% endif %}
+
+        {% if days %}
+        <div>
+            <p class="text-sm font-semibold mb-2">Jour</p>
+            <div class="flex gap-2 overflow-x-auto pb-1">
+                {% for d in days %}
+                <a href="?type={{ type_index }}&day={{ d.date|date:'Y-m-d' }}" class="shrink-0 w-20 text-center px-2 py-2 rounded-xl border text-sm {% if d.date == selected_day.date %}border-gray-900 bg-gray-900 text-white{% else %}border-gray-200 hover:border-gray-400{% endif %}">
+                    <span class="block text-xs uppercase opacity-70">{{ d.date|date:"D" }}</span>
+                    <span class="block font-semibold">{{ d.date|date:"d M" }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        <div>
+            <p class="text-sm font-semibold mb-2">Heure — {{ selected_day.date|date:"l d F" }}</p>
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {% for s in selected_day.slots %}
+                <button type="button" class="px-2 py-2 rounded-lg border text-sm tabular-nums" :class="slot === '{{ s|date:'Y-m-d\TH:i' }}' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 hover:border-gray-400'" @click="slot = '{{ s|date:'Y-m-d\TH:i' }}'">{{ s|date:"H:i" }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <form method="post" action="{% url 'dashboard:public-booking-submit' organization.booking_token %}" x-show="slot" x-cloak class="space-y-3 border-t border-gray-100 pt-5">
+            {% csrf_token %}
+            <input type="hidden" name="type" value="{{ type_index }}">
+            <input type="hidden" name="start" :value="slot">
+            <div class="grid sm:grid-cols-2 gap-3">
+                <label class="text-sm">Nom et prénom<input name="name" required maxlength="150" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+                <label class="text-sm">Email<input name="email" type="email" required class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+                <label class="text-sm">Téléphone <span class="text-gray-400">(facultatif)</span><input name="phone" maxlength="30" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></label>
+            </div>
+            <label class="text-sm block">Votre demande <span class="text-gray-400">(facultatif)</span><textarea name="notes" rows="3" maxlength="2000" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2"></textarea></label>
+            <button type="submit" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black">Confirmer le rendez-vous</button>
+        </form>
+        {% else %}
+        <p class="text-gray-500">Aucun créneau disponible pour le moment. Revenez bientôt ou contactez {{ organization.name }}{% if organization.email %} ({{ organization.email }}){% endif %}.</p>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

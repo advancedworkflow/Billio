@@ -1,0 +1,139 @@
+# CI/CD de Billio
+#   - à chaque push / pull request : tests, migrations à jour, contrôle de la config de production,
+#     construction de l'image Docker ;
+#   - sur la branche main : image publiée sur GitHub Container Registry puis déploiement.
+# Secrets à créer dans GitHub (Settings › Secrets and variables › Actions) — voir DEPLOIEMENT.md :
+#   DEPLOY_HOOK_URL (hébergeur « plateforme ») ou VPS_HOST / VPS_USER / VPS_SSH_KEY (serveur),
+#   SENTRY_AUTH_TOKEN + variables SENTRY_ORG / SENTRY_PROJECT (facultatif : versions dans Sentry).
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests et contrôles
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Bibliothèques système (PDF)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+
+      - name: Dépendances
+        run: pip install -r requirements.txt
+
+      - name: Migrations à jour
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: python manage.py test apps
+
+      - name: Configuration de production
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.prod
+          SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+          ALLOWED_HOSTS: billio.example
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+        run: python manage.py check --deploy --fail-level ERROR
+
+  image:
+    name: Image Docker
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        name: Nom de l'image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construction (et publication sur main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.ref == 'refs/heads/main' }}
+          build-args: RELEASE=${{ github.sha }}
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Déploiement
+    needs: image
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hébergeur « plateforme » (hook de déploiement)
+        if: env.DEPLOY_HOOK_URL != ''
+        run: curl -fsS -X POST "$DEPLOY_HOOK_URL"
+
+      - name: Serveur (VPS) — docker compose
+        if: env.VPS_HOST != ''
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/billio
+            git pull --ff-only
+            export BILLIO_IMAGE=${{ needs.image.outputs.image }}:${{ github.sha }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose --env-file .env.production pull web worker
+            docker compose --env-file .env.production up -d
+            docker image prune -f
+
+      - name: Version dans Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ github.sha }}
+
+      - name: Vérification après déploiement
+        if: vars.SITE_URL != ''
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS "${{ vars.SITE_URL }}/healthz/"; then exit 0; fi
+            sleep 15
+          done
+          echo "Le site ne répond pas après le déploiement." && exit 1

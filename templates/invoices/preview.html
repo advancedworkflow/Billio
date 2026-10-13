@@ -1,0 +1,151 @@
+{% extends 'dashboard/base.html' %}
+{% block page_title %}{{ page_title|default:"Aperçu de la facture" }}{% endblock %}
+{% block page_subtitle %}Vérifiez la facture avant de l’envoyer{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ page_title }}</h1>
+                    <p class="mt-2 text-gray-600">
+                        {% if invoice.is_credit_note %}Avoir sur la facture <a href="{% url 'invoices:invoice-preview' invoice.credited_invoice_id %}" class="underline">{{ invoice.credited_invoice.invoice_number }}</a>{% if invoice.status == 'draft' %} · brouillon : vérifiez-le puis émettez-le{% endif %}
+                        {% elif invoice.status == 'draft' %}Brouillon : le numéro définitif est attribué à l'envoi
+                        {% else %}Facture émise : elle n'est plus modifiable. Pour la corriger, créez un avoir.{% endif %}
+                    </p>
+                    {% if messages %}{% for message in messages %}<p class="mt-3 text-sm px-3 py-2 rounded-lg {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-green-50 text-green-800{% endif %}">{{ message }}</p>{% endfor %}{% endif %}
+                </div>
+                <div class="flex space-x-4 items-center">
+                    {% include "components/drive_button.html" with kind="invoice" id=invoice.id %}
+                    {% if not invoice.is_locked %}
+                    <a href="{% url 'invoices:invoice-edit' invoice.id %}"
+                       class="btn-modern btn-modern-secondary">
+                        Modifier
+                    </a>
+                    {% elif invoice.invoice_type == 'sale' and invoice.status != 'cancelled' %}
+                    <div x-data="{ open: false, mode: 'full' }" class="relative">
+                        <button type="button" class="btn-modern btn-modern-secondary" @click="open = !open">Créer un avoir</button>
+                        <form x-show="open" x-cloak @click.outside="open = false" method="post" action="{% url 'invoices:invoice-credit-note-create' invoice.id %}"
+                              class="absolute right-0 mt-2 w-80 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-4 space-y-3 text-sm">
+                            {% csrf_token %}
+                            <label class="flex items-center gap-2"><input type="radio" name="mode" value="full" x-model="mode"> Avoir total ({{ invoice.total_amount }} {{ invoice.currency }})</label>
+                            <label class="flex items-center gap-2"><input type="radio" name="mode" value="partial" x-model="mode"> Avoir partiel</label>
+                            <input x-show="mode === 'partial'" type="text" name="amount" inputmode="decimal" placeholder="Montant TTC" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <input type="text" name="reason" maxlength="200" placeholder="Motif (ex. remise commerciale, erreur de prix)" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                            <button type="submit" class="btn-modern btn-modern-primary w-full">Créer l'avoir (brouillon)</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                    <button onclick="window.print()"
+                            class="btn-modern btn-modern-primary">
+                        Imprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Container -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div class="invoice-preview border border-gray-200 rounded-lg p-6 bg-white" translate="no">
+                <style>
+                    {{ css_content|safe }}
+                </style>
+                {{ html_content|safe }}
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-8 flex justify-center space-x-4">
+            <a href="{% url 'invoices:invoice-list' %}"
+               class="btn-modern btn-modern-secondary">
+                Retour à la liste
+            </a>
+            {% if invoice.status == 'draft' %}
+            <form method="post" action="{% url 'invoices:send-invoice' invoice.id %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="btn-modern btn-modern-primary">
+                    {% if invoice.is_credit_note %}Émettre l'avoir{% else %}Envoyer la facture{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% if einvoice %}
+        <div class="mt-6 bg-white rounded-xl border {% if einvoice.ready %}border-green-200{% else %}border-amber-200{% endif %} p-5 text-sm">
+            <p class="font-semibold text-gray-900">Facture électronique (Factur-X)</p>
+            {% if einvoice.b2b %}
+            <p class="text-gray-500 mt-0.5">Client professionnel : la facture électronique est obligatoire (réception depuis le 1er septembre 2026, émission pour les PME et micro-entreprises au 1er septembre 2027), via une plateforme agréée.</p>
+            {% else %}
+            <p class="text-gray-500 mt-0.5">Client particulier : pas de facture électronique, mais les données de vente feront l'objet d'un e-reporting.</p>
+            {% endif %}
+            {% if einvoice.missing %}
+            <ul class="mt-2 list-disc pl-5 text-amber-800">{% for m in einvoice.missing %}<li>{{ m }}</li>{% endfor %}</ul>
+            {% else %}<p class="mt-2 text-green-700">Toutes les informations obligatoires sont présentes.</p>{% endif %}
+            {% if invoice.status != 'draft' %}
+            <div class="mt-3 flex flex-wrap gap-3">
+                <a class="btn-modern btn-modern-secondary" href="{% url 'invoices:invoice-facturx' invoice.id 'xml' %}">XML Factur-X (EN 16931)</a>
+                <a class="btn-modern btn-modern-secondary" href="{% url 'invoices:invoice-facturx' invoice.id 'pdf' %}">PDF Factur-X</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if invoice.invoice_type == 'sale' and not invoice.recurrence_source_id %}
+        <form method="post" action="{% url 'invoices:invoice-recurrence-update' invoice.id %}" class="mt-6 bg-white rounded-xl border border-gray-200 p-5 text-sm flex flex-wrap items-end gap-3" x-data="{ rec: '{{ invoice.recurrence }}' }">
+            {% csrf_token %}
+            <div class="w-full"><p class="font-semibold text-gray-900">Facture récurrente</p><p class="text-gray-500">Une copie de cette facture est émise et envoyée au client à chaque échéance (abonnement, maintenance, loyer…).</p></div>
+            <label class="flex flex-col gap-1"><span class="text-xs text-gray-500">Fréquence</span>
+                <select name="recurrence" x-model="rec" class="border border-gray-300 rounded-lg px-3 py-2">{% for v, l in recurrence_choices %}<option value="{{ v }}"{% if invoice.recurrence == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+            <label class="flex flex-col gap-1" x-show="rec !== 'none'"><span class="text-xs text-gray-500">Prochaine facture le</span>
+                <input type="date" name="next_date" value="{{ invoice.recurrence_next_date|date:'Y-m-d' }}" class="border border-gray-300 rounded-lg px-3 py-2"></label>
+            <label class="flex flex-col gap-1" x-show="rec !== 'none'"><span class="text-xs text-gray-500">Jusqu'au (facultatif)</span>
+                <input type="date" name="end_date" value="{{ invoice.recurrence_end_date|date:'Y-m-d' }}" class="border border-gray-300 rounded-lg px-3 py-2"></label>
+            <button type="submit" class="btn-modern btn-modern-secondary">Enregistrer</button>
+            {% if invoice.recurrences.exists %}<p class="w-full text-gray-500">{{ invoice.recurrences.count }} facture{{ invoice.recurrences.count|pluralize }} déjà émise{{ invoice.recurrences.count|pluralize }} par récurrence.</p>{% endif %}
+        </form>
+        {% elif invoice.recurrence_source_id %}
+        <p class="mt-6 text-sm text-gray-500">Facture émise automatiquement depuis la facture récurrente <a class="underline" href="{% url 'invoices:invoice-preview' invoice.recurrence_source_id %}">{{ invoice.recurrence_source.invoice_number }}</a>.</p>
+        {% endif %}
+        {% if credit_notes or amount_due is not None %}
+        <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5 text-sm">
+            {% if invoice.retention_amount %}
+            <p class="mb-2"><span class="text-gray-500">Retenue de garantie ({{ invoice.retention_rate }} %) :</span> <strong>{{ invoice.retention_amount }} {{ invoice.currency }}</strong>
+                {% if invoice.retention_released_at %}· libérée le {{ invoice.retention_released_at|date:"d/m/Y" }}
+                {% elif invoice.status != 'draft' %}· retenue jusqu'à sa libération
+                <form method="post" action="{% url 'invoices:invoice-retention-release' invoice.id %}" class="inline" @submit.prevent="if (await billioConfirm({ title: 'Libérer la retenue de garantie ?', message: 'Le montant retenu devient dû par le client (fin du délai de garantie ou caution bancaire fournie).', confirmLabel: 'Libérer' })) $el.submit()">{% csrf_token %}<button type="submit" class="underline ml-1">Libérer</button></form>
+                {% endif %}</p>
+            {% endif %}
+            {% if amount_due is not None %}<p><span class="text-gray-500">Reste à payer :</span> <strong>{{ amount_due }} {{ invoice.currency }}</strong>{% if invoice.status == 'cancelled' %} · facture annulée par avoir{% endif %}</p>{% endif %}
+            {% for cn in credit_notes %}
+            <p class="mt-2"><a class="underline" href="{% url 'invoices:invoice-preview' cn.id %}">{{ cn.invoice_number }}</a> — avoir de {{ cn.total_amount }} {{ cn.currency }} · {% if cn.status == 'draft' %}brouillon{% else %}émis le {{ cn.sent_at|default:cn.updated_at|date:"d/m/Y" }}{% endif %}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Print styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .invoice-preview, .invoice-preview * {
+        visibility: visible;
+    }
+    .invoice-preview {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+}
+</style>
+{% endblock %}
+
+

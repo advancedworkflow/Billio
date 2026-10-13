@@ -1,0 +1,153 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Modèles - Billio{% endblock %}
+{% block page_title %}Modèles de facture{% endblock %}
+{% block page_subtitle %}L'apparence de vos factures et devis : choisissez, personnalisez, définissez le modèle par défaut{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/templates-gallery.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="tg" x-data="templatesPage()">
+    <form x-ref="csrf" class="hidden">{% csrf_token %}</form>
+
+    {% if default_template %}
+    <!-- Modèle par défaut -->
+    <section class="tg-hero">
+        <a href="{% url 'templates_app:template-edit' default_template.id %}" class="tg-hero-thumb" title="Modifier">
+            <iframe src="{% url 'templates_app:template-preview-frame' default_template.id %}" loading="lazy" tabindex="-1" title="Aperçu {{ default_template.name }}"></iframe>
+        </a>
+        <div class="tg-hero-body">
+            <p class="tg-eyebrow">Modèle utilisé par défaut</p>
+            <h2 class="tg-hero-title">{{ default_template.name }}</h2>
+            <p class="tg-hero-text">Appliqué automatiquement à chaque nouvelle facture et à chaque nouveau devis. Vous pouvez en choisir un autre document par document dans l'éditeur.</p>
+            <dl class="tg-stats">
+                <div><dt>Factures</dt><dd>{{ default_template.usage_invoices }}</dd></div>
+                <div><dt>Devis</dt><dd>{{ default_template.usage_quotes }}</dd></div>
+                <div><dt>Couleur</dt><dd><span class="tg-swatch" style="background: {{ default_template.accent }}"></span>{{ default_template.accent }}</dd></div>
+                <div><dt>Police</dt><dd>{{ default_template.font_label }}</dd></div>
+            </dl>
+            <div class="tg-actions">
+                <a href="{% url 'templates_app:template-edit' default_template.id %}" class="tg-btn tg-btn--primary"><i data-lucide="pencil" class="w-4 h-4"></i> Personnaliser</a>
+                <a href="{% url 'invoices:invoice-create' %}" class="tg-btn"><i data-lucide="file-plus" class="w-4 h-4"></i> Nouvelle facture</a>
+                <button type="button" class="tg-btn" @click="preview('{% url 'templates_app:template-preview-frame' default_template.id %}', '{{ default_template.name|escapejs }}')"><i data-lucide="eye" class="w-4 h-4"></i> Aperçu</button>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Mes modèles -->
+    <section>
+        <div class="tg-section-head">
+            <div>
+                <h2 class="tg-section-title">Mes modèles <span>{{ templates|length }}</span></h2>
+                <p class="tg-section-sub">{% if total_documents %}{{ total_documents }} document{{ total_documents|pluralize }} utilisent vos modèles.{% else %}Personnalisez un modèle de la galerie pour commencer.{% endif %}</p>
+            </div>
+            <label class="tg-search"><i data-lucide="search" class="w-4 h-4"></i><input type="search" x-model="q" placeholder="Rechercher un modèle"></label>
+        </div>
+        {% if templates %}
+        <div class="tg-grid">
+            {% for t in templates %}
+            <article class="tg-card" x-show="match('{{ t.name|escapejs }}')">
+                <a href="{% url 'templates_app:template-edit' t.id %}" class="tg-thumb">
+                    <iframe src="{% url 'templates_app:template-preview-frame' t.id %}" loading="lazy" tabindex="-1" title="Aperçu {{ t.name }}"></iframe>
+                    {% if t.is_default %}<span class="tg-badge">Par défaut</span>{% endif %}
+                </a>
+                <div class="tg-card-body">
+                    <div class="tg-card-title">
+                        <span class="tg-swatch" style="background: {{ t.accent }}"></span>
+                        <p>{{ t.name }}</p>
+                        <div class="tg-menu" x-data="{ open: false }" @click.outside="open = false">
+                            <button type="button" class="tg-icon-btn" @click="open = !open" aria-label="Actions"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+                            <div class="tg-menu-panel" x-show="open" x-cloak x-transition>
+                                <a href="{% url 'templates_app:template-edit' t.id %}"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Modifier</a>
+                                <button type="button" @click="preview('{% url 'templates_app:template-preview-frame' t.id %}', '{{ t.name|escapejs }}'); open = false"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Aperçu</button>
+                                {% if not t.is_default %}<button type="button" @click="setDefault('{% url 'templates_app:template-set-default' t.id %}')"><i data-lucide="star" class="w-3.5 h-3.5"></i> Utiliser par défaut</button>{% endif %}
+                                <a href="{% url 'templates_app:template-create' %}?from_personal={{ t.id }}"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Dupliquer</a>
+                                <button type="button" class="is-danger" @click="remove({{ t.id }}, '{{ t.name|escapejs }}')"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="tg-card-meta">
+                        {% if t.usage_invoices or t.usage_quotes %}{{ t.usage_invoices }} facture{{ t.usage_invoices|pluralize }} · {{ t.usage_quotes }} devis{% else %}Pas encore utilisé{% endif %}
+                    </p>
+                    <p class="tg-card-meta">Modifié le {{ t.updated_at|date:"d/m/Y" }}{% if t.last_used %} · utilisé le {{ t.last_used|date:"d/m" }}{% endif %}</p>
+                </div>
+            </article>
+            {% endfor %}
+            <a href="{% url 'templates_app:template-create' %}" class="tg-card tg-card--new">
+                <span class="tg-new-icon"><i data-lucide="plus" class="w-5 h-5"></i></span>
+                <strong>Nouveau modèle</strong>
+                <small>À partir du modèle « Essentiel »</small>
+            </a>
+        </div>
+        {% else %}
+        <div class="tg-empty">Aucun modèle personnalisé. Choisissez un point de départ dans la galerie ci-dessous.</div>
+        {% endif %}
+    </section>
+
+    <!-- Galerie -->
+    <section>
+        <div class="tg-section-head">
+            <div>
+                <h2 class="tg-section-title">Galerie <span>{{ gallery|length }}</span></h2>
+                <p class="tg-section-sub">Des points de départ prêts à l'emploi : « Personnaliser » crée votre copie modifiable.</p>
+            </div>
+            <div class="tg-seg">
+                <button type="button" :class="docType === 'invoice' && 'is-active'" @click="docType = 'invoice'">Facture</button>
+                <button type="button" :class="docType === 'quote' && 'is-active'" @click="docType = 'quote'">Devis</button>
+            </div>
+        </div>
+        <div class="tg-grid">
+            {% for m in gallery %}
+            <article class="tg-card" x-show="match('{{ m.title|escapejs }} {{ m.description|default:''|escapejs }}')">
+                <button type="button" class="tg-thumb" @click="preview(`{% url 'templates_app:marketplace-preview-frame' m.id %}?type=${docType}`, '{{ m.title|escapejs }}')">
+                    <iframe :src="`{% url 'templates_app:marketplace-preview-frame' m.id %}?type=${docType}`" loading="lazy" tabindex="-1" title="Aperçu {{ m.title }}"></iframe>
+                    {% if m.is_pro %}<span class="tg-badge tg-badge--pro">Pro</span>{% endif %}
+                </button>
+                <div class="tg-card-body">
+                    <div class="tg-card-title"><span class="tg-swatch" style="background: {{ m.accent }}"></span><p>{{ m.title }}</p></div>
+                    <p class="tg-card-meta tg-card-desc">{{ m.description|default:"Modèle Billio" }}</p>
+                    <a href="{% url 'templates_app:template-create' %}?from_marketplace={{ m.id }}" class="tg-btn tg-btn--block">Personnaliser</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Aperçu grand format -->
+    <div class="tg-modal" x-show="modal" x-cloak @keydown.escape.window="modal = null" x-transition.opacity>
+        <div class="tg-modal-backdrop" @click="modal = null"></div>
+        <div class="tg-modal-panel">
+            <div class="tg-modal-head"><p x-text="modal && modal.title"></p><button type="button" class="tg-icon-btn" @click="modal = null" aria-label="Fermer">✕</button></div>
+            <iframe :src="modal ? modal.url : 'about:blank'" title="Aperçu"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+function templatesPage() {
+    return {
+        q: '',
+        docType: 'invoice',
+        modal: null,
+        csrf() { const i = this.$refs.csrf.querySelector('input'); return i ? i.value : ''; },
+        match(text) { return !this.q || text.toLowerCase().includes(this.q.toLowerCase()); },
+        preview(url, title) { this.modal = { url, title }; },
+        async setDefault(url) {
+            const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() } });
+            if (res.ok) window.location.reload();
+        },
+        async remove(id, name) {
+            if (!confirm(`Supprimer le modèle « ${name} » ? Les documents existants gardent leur mise en page actuelle.`)) return;
+            const body = new URLSearchParams({ template_id: id });
+            const res = await fetch('{% url "templates_app:template-delete-personal" %}', { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.ok) window.location.reload(); else alert(data.error || 'Suppression impossible.');
+        },
+    };
+}
+</script>
+{% endblock %}

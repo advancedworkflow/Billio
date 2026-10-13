@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour{% if user.first_name %} {{ user.first_name }}{% endif %},
+
+Vous avez demandé à réinitialiser le mot de passe de votre compte Billio ({{ email }}).
+Choisissez-en un nouveau en ouvrant ce lien (valable 24 heures) :
+
+{{ site_url }}{% url 'accounts:password-reset-confirm' uidb64=uid token=token %}
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe actuel reste valable.
+
+L'équipe Billio
+{% endautoescape %}

@@ -1,0 +1,72 @@
+{% extends "dashboard/_portal_base.html" %}
+
+{% block extra_head %}
+<style>{{ canvas_css|safe }}</style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'dashboard:public-portal-overview' client.portal_token %}" class="pt-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour à l'espace client</a>
+<div class="flex items-end justify-between gap-4 flex-wrap mb-6">
+    <div>
+        <h1 class="pt-hello">{{ document.title }}</h1>
+        <p class="pt-sub">{{ document.get_document_type_display }} · {{ document.number }} · {{ pages|length }} page{{ pages|length|pluralize }}</p>
+    </div>
+</div>
+
+{% if is_form %}
+    {% if sent %}
+    <div class="pt-card pt-card-pad mb-5 flex items-center gap-3" style="border-color: var(--pt-ok);">
+        <span class="pt-row-icon" style="background: var(--pt-ok-soft); color: var(--pt-ok);"><i data-lucide="check" class="w-4 h-4"></i></span>
+        <div><p class="font-semibold">Merci, vos réponses ont bien été envoyées.</p><p class="pt-sub">Vous pouvez les modifier et les renvoyer à tout moment.</p></div>
+    </div>
+    {% elif response %}
+    <p class="pt-sub mb-4">Vous avez répondu le {{ response.updated_at|date:"d/m/Y à H:i" }} · vos réponses sont pré-remplies.</p>
+    {% else %}
+    <p class="pt-sub mb-4">Remplissez les champs du document puis cliquez sur le bouton d'envoi.</p>
+    {% endif %}
+    {% if form_errors %}
+    <div class="pt-card pt-card-pad mb-5" style="border-color: var(--pt-danger);">
+        <p class="font-semibold" style="color: var(--pt-danger);">Quelques réponses sont à compléter :</p>
+        <ul class="pt-sub mt-1">{% for error in form_errors %}<li>· {{ error }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+<form method="post" novalidate data-doc-form>
+    {% csrf_token %}
+{% endif %}
+
+{# Pages du canvas à leur taille réelle (px CSS), réduites à la largeur disponible. #}
+<div class="pt-doc-pages" data-doc-pages>
+    {% for page in pages %}
+    <div class="pt-doc-page" data-page-width="{{ page.width }}" data-page-height="{{ page.height }}">
+        <div class="pt-doc-page-inner" translate="no">{{ page.html|safe }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if is_form %}
+    {# Si le document n'a pas de bouton d'envoi, on en propose un sous les pages. #}
+    {% if not has_button %}<div class="flex justify-end mt-4" data-fallback-submit hidden><button type="submit" class="pt-btn"><i data-lucide="send" class="w-4 h-4"></i> Envoyer mes réponses</button></div>{% endif %}
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        function fit() {
+            document.querySelectorAll('.pt-doc-page').forEach(function (frame) {
+                var w = +frame.dataset.pageWidth, h = +frame.dataset.pageHeight;
+                var scale = Math.min(1, frame.clientWidth / w);
+                frame.style.height = (h * scale) + 'px';
+                frame.querySelector('.pt-doc-page-inner').style.transform = 'scale(' + scale + ')';
+            });
+        }
+        fit();
+        window.addEventListener('resize', fit);
+        // Pas de bouton « Envoyer » posé dans le document : on affiche celui de secours.
+        var form = document.querySelector('[data-doc-form]');
+        var fallback = document.querySelector('[data-fallback-submit]');
+        if (form && fallback && !form.querySelector('button.el-button')) fallback.hidden = false;
+    })();
+</script>
+{% endblock %}

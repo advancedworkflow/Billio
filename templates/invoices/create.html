@@ -1,0 +1,590 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{% if editor_mode == 'quote' %}{% if quote %}Devis {{ quote.quote_number }}{% else %}Nouveau devis{% endif %}{% elif invoice %}Facture {{ invoice.invoice_number }}{% else %}Nouvelle facture{% endif %}{% endblock %}
+{% block page_subtitle %}{% endblock %}
+
+{% block header_finance_chip %}
+{% include "components/focus_mode_button.html" %}
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=1.8">
+<script src="{% static 'js/invoice-editor.js' %}?v=2.0"></script>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="ie" id="editor-container" x-data="invoiceEditor()" x-init="init()" @keydown.window="onKeydown($event)"
+     data-invoice-org-id="{{ organization.id }}">
+
+    <!-- ===================== Barre du haut ===================== -->
+    <header class="ie-bar">
+        {% if editor_mode == 'quote' %}
+        <a href="{% url 'invoices:quote-list' %}" class="ie-icon-btn" data-tip="Retour aux devis"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+        {% else %}
+        <a href="{% url 'invoices:invoice-list' %}" class="ie-icon-btn" data-tip="Retour aux factures"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+        {% endif %}
+        <div class="ie-bar-title">
+            <span class="ie-doc-label" x-text="docLabel()"></span>
+            <span class="ie-dirty" x-show="dirty" x-cloak>Modifications non enregistrées</span>
+        </div>
+
+        <!-- Étapes : état de complétude, cliquables -->
+        <nav class="ie-steps" aria-label="Étapes">
+            <template x-for="step in steps()" :key="step.key">
+                <button type="button" class="ie-step" :class="{ 'is-done': step.done, 'is-active': section === step.key }" @click="openSection(step.key)">
+                    <span class="ie-step-dot"><i data-lucide="check" class="w-3 h-3"></i></span>
+                    <span x-text="step.label"></span>
+                </button>
+            </template>
+        </nav>
+
+        <div class="ie-bar-spacer"></div>
+
+        <div class="relative">
+            <button type="button" class="ie-btn ie-btn--ghost" @click="templatesOpen = !templatesOpen" data-tip="Changer de modèle" data-kbd="← →">
+                <i data-lucide="layout-template" class="w-4 h-4"></i>
+                <span class="ie-truncate" x-text="selectedTemplateName()"></span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </button>
+            <div class="ie-pop ie-templates" x-show="templatesOpen" x-cloak @click.outside="templatesOpen = false" x-transition.opacity>
+                <p class="ie-pop-title">Modèle de facture</p>
+                <div class="ie-template-list">
+                    <template x-for="t in templatesLibrary" :key="t.id">
+                        <button type="button" class="ie-template" :class="String(selectedTemplate) === String(t.id) ? 'is-active' : ''" @click="selectTemplate(t.id); templatesOpen = false">
+                            <span class="ie-template-mark" x-text="initials(t.name)"></span>
+                            <span class="ie-truncate" x-text="t.name"></span>
+                            <span class="ie-template-src" x-text="t.source === 'marketplace' ? 'Galerie' : 'Mes modèles'"></span>
+                        </button>
+                    </template>
+                </div>
+                <a href="{% url 'templates_app:template-list' %}" class="ie-pop-link"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Gérer les modèles</a>
+            </div>
+        </div>
+
+        <button type="button" class="ie-icon-btn" @click="fullscreenPreview = true" data-tip="Aperçu plein écran" data-kbd="P"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
+
+        <div class="relative">
+            <button type="button" class="ie-icon-btn" @click="moreOpen = !moreOpen" data-tip="Plus d'actions"><i data-lucide="ellipsis" class="w-4 h-4"></i></button>
+            <div class="ie-pop ie-menu" x-show="moreOpen" x-cloak @click.outside="moreOpen = false">
+                {% if editor_mode == 'quote' and quote %}
+                <p class="ie-pop-title">Devis</p>
+                <button type="button" @click="moreOpen = false; sendQuote()"><i data-lucide="send" class="w-4 h-4"></i> Enregistrer et envoyer au client</button>
+                <button type="button" @click="moreOpen = false; setQuoteStatus('accepted')" x-show="!['accepted'].includes(invoiceData.status)"><i data-lucide="circle-check" class="w-4 h-4"></i> Marquer comme accepté</button>
+                <button type="button" @click="moreOpen = false; setQuoteStatus('rejected')" x-show="!['rejected'].includes(invoiceData.status)"><i data-lucide="circle-x" class="w-4 h-4"></i> Marquer comme refusé</button>
+                <button type="button" @click="moreOpen = false; convertQuote()" x-show="invoiceData.status === 'accepted' && !invoiceData.converted_invoice_id"><i data-lucide="receipt-text" class="w-4 h-4"></i> Convertir en facture</button>
+                <a :href="convertedInvoiceUrl()" x-show="invoiceData.converted_invoice_id"><i data-lucide="external-link" class="w-4 h-4"></i> Voir la facture issue du devis</a>
+                <button type="button" @click="moreOpen = false; duplicateQuote()"><i data-lucide="copy" class="w-4 h-4"></i> Dupliquer le devis</button>
+                <a href="{% url 'invoices:public-quote-view' quote.id %}" target="_blank" rel="noopener"><i data-lucide="globe" class="w-4 h-4"></i> Ouvrir la page client</a>
+                <p class="ie-pop-title">Document</p>
+                {% endif %}
+                <button type="button" @click="moreOpen = false; openDefineTemplate()"><i data-lucide="bookmark-plus" class="w-4 h-4"></i> Définir comme modèle</button>
+                <button type="button" @click="moreOpen = false; openSection('style')"><i data-lucide="palette" class="w-4 h-4"></i> Personnaliser l'apparence</button>
+                <button type="button" @click="moreOpen = false; showHelp = true"><i data-lucide="keyboard" class="w-4 h-4"></i> Raccourcis clavier</button>
+            </div>
+        </div>
+
+        <button type="button" class="ie-btn ie-btn--primary" @click="saveInvoice()" :disabled="saving" data-tip="Enregistrer" data-kbd="Ctrl+S">
+            <span class="inline-flex" x-show="!saving"><i data-lucide="check" class="w-4 h-4"></i></span>
+            <span class="inline-flex ie-spin" x-show="saving" x-cloak><i data-lucide="loader-circle" class="w-4 h-4"></i></span>
+            <span x-text="saving ? 'Enregistrement…' : 'Enregistrer'"></span>
+        </button>
+        {% if editor_mode == 'quote' %}
+        <span class="ie-status" x-show="invoiceData.status" x-text="statusLabel()" :class="`is-${invoiceData.status}`"></span>
+        {% endif %}
+    </header>
+
+    <div class="ie-body">
+        <!-- ===================== Aperçu interactif ===================== -->
+        <main class="ie-canvas" @mouseleave="hoverObj = null">
+            <p class="ie-canvas-hint"><i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i> {% if editor_mode == 'quote' %}Cliquez sur un élément du devis pour le modifier{% else %}Cliquez sur un élément de la facture pour le modifier{% endif %}</p>
+            <div class="ie-paper">
+                <style x-text="renderedPreviewCss"></style>
+                <div id="invoice-preview" translate="no" class="invoice-preview ie-preview" x-html="renderedPreviewHtml"
+                     @click="onPreviewClick($event)" @dblclick="onPreviewDblClick($event)" @mouseover="onPreviewHover($event)"
+                     @focusin="onFieldFocusIn($event)" @focusout="onFieldFocusOut($event)"
+                     @keydown="onFieldKeydown($event)" @paste="onFieldPaste($event)"></div>
+                <div class="ie-hover-label" x-show="hoverObj" x-cloak :style="hoverStyle" x-text="hoverLabel"></div>
+            </div>
+        </main>
+
+        <!-- ===================== Inspecteur contextuel ===================== -->
+        <aside class="ie-inspector">
+            <nav class="ie-tabs">
+                <template x-for="tab in tabs" :key="tab.key">
+                    <button type="button" class="ie-tab" :class="section === tab.key ? 'is-active' : ''" @click="openSection(tab.key)" :data-tip="tab.label" :data-kbd="tab.kbd">
+                        <i :data-lucide="tab.icon" class="w-4 h-4"></i>
+                        <span x-text="tab.short"></span>
+                    </button>
+                </template>
+            </nav>
+
+            <div class="ie-panel" x-ref="panel">
+                <!-- Résumé -->
+                <section x-show="section === 'summary'">
+                    <h2 class="ie-panel-title">Résumé</h2>
+                    <div class="ie-total-card">
+                        <span>Total TTC</span>
+                        <strong x-text="formatCurrency(total)"></strong>
+                        <small x-text="`${formatCurrency(subtotal)} HT · TVA ${formatCurrency(taxAmount)}`"></small>
+                    </div>
+                    <div class="ie-checklist">
+                        <button type="button" @click="openSection('client')" :class="currentClient() ? 'is-done' : ''">
+                            <i data-lucide="user-round" class="w-4 h-4"></i>
+                            <span><strong>Client</strong><small x-text="currentClient() ? currentClient().name : 'À choisir'"></small></span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" @click="openSection('items')" :class="validItems().length ? 'is-done' : ''">
+                            <i data-lucide="list" class="w-4 h-4"></i>
+                            <span><strong>Lignes</strong><small x-text="validItems().length ? `${validItems().length} ligne${validItems().length > 1 ? 's' : ''}` : 'Aucune ligne'"></small></span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" @click="openSection('details')" :class="invoiceData.issue_date && invoiceData[dueKey] ? 'is-done' : ''">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                            <span><strong>Dates</strong><small x-text="invoiceData.issue_date ? `Émis le ${formatDate(invoiceData.issue_date)} · ${isQuote ? 'valable jusqu\'au' : 'échéance'} ${formatDate(invoiceData[dueKey])}` : 'À compléter'"></small></span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        <button type="button" @click="openSection('notes')" :class="notesSummary() ? 'is-done' : ''">
+                            <i data-lucide="sticky-note" class="w-4 h-4"></i>
+                            <span><strong x-text="isQuote ? 'Conditions' : 'Notes'"></strong><small x-text="notesSummary() || 'Optionnel'"></small></span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        {% if editor_mode == 'quote' %}
+                        <button type="button" @click="openSection('schedule')" :class="invoiceData.milestones.length || invoiceData.is_recurring ? 'is-done' : ''">
+                            <i data-lucide="calendar-range" class="w-4 h-4"></i>
+                            <span><strong>Échéancier</strong><small x-text="invoiceData.is_recurring ? 'Devis récurrent' : (invoiceData.milestones.length ? `${invoiceData.milestones.length} échéance(s)` : 'Optionnel')"></small></span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <!-- Client -->
+                <section x-show="section === 'client'">
+                    <h2 class="ie-panel-title">Client</h2>
+                    <template x-if="currentClient() && !clientCreate">
+                        <div class="ie-client-card">
+                            <span class="ie-avatar" x-text="initials(currentClient().name)"></span>
+                            <div class="min-w-0">
+                                <p class="font-semibold ie-truncate" x-text="currentClient().name"></p>
+                                <p class="ie-muted ie-truncate" x-text="currentClient().email"></p>
+                                <p class="ie-muted" x-show="currentClient().address" x-text="currentClient().address"></p>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="!clientCreate">
+                        <div class="ie-search">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                            <input type="search" x-ref="clientSearch" x-model="clientQuery" placeholder="Rechercher un client…" @keydown="clientListKeydown($event)">
+                        </div>
+                        <div class="ie-client-list">
+                            <template x-for="(c, i) in filteredClients()" :key="c.id">
+                                <button type="button" class="ie-client-row" :class="{ 'is-selected': String(c.id) === String(invoiceData.client_id), 'is-highlight': i === clientHighlight }" @click="chooseClient(c)">
+                                    <span class="ie-avatar ie-avatar--sm" x-text="initials(c.name)"></span>
+                                    <span class="min-w-0 flex-1 text-left">
+                                        <span class="block ie-truncate" x-text="c.name"></span>
+                                        <span class="block ie-muted ie-truncate" x-text="c.email"></span>
+                                    </span>
+                                    <i data-lucide="check" class="w-4 h-4 ie-check"></i>
+                                </button>
+                            </template>
+                            <p class="ie-empty" x-show="!filteredClients().length">Aucun client trouvé.</p>
+                        </div>
+                        <button type="button" class="ie-btn ie-btn--ghost ie-btn--block" @click="startClientCreate()"><i data-lucide="user-plus" class="w-4 h-4"></i> Nouveau client</button>
+                    </div>
+                    <form x-show="clientCreate" x-cloak class="ie-form" @submit.prevent="submitNewClient()">
+                        <label class="ie-field"><span>Nom</span><input type="text" x-ref="newClientName" x-model="newClient.name" required></label>
+                        <label class="ie-field"><span>Email</span><input type="email" x-model="newClient.email" required></label>
+                        <label class="ie-field"><span>Téléphone <em>(optionnel)</em></span><input type="tel" x-model="newClient.phone"></label>
+                        <p class="ie-error" x-show="newClient.error" x-text="newClient.error"></p>
+                        <div class="ie-row-actions">
+                            <button type="button" class="ie-btn ie-btn--ghost" @click="clientCreate = false">Annuler</button>
+                            <button type="submit" class="ie-btn ie-btn--primary" :disabled="newClient.submitting">Créer et sélectionner</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Infos -->
+                <section x-show="section === 'details'">
+                    <h2 class="ie-panel-title">Informations</h2>
+                    {% if editor_mode == 'quote' %}
+                    <div class="ie-form">
+                        <label class="ie-field"><span>Objet du devis</span><input type="text" x-model="invoiceData.title" @input="touch()" placeholder="Ex. Refonte du site web"></label>
+                        <div class="ie-field"><span>Numéro</span>
+                            <p class="ie-readonly"><span x-text="invoiceData.quote_number"></span> <em>{% if quote %}attribué{% else %}attribué à l'enregistrement{% endif %}</em></p>
+                        </div>
+                        <label class="ie-field"><span>Date d'émission</span><input type="date" x-ref="issueDate" x-model="invoiceData.issue_date" @change="touch()"></label>
+                        <div class="ie-field"><span>Valable jusqu'au</span>
+                            <input type="date" x-model="invoiceData.expiry_date" @change="touch()">
+                            <div class="ie-chips">
+                                <template x-for="d in [15, 30, 60, 90]" :key="d">
+                                    <button type="button" @click="setDueIn(d)" :class="dueInDays() === d ? 'is-active' : ''" x-text="`${d} jours`"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <label class="ie-field"><span>Devise</span>
+                            <select x-model="invoiceData.currency" @change="touch()">
+                                <option value="EUR">Euro (€)</option>
+                                <option value="USD">Dollar US ($)</option>
+                                <option value="GBP">Livre sterling (£)</option>
+                                <option value="CAD">Dollar canadien ($)</option>
+                            </select>
+                        </label>
+                        <label class="ie-field"><span>Description <em>(interne)</em></span><textarea rows="2" x-model="invoiceData.description" @input="touch()"></textarea></label>
+                        <details class="ie-advanced" :open="!!(invoiceData.project_name || invoiceData.project_reference)">
+                            <summary>Projet (nom, référence, lieu, dates)</summary>
+                            <div class="ie-form mt-3">
+                                <label class="ie-field"><span>Nom du projet</span><input type="text" x-model="invoiceData.project_name" @input="touch()"></label>
+                                <div class="ie-grid-2">
+                                    <label class="ie-field"><span>Référence</span><input type="text" x-model="invoiceData.project_reference" @input="touch()"></label>
+                                    <label class="ie-field"><span>Lieu</span><input type="text" x-model="invoiceData.project_location" @input="touch()"></label>
+                                    <label class="ie-field"><span>Démarrage</span><input type="date" x-model="invoiceData.project_start_date" @change="touch()"></label>
+                                    <label class="ie-field"><span>Livraison</span><input type="date" x-model="invoiceData.project_delivery_date" @change="touch()"></label>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    {% else %}
+                    <div class="ie-form">
+                        <div class="ie-field"><span>Type</span>
+                            <div class="ie-seg">
+                                <button type="button" :class="invoiceData.invoice_type === 'sale' ? 'is-active' : ''" @click="setData('invoice_type', 'sale')">Vente</button>
+                                <button type="button" :class="invoiceData.invoice_type === 'purchase' ? 'is-active' : ''" @click="setData('invoice_type', 'purchase')">Achat</button>
+                            </div>
+                        </div>
+                        <div class="ie-field"><span>Numéro</span>
+                            <p class="ie-readonly"><span x-text="invoiceData.invoice_number"></span> <em>{% if invoice %}attribué{% else %}attribué à l'enregistrement{% endif %}</em></p>
+                        </div>
+                        <label class="ie-field"><span>Date d'émission</span><input type="date" x-ref="issueDate" x-model="invoiceData.issue_date" @change="touch()"></label>
+                        <div class="ie-field"><span>Échéance</span>
+                            <input type="date" x-model="invoiceData.due_date" @change="touch()">
+                            <div class="ie-chips">
+                                <template x-for="d in [0, 15, 30, 45, 60]" :key="d">
+                                    <button type="button" @click="setDueIn(d)" :class="dueInDays() === d ? 'is-active' : ''" x-text="d === 0 ? 'À réception' : `${d} jours`"></button>
+                                </template>
+                            </div>
+                        </div>
+                        <label class="ie-field"><span>Devise</span>
+                            <select x-model="invoiceData.currency" @change="touch()">
+                                <option value="EUR">Euro (€)</option>
+                                <option value="USD">Dollar US ($)</option>
+                                <option value="GBP">Livre sterling (£)</option>
+                                <option value="CAD">Dollar canadien ($)</option>
+                            </select>
+                        </label>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- Lignes -->
+                <section x-show="section === 'items'">
+                    <h2 class="ie-panel-title">Lignes <span class="ie-count" x-text="invoiceData.items.length"></span></h2>
+                    <div class="ie-items" @dragover.prevent>
+                        <template x-for="(item, index) in invoiceData.items" :key="item._key">
+                            <div class="ie-item" :class="{ 'is-active': activeItem === index }" :data-item-index="index"
+                                 draggable="true" @dragstart="dragFrom = index" @drop.prevent="dropItem(index)" @click="activeItem = index">
+                                <div class="ie-item-head">
+                                    <span class="ie-grip" data-tip="Glisser pour réordonner"><i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i></span>
+                                    <input type="text" class="ie-item-name" x-model="item.name" placeholder="Désignation (ou produit du catalogue)" autocomplete="off"
+                                           @input="touch(); openPicker(index, $el)" @change="applyProduct(item)" @focus="activeItem = index; openPicker(index, $el)"
+                                           @blur="closePicker()" @keydown="pickerKey($event)">
+                                    <button type="button" class="ie-icon-btn ie-icon-btn--sm" @click.stop="duplicateItem(index)" data-tip="Dupliquer la ligne"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" class="ie-icon-btn ie-icon-btn--sm ie-danger" @click.stop="removeItem(index)" data-tip="Supprimer la ligne"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                                <input type="text" class="ie-item-desc" x-model="item.description" placeholder="Description (optionnel)" @input="touch()" @focus="activeItem = index">
+                                <div class="ie-item-grid">
+                                    <label><span>Qté</span><input type="number" min="0" step="0.01" x-model.number="item.quantity" @input="touch()" @focus="activeItem = index"></label>
+                                    <label><span>Prix unitaire HT</span><input type="number" step="0.01" x-model.number="item.unit_price" title="Montant négatif possible (ex. acompte à déduire)" @input="touch()" @focus="activeItem = index" @keydown.enter.prevent="index === invoiceData.items.length - 1 ? addItem() : null"></label>
+                                    <div class="ie-item-total"><span>Total HT</span><strong x-text="formatCurrency(lineTotal(item))"></strong></div>
+                                </div>
+                                <div class="ie-item-grid ie-item-grid--extra{% if editor_mode != 'quote' %} ie-item-grid--extra-2{% endif %}">
+                                    <label><span>Unité</span><input type="text" x-model="item.unit" @input="touch()" placeholder="unité"></label>
+                                    <label><span>TVA</span>
+                                        <select x-model.number="item.tax_rate" @change="touch()">
+                                            <template x-for="r in [20, 10, 5.5, 2.1, 0]" :key="r"><option :value="r" x-text="`${String(r).replace('.', ',')} %`" :selected="Number(item.tax_rate) === r"></option></template>
+                                        </select>
+                                    </label>
+                                    {% if editor_mode == 'quote' %}
+                                    <label><span>Remise %</span><input type="number" min="0" max="100" step="0.5" x-model.number="item.discount_percent" @input="touch()"></label>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </template>
+                        <div class="ie-empty-box" x-show="!invoiceData.items.length">
+                            <i data-lucide="list-plus" class="w-6 h-6"></i>
+                            <p x-text="isQuote ? 'Ajoutez la première prestation de votre devis.' : 'Ajoutez la première ligne de votre facture.'"></p>
+                        </div>
+                    </div>
+                    <button type="button" class="ie-btn ie-btn--ghost ie-btn--block" @click="addItem()" data-tip="Ajouter une ligne" data-kbd="Ctrl+Entrée"><i data-lucide="plus" class="w-4 h-4"></i> Ajouter une ligne</button>
+                    <div class="ie-rate-lines" x-show="tjm > 0">
+                        <span>Au tarif de votre TJM :</span>
+                        <button type="button" @click="addRateItem('day')" x-text="'+ Jour · ' + formatCurrency(tjm)"></button>
+                        <button type="button" @click="addRateItem('half')" x-text="'+ Demi-journée · ' + formatCurrency(tjm / 2)"></button>
+                        <button type="button" @click="addRateItem('hour')" x-text="'+ Heure · ' + formatCurrency(tjm / (Number(billing.hours_per_day) || 7))"></button>
+                    </div>
+                    <p class="ie-rate-hint" x-show="!tjm"><a href="{% url 'dashboard:resources-center' %}#tjm">Calculez et enregistrez votre TJM</a> pour ajouter des lignes au bon tarif en un clic.</p>
+
+                    <div class="ie-totals">
+                        <p><span>Sous-total HT</span><span x-text="formatCurrency(subtotal)"></span></p>
+                        <p><span>TVA</span><span x-text="formatCurrency(taxAmount)"></span></p>
+                        <p class="ie-discount"><span>Remise globale</span><span class="ie-inline-input"><input type="number" min="0" step="0.01" x-model.number="invoiceData.discount_amount" @input="touch()"> <em x-text="currencySymbol()"></em></span></p>
+                        <p class="is-total"><span>Total TTC</span><span x-text="formatCurrency(total)"></span></p>
+                    </div>
+                </section>
+
+                <!-- Notes -->
+                <section x-show="section === 'notes'">
+                    <h2 class="ie-panel-title">Notes & conditions</h2>
+                    {% if editor_mode == 'quote' %}
+                    <div class="ie-form mb-4">
+                        <label class="ie-field"><span>Conditions de paiement</span><textarea rows="3" x-model="invoiceData.payment_terms" @input="touch()" placeholder="Ex. 30 % à la commande, solde à la livraison"></textarea></label>
+                        <label class="ie-field"><span>Délais de réalisation</span><textarea rows="2" x-model="invoiceData.delivery_terms" @input="touch()" placeholder="Ex. 15 jours ouvrés après réception de l'acompte"></textarea></label>
+                        <label class="ie-field"><span>Conditions générales / mentions</span><textarea rows="4" x-model="invoiceData.terms_and_conditions" @input="touch()"></textarea></label>
+                        <label class="ie-field"><span>Mot de fin (pied du devis)</span><input type="text" x-model="invoiceData.footer" @input="touch()" placeholder="Merci pour votre confiance."></label>
+                    </div>
+                    {% endif %}
+                    <div class="ie-form">
+                        <label class="ie-field"><span x-text="isQuote ? 'Notes' : 'Texte affiché sur la facture'"></span>
+                            <textarea rows="7" x-ref="notes" x-model="invoiceData.notes" @input="touch()" placeholder="Conditions de paiement, remerciements…"></textarea>
+                        </label>
+                        <div class="ie-field"><span>Ajouter rapidement</span>
+                            <div class="ie-chips ie-chips--wrap">
+                                <template x-for="snippet in noteSnippets" :key="snippet.label">
+                                    <button type="button" @click="appendNote(snippet.text)" x-text="snippet.label"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {% if editor_mode == 'quote' %}
+                <!-- Échéancier & récurrence (devis) -->
+                <section x-show="section === 'schedule'">
+                    <h2 class="ie-panel-title">Échéancier de paiement</h2>
+                    <div class="ie-field mb-3"><span>Répartition rapide</span>
+                        <div class="ie-chips ie-chips--wrap">
+                            <button type="button" @click="applySchedulePreset([30, 70], ['Acompte', 'Solde'])">30 % / 70 %</button>
+                            <button type="button" @click="applySchedulePreset([50, 50], ['Acompte', 'Solde'])">50 % / 50 %</button>
+                            <button type="button" @click="applySchedulePreset([30, 40, 30], ['Acompte', 'Étape intermédiaire', 'Solde'])">30 / 40 / 30</button>
+                            <button type="button" @click="applySchedulePreset([100], ['Paiement à la livraison'])">100 % à la livraison</button>
+                        </div>
+                    </div>
+                    <div class="ie-items">
+                        <template x-for="(m, index) in invoiceData.milestones" :key="index">
+                            <div class="ie-item">
+                                <div class="ie-item-head">
+                                    <input type="text" class="ie-item-name" x-model="m.label" placeholder="Libellé (ex. Acompte)" @input="touch()" :disabled="!!(m.id && m.status !== 'pending')">
+                                    <button type="button" class="ie-icon-btn ie-icon-btn--sm ie-danger" @click="invoiceData.milestones.splice(index, 1); touch()" x-show="!m.id || m.status === 'pending'" data-tip="Supprimer l'échéance"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                                <div class="ie-item-grid ie-milestone-grid">
+                                    <label><span>%</span><input type="number" min="0" max="100" step="1" x-model.number="m.percentage" @input="milestoneFromPercent(m)" :disabled="!!(m.id && m.status !== 'pending')"></label>
+                                    <label><span>Date</span><input type="date" x-model="m.due_date" @change="touch()" :disabled="!!(m.id && m.status !== 'pending')"></label>
+                                    <label><span>Montant</span><input type="number" min="0" step="0.01" x-model.number="m.amount" @input="m.percentage = null; touch()" :disabled="!!(m.id && m.status !== 'pending')"></label>
+                                </div>
+                                {% if quote %}
+                                <div class="ie-milestone-foot" x-show="m.id">
+                                    <span class="ie-muted" x-text="milestoneStatusLabel(m.status)"></span>
+                                    <button type="button" class="ie-link" x-show="m.status === 'pending'" @click="generateMilestoneInvoice(m.id)">Facturer cette échéance</button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </template>
+                        <div class="ie-empty-box" x-show="!invoiceData.milestones.length">
+                            <i data-lucide="calendar-range" class="w-6 h-6"></i>
+                            <p>Paiement en une fois. Ajoutez des échéances pour fractionner.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="ie-btn ie-btn--ghost ie-btn--block" @click="addMilestone()"><i data-lucide="plus" class="w-4 h-4"></i> Ajouter une échéance</button>
+                    <p class="ie-muted mt-2" x-show="invoiceData.milestones.length" :class="milestonesWarning() ? 'ie-warn' : ''" x-text="milestonesWarning() || `Total des échéances : ${formatCurrency(milestonesSum())}`"></p>
+
+                    <div class="ie-recurring">
+                        <label class="ie-check-row"><input type="checkbox" x-model="invoiceData.is_recurring" @change="touch()"> <span><strong>Devis récurrent / abonnement</strong><small>Génère automatiquement les échéances périodiques</small></span></label>
+                        <div class="ie-form mt-3" x-show="invoiceData.is_recurring" x-cloak>
+                            <div class="ie-grid-2">
+                                <label class="ie-field"><span>Fréquence</span>
+                                    <select x-model="invoiceData.recurrence_interval" @change="touch()">
+                                        <option value="weekly">Hebdomadaire</option>
+                                        <option value="monthly">Mensuelle</option>
+                                        <option value="quarterly">Trimestrielle</option>
+                                        <option value="yearly">Annuelle</option>
+                                    </select>
+                                </label>
+                                <label class="ie-field"><span>Nombre</span><input type="number" min="1" x-model.number="invoiceData.recurrence_count" @input="touch()"></label>
+                            </div>
+                            <label class="ie-field"><span>Date de départ</span><input type="date" x-model="invoiceData.recurrence_start_date" @change="touch()"></label>
+                        </div>
+                    </div>
+
+                    {% if quote %}
+                    <div class="ie-recurring">
+                        <p class="font-medium mb-1">Pièces jointes</p>
+                        <p class="ie-muted mb-2">Cahier des charges, maquettes… envoyés avec le devis.</p>
+                        <label class="ie-btn ie-btn--ghost ie-btn--block"><i data-lucide="paperclip" class="w-4 h-4"></i> Ajouter un fichier<input type="file" class="hidden" @change="uploadAttachment($event)"></label>
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <!-- Apparence (variables du modèle) -->
+                <section x-show="section === 'style'">
+                    <h2 class="ie-panel-title">Apparence</h2>
+                    <div class="ie-define-tpl">
+                        <div><strong>Garder cette apparence ?</strong><small>Modèle, couleurs et textes réglés ici deviennent un modèle réutilisable.</small></div>
+                        <button type="button" class="ie-btn" @click="openDefineTemplate()"><i data-lucide="bookmark-plus" class="w-4 h-4"></i> Définir comme modèle</button>
+                    </div>
+
+                    <!-- Logo de l'organisation (en-tête de toutes les factures et devis) -->
+                    <div class="ie-logo" x-ref="logoBlock" :class="logoFocus ? 'is-focus' : ''">
+                        <div class="ie-logo-head">
+                            <span class="ie-logo-title">Logo</span>
+                            <span class="ie-muted">Utilisé sur toutes vos factures et devis</span>
+                        </div>
+                        <div class="ie-logo-body">
+                            <div class="ie-logo-preview" @click="$refs.logoInput.click()" @dragover.prevent @drop.prevent="uploadLogo($event.dataTransfer.files[0])" data-tip="Cliquer ou déposer une image">
+                                <template x-if="organization.logo_url"><img :src="organization.logo_url" alt="Logo"></template>
+                                <template x-if="!organization.logo_url"><span class="ie-logo-empty"><i data-lucide="image-plus" class="w-5 h-5"></i>Ajouter</span></template>
+                            </div>
+                            <div class="ie-logo-actions">
+                                <button type="button" class="ie-btn ie-btn--ghost" @click="$refs.logoInput.click()" :disabled="logoBusy">
+                                    <i data-lucide="upload" class="w-4 h-4"></i><span x-text="organization.logo_url ? 'Remplacer' : 'Importer'"></span>
+                                </button>
+                                <button type="button" class="ie-btn ie-btn--ghost ie-danger" x-show="organization.logo_url" @click="removeLogo()" :disabled="logoBusy">Retirer</button>
+                            </div>
+                            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" x-ref="logoInput" @change="uploadLogo($event.target.files[0]); $event.target.value = ''">
+                        </div>
+                        <label class="ie-field mt-3" x-show="activeSchemaFields.some(f => f.name === 'logo_height')">
+                            <span class="flex justify-between">Taille dans l'en-tête <em x-text="`${fieldValue('logo_height') || 52} px`"></em></span>
+                            <input type="range" min="28" max="120" step="2" class="ie-range" :value="fieldValue('logo_height') || 52" @input="setVariable('logo_height', $event.target.value)">
+                        </label>
+                        <p class="ie-muted mt-2" x-show="!organization.logo_url">Sans logo, l'initiale de votre entreprise est affichée. PNG, JPG ou WEBP, 2 Mo max.</p>
+                    </div>
+
+                    <p class="ie-muted mb-3">Textes et couleurs du modèle « <span x-text="selectedTemplateName()"></span> ». Les zones pointillées de la facture se modifient aussi directement.</p>
+                    <div class="ie-form">
+                        <template x-for="field in activeSchemaFields.filter(f => f.name !== 'logo_height')" :key="field.name">
+                            <label class="ie-field" :class="activeField === field.name ? 'is-focus' : ''" :data-field-input="field.name">
+                                <span x-text="field.label || field.name"></span>
+                                <template x-if="field.type === 'color'">
+                                    <span class="ie-color"><input type="color" :value="fieldValue(field.name)" @input="setVariable(field.name, $event.target.value)"><code x-text="fieldValue(field.name)"></code></span>
+                                </template>
+                                <template x-if="field.type === 'textarea'">
+                                    <textarea rows="3" :value="fieldValue(field.name)" @input="setVariable(field.name, $event.target.value)"></textarea>
+                                </template>
+                                <template x-if="field.type !== 'color' && field.type !== 'textarea'">
+                                    <input type="text" :value="fieldValue(field.name)" @input="setVariable(field.name, $event.target.value)">
+                                </template>
+                            </label>
+                        </template>
+                        <details class="ie-advanced">
+                            <summary>Avancé — variables en JSON</summary>
+                            <textarea rows="10" spellcheck="false" x-model="variablesJsonText" @focus="syncJsonFromVars()"></textarea>
+                            <button type="button" class="ie-btn ie-btn--ghost ie-btn--block" @click="applyVariablesJson()">Appliquer le JSON</button>
+                        </details>
+                    </div>
+                </section>
+
+                <!-- Entreprise (coordonnées de l'organisation, non modifiables ici) -->
+                <section x-show="section === 'org'">
+                    <h2 class="ie-panel-title">Votre entreprise</h2>
+                    <div class="ie-client-card">
+                        <span class="ie-avatar" x-text="initials(organization.name)"></span>
+                        <div class="min-w-0">
+                            <p class="font-semibold" x-text="organization.name"></p>
+                            <p class="ie-muted" x-text="organization.email"></p>
+                            <p class="ie-muted" x-text="[organization.address, organization.postal_code, organization.city].filter(Boolean).join(', ')"></p>
+                        </div>
+                    </div>
+                    <p class="ie-muted mt-3">Ces informations (adresse, SIRET, IBAN…) viennent des paramètres de votre organisation et s'appliquent à toutes vos factures.</p>
+                    <a href="{% url 'accounts:user-settings' %}" class="ie-btn ie-btn--ghost ie-btn--block mt-3"><i data-lucide="settings" class="w-4 h-4"></i> Modifier les paramètres</a>
+                </section>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Aperçu plein écran -->
+    <div class="ie-modal" x-show="fullscreenPreview" x-cloak @click.self="fullscreenPreview = false">
+        <button type="button" class="ie-modal-close" @click="fullscreenPreview = false" aria-label="Fermer"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <div class="ie-paper ie-paper--modal">
+            <style x-text="renderedPreviewCss"></style>
+            <div class="invoice-preview" translate="no" x-html="cleanPreviewHtml"></div>
+        </div>
+    </div>
+
+    <!-- Raccourcis -->
+    <div class="ie-modal" x-show="showHelp" x-cloak @click.self="showHelp = false">
+        <div class="ie-help">
+            <div class="flex items-center justify-between mb-3"><strong>Raccourcis clavier</strong><button type="button" @click="showHelp = false"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+            <template x-for="row in shortcuts" :key="row[0]">
+                <p class="ie-help-row"><span x-text="row[0]"></span><kbd x-text="row[1]"></kbd></p>
+            </template>
+        </div>
+    </div>
+
+    <!-- Définir comme modèle -->
+    <div class="ie-modal" x-show="defineTpl.open" x-cloak @click.self="defineTpl.open = false" @keydown.escape.window="defineTpl.open = false">
+        <form class="ie-help ie-define-dialog" @submit.prevent="saveAsPersonalTemplate()">
+            <div class="flex items-center justify-between mb-1"><strong>Définir comme modèle</strong><button type="button" @click="defineTpl.open = false"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+            <p class="ie-define-sub">Le modèle reprend la disposition actuelle avec vos couleurs et vos textes. Vous pourrez l'affiner dans l'éditeur de modèle.</p>
+            <label class="ie-define-field"><span>Nom du modèle</span><input x-model="defineTpl.name" maxlength="90" required x-ref="defineName"></label>
+            <label class="ie-define-check"><input type="checkbox" x-model="defineTpl.isDefault"> Utiliser par défaut pour mes nouvelles factures et devis</label>
+            <p class="ie-define-error" x-show="defineTpl.error" x-text="defineTpl.error"></p>
+            <div class="ie-define-actions">
+                <button type="button" class="ie-btn" @click="defineTpl.open = false">Annuler</button>
+                <button type="submit" class="ie-btn ie-btn--primary" :disabled="!!defineTpl.saving">Créer le modèle</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Catalogue produits d'une ligne : menu flottant au-dessus de tout (jamais rogné par la liste des lignes). -->
+    <div class="ie-picker" x-show="picker.open && pickerItems().length" x-cloak x-ref="picker" @mousedown.prevent
+         :style="`top:${picker.top}px;left:${picker.left}px;width:${picker.width}px`">
+        <p class="ie-picker-title" x-text="invoiceData.items[picker.index] && invoiceData.items[picker.index].name ? 'Produits correspondants' : 'Votre catalogue'"></p>
+        <template x-for="(p, i) in pickerItems()" :key="p.id">
+            <button type="button" :class="{ 'is-hover': i === picker.hover }" @mouseenter="picker.hover = i" @click="choosePick(p)">
+                <span class="ie-picker-name"><span x-text="p.name"></span><small x-show="p.reference" x-text="p.reference"></small></span>
+                <span class="ie-picker-meta" x-text="formatCurrency(Number(p.unit_price) || 0) + (p.unit && p.unit !== 'unit' ? ' / ' + p.unit : '')"></span>
+            </button>
+        </template>
+    </div>
+
+    <div class="ie-toast" x-show="toast.text" x-cloak x-transition.opacity :class="toast.error ? 'is-error' : ''" x-text="toast.text"></div>
+    <div class="ie-tip" x-ref="tip" hidden></div>
+</div>
+
+{{ invoice_editor_bootstrap|json_script:"invoice-editor-bootstrap" }}
+{{ templates_data_obj|json_script:"invoice-editor-templates" }}
+{{ clients_data|json_script:"invoice-editor-clients" }}
+{{ organization_data|json_script:"invoice-editor-organization" }}
+{{ products_data|json_script:"invoice-editor-products" }}
+<script>
+    window.__invoiceEditorUrls = {
+        preview: "{% url 'templates_app:template-live-preview' %}",
+        {% if editor_mode == 'quote' %}
+        mode: 'quote',
+        save: "{% if quote %}{% url 'invoices:quote-update' quote.id %}{% else %}{% url 'invoices:quote-save' %}{% endif %}",
+        edit: "{% url 'invoices:quote-edit' '00000000-0000-0000-0000-000000000000' %}",
+        list: "{% url 'invoices:quote-list' %}",
+        invoiceEdit: "{% url 'invoices:invoice-edit' '00000000-0000-0000-0000-000000000000' %}",
+        {% if quote %}
+        send: "{% url 'invoices:quote-send' quote.id %}",
+        accept: "{% url 'invoices:quote-mark-accepted' quote.id %}",
+        reject: "{% url 'invoices:quote-mark-rejected' quote.id %}",
+        convert: "{% url 'invoices:quote-convert-to-invoice' quote.id %}",
+        duplicate: "{% url 'invoices:quote-duplicate' quote.id %}",
+        attachment: "{% url 'invoices:quote-attachment-upload' quote.id %}",
+        milestoneInvoice: "{% url 'invoices:quote-milestone-generate-invoice' quote.id 0 %}",
+        {% endif %}
+        {% else %}
+        mode: 'invoice',
+        save: "{% if invoice %}{% url 'invoices:invoice-update' invoice.id %}{% else %}{% url 'invoices:invoice-save' %}{% endif %}",
+        edit: "{% url 'invoices:invoice-edit' '00000000-0000-0000-0000-000000000000' %}",
+        {% endif %}
+        clientCreate: "{% url 'clients:client-quick-create' %}",
+        saveTemplate: "{% url 'templates_app:template-save-as-personal' %}",
+        logo: "{% url 'organizations:organization-logo' %}",
+        isNew: {% if invoice or quote %}false{% else %}true{% endif %},
+    };
+</script>
+{% endblock %}

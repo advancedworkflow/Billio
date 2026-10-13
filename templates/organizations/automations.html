@@ -1,0 +1,74 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Réglages de relances et de facturation récurrente{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% include "components/page_header.html" with title=page_title subtitle="Réglages de relances et de facturation récurrente" icon_d="M4.5 12a7.5 7.5 0 0113.5-4.5M19.5 12a7.5 7.5 0 01-13.5 4.5M4.5 12H2.25m2.25 0L6 10.5M4.5 12L6 13.5M19.5 12h2.25m-2.25 0L18 10.5m1.5 1.5L18 13.5" %}
+
+    {% if not organization %}
+    <div class="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+        <p class="text-sm text-gray-600">Aucune organisation disponible.</p>
+    </div>
+    {% else %}
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"></path>
+        </svg>
+        <p class="text-sm text-amber-800">
+            Relances et factures récurrentes sont traitées automatiquement (vérification planifiée toutes les quelques minutes, et à chaque ouverture du tableau de bord). Une relance n'est envoyée qu'une fois par palier ; pour rendre une facture récurrente, ouvrez-la et choisissez sa fréquence.
+        </p>
+    </div>
+
+    <form method="post" class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        {% csrf_token %}
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-sm font-semibold text-gray-900">Relances de factures en retard</h2>
+        </div>
+        <div class="p-6 space-y-4">
+            <label class="flex items-center justify-between gap-4 p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                <div>
+                    <p class="text-sm font-medium text-gray-900">Relance à J+7</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Envoyer un rappel 7 jours après l'échéance.</p>
+                </div>
+                <input type="checkbox" name="automation_reminder_j7" class="custom-checkbox" {% if organization.automation_reminder_j7 %}checked{% endif %}>
+            </label>
+            <label class="flex items-center justify-between gap-4 p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                <div>
+                    <p class="text-sm font-medium text-gray-900">Relance à J+14</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Envoyer un second rappel 14 jours après l'échéance.</p>
+                </div>
+                <input type="checkbox" name="automation_reminder_j14" class="custom-checkbox" {% if organization.automation_reminder_j14 %}checked{% endif %}>
+            </label>
+            <label class="flex items-center justify-between gap-4 p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                <div>
+                    <p class="text-sm font-medium text-gray-900">Relance à J+30</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Envoyer une dernière relance 30 jours après l'échéance.</p>
+                </div>
+                <input type="checkbox" name="automation_reminder_j30" class="custom-checkbox" {% if organization.automation_reminder_j30 %}checked{% endif %}>
+            </label>
+        </div>
+
+        <div class="px-6 py-4 border-b border-t border-gray-200 bg-gray-50">
+            <h2 class="text-sm font-semibold text-gray-900">Facturation récurrente</h2>
+        </div>
+        <div class="p-6">
+            <label class="flex items-center justify-between gap-4 p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                <div>
+                    <p class="text-sm font-medium text-gray-900">Activer les factures récurrentes</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Génère automatiquement une nouvelle facture selon un cycle défini par client.</p>
+                </div>
+                <input type="checkbox" name="automation_recurring_invoices" class="custom-checkbox" {% if organization.automation_recurring_invoices %}checked{% endif %}>
+            </label>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <button type="submit" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white">Enregistrer</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

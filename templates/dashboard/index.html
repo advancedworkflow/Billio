@@ -1,0 +1,316 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - Billio{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ invoiceView: 'table' }">
+    {% csrf_token %}
+    {{ mini_band_data|json_script:"dashboard-mini-band-data" }}
+
+    <!-- KPI Premium -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 dash-reveal">
+        {# Même présentation que les cartes d'Analytics : libellé, valeur, ligne de détail. #}
+        <div class="kpi-premium">
+            <p class="kpi-label">CA — {{ month_label }}</p>
+            <p class="kpi-value" data-kpi-count="{{ total_facture_numeric|floatformat:'0' }}" data-suffix=" €">{{ total_facture_formatted }}</p>
+            {% include "dashboard/_kpi_trend.html" with trend=total_facture_trend %}
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Encaissements</p>
+            <p class="kpi-value" data-kpi-count="{{ encaissements_numeric|floatformat:'0' }}" data-suffix=" €">{{ encaissements_formatted }}</p>
+            {% include "dashboard/_kpi_trend.html" with trend=encaissements_trend %}
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Soldes</p>
+            <p class="kpi-value" data-kpi-count="{{ soldes_numeric|floatformat:'0' }}" data-suffix=" €">{{ soldes_formatted }}</p>
+            {% include "dashboard/_kpi_trend.html" with trend=soldes_trend %}
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Encours client</p>
+            <p class="kpi-value">{{ encours_client_formatted }}</p>
+            {% include "dashboard/_kpi_trend.html" with trend=encours_client_trend %}
+        </div>
+    </section>
+
+    <!-- Modular grid -->
+    <div class="flex items-center justify-between">
+        <p class="text-xs" style="color: var(--billio-muted);">Glissez un panneau pour réorganiser votre tableau de bord.</p>
+        <button type="button" class="billio-link text-xs" data-widget-reset>Réinitialiser la disposition</button>
+    </div>
+    <div class="dash-modular" data-widget-container>
+        <!-- Revenue trend -->
+        <div class="dash-panel dash-span-8 dash-reveal" style="animation-delay: 0.05s" draggable="true" data-widget="revenue" x-data="miniBandChart('dashboard-mini-band-data')" x-init="init()">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="dash-panel-title">Revenus</h2>
+                <span class="text-xs text-gray-400">4 derniers mois</span>
+            </div>
+            <div class="flex items-end gap-3 h-32 border-b" style="border-color: var(--billio-border);">
+                <template x-for="(item, index) in points" :key="item.full_label">
+                    <button
+                        type="button"
+                        class="chart-bar flex-1 rounded-t-lg transition-all duration-200"
+                        :class="activeIndex === index ? 'chart-bar--active' : ''"
+                        :style="`height:${item.height_pct}%`"
+                        @mouseenter="activeIndex = index"
+                        @focus="activeIndex = index"
+                        @click="activeIndex = index"
+                    ></button>
+                </template>
+            </div>
+            <div class="mt-4 flex items-center justify-between rounded-xl border px-3 py-2" style="border-color: var(--billio-border); background: var(--billio-bg);">
+                <p class="text-xs font-medium text-gray-500" x-text="activePoint ? activePoint.full_label : '-'"></p>
+                <span class="text-xs text-gray-500" x-text="activePoint ? `${activePoint.count} facture(s)` : '0 facture'"></span>
+                <p class="text-sm font-semibold text-gray-900" x-text="activePoint ? activePoint.amount_formatted : '0,00 EUR'"></p>
+            </div>
+        </div>
+
+        <!-- Cash Flow -->
+        <div class="dash-panel dash-span-4 dash-reveal" style="animation-delay: 0.1s" draggable="true" data-widget="cashflow">
+            <h2 class="dash-panel-title mb-4">Cash Flow</h2>
+            <div class="cashflow-row">
+                <span class="text-sm text-gray-500">Entrées</span>
+                <span class="text-sm font-semibold text-emerald-700">{{ encaissements_formatted }}</span>
+            </div>
+            <div class="cashflow-row">
+                <span class="text-sm text-gray-500">Sorties</span>
+                <span class="text-sm font-semibold text-red-600">{{ decaissements_formatted }}</span>
+            </div>
+            <div class="cashflow-row">
+                <span class="text-sm font-medium text-gray-900">Profit</span>
+                <span class="text-sm font-bold text-gray-900">{{ cashflow_profit_formatted }}</span>
+            </div>
+            {% with cf_total=encaissements_numeric|add:decaissements_numeric %}
+            <div class="cashflow-bar-wrap">
+                <div class="cashflow-bar-in h-full" style="width: {% if cf_total %}{% widthratio encaissements_numeric cf_total 100 %}{% else %}50{% endif %}%"></div>
+                <div class="cashflow-bar-out h-full" style="width: {% if cf_total %}{% widthratio decaissements_numeric cf_total 100 %}{% else %}50{% endif %}%"></div>
+            </div>
+            {% endwith %}
+        </div>
+
+        <!-- Billio AI -->
+        <div class="dash-panel dash-ai-card dash-span-6 dash-reveal" style="animation-delay: 0.15s" draggable="true" data-widget="ai">
+            <div class="flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                <h2 class="dash-panel-title">Billio AI</h2>
+            </div>
+            <p class="text-sm text-white/80 mt-3">Quels clients dois-je relancer ?</p>
+            <div class="dash-ai-response">
+                <p><strong>{{ overdue_sales_count }}</strong> facture{{ overdue_sales_count|pluralize }} dépasse{{ overdue_sales_count|pluralize:",nt" }} 15 jours.</p>
+                <p class="mt-2 text-white/70">Créer les relances ?</p>
+                <div class="flex items-center gap-2 mt-3">
+                    <a href="{% url 'invoices:invoice-list' %}?status=overdue" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-violet-700 text-sm font-semibold hover:bg-violet-50 transition-colors">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i>
+                        Générer
+                    </a>
+                    <button type="button" @click="aiDockOpen = true" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white/90 border border-white/25 hover:bg-white/10 transition-colors">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        Ouvrir l'assistant
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="dash-panel dash-span-6 dash-reveal" style="animation-delay: 0.2s" draggable="true" data-widget="activity">
+            <h2 class="dash-panel-title mb-3">Activité récente</h2>
+            <div class="space-y-0">
+                {% for tr in recent_transactions_data %}
+                <div class="activity-feed-item" style="animation-delay: {{ forloop.counter0 }}00ms">
+                    <span class="activity-dot {% if tr.is_negative %}activity-dot--auto{% else %}activity-dot--payment{% endif %}"></span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ tr.title }}</p>
+                        <p class="text-xs text-gray-500">il y a {{ tr.date|timesince }} · {{ tr.amount_formatted }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500 py-4">Aucune activité récente.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Goal -->
+        <div class="dash-panel dash-span-12 dash-reveal" style="animation-delay: 0.25s" draggable="true" data-widget="goal">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="dash-panel-title">Objectif mensuel</h2>
+                <span class="text-xs text-gray-400">{{ goal_percent }}% atteint</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <p class="text-2xl font-semibold" style="color: var(--billio-text);">{{ total_facture_formatted }}</p>
+                <p class="text-sm text-gray-500">/ {{ goal_target|floatformat:0 }} €</p>
+            </div>
+            <div class="goal-progress">
+                <div class="goal-progress-fill" data-width="{{ goal_percent }}%" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Recent Invoices -->
+        <div class="dash-panel dash-span-12 dash-reveal" style="animation-delay: 0.3s" draggable="true" data-widget="invoices">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 class="dash-panel-title">Factures récentes</h2>
+                <div class="invoice-view-tabs">
+                    <button type="button" @click="invoiceView = 'table'" :class="invoiceView === 'table' ? 'is-active' : ''" class="invoice-view-tab">Table</button>
+                    <button type="button" @click="invoiceView = 'timeline'" :class="invoiceView === 'timeline' ? 'is-active' : ''" class="invoice-view-tab">Timeline</button>
+                </div>
+            </div>
+
+            <div x-show="invoiceView === 'table'" x-cloak>
+                <div id="recent-invoices" class="overflow-x-auto">
+                    <div
+                        hx-get="{% url 'invoices:invoice-list-api' %}?limit=5"
+                        hx-trigger="load"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                    >
+                        <div class="p-8 text-center">
+                            <div class="animate-spin rounded-full h-10 w-10 border-4 border-violet-600 border-t-transparent mx-auto mb-3"></div>
+                            <p class="text-gray-500 text-sm">Chargement…</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div x-show="invoiceView === 'timeline'" x-cloak class="space-y-3">
+                {% for inv in recent_sales_invoices_data %}
+                <div class="flex items-center gap-3 p-3 rounded-xl border" style="border-color: var(--billio-border);">
+                    <div class="w-9 h-9 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">{{ inv.client_initials }}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">{{ inv.client_name }}</p>
+                        <p class="text-xs text-gray-500">{{ inv.date|date:"d M Y" }}</p>
+                    </div>
+                    <span class="status-badge status-badge--{{ inv.status }}">{{ inv.status_display }}</span>
+                    <span class="text-sm font-semibold">{{ inv.amount_ht_formatted }}</span>
+                    <div class="relative inline-block" x-data="{ open: false }" @click.away="open = false">
+                        <button type="button" class="billio-table-action-btn" title="Actions" @click="open = !open">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="6" r="1.6"></circle>
+                                <circle cx="12" cy="12" r="1.6"></circle>
+                                <circle cx="12" cy="18" r="1.6"></circle>
+                            </svg>
+                        </button>
+                        <div
+                            x-show="open"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
+                            class="absolute right-0 mt-1 w-56 dropdown-panel z-20"
+                        >
+                            <div class="dropdown-section">
+                                {% if inv.status == 'draft' %}
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="sendInvoice('{{ inv.id }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 12L3.269 3.126A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.874L6 12zm0 0h7.5"></path>
+                                    </svg>
+                                    Envoyer la facture
+                                </button>
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="scheduleInvoiceSend('{{ inv.id }}', {% if inv.scheduled_send_at %}'{{ inv.scheduled_send_at|date:"Y-m-d\TH:i" }}'{% else %}null{% endif %})">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    {% if inv.scheduled_send_at %}Modifier l'envoi programmé{% else %}Programmer l'envoi{% endif %}
+                                </button>
+                                {% endif %}
+                                {% if inv.invoice_type == 'sale' %}
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="copyShareLink('{% url 'invoices:public-invoice-payment' inv.id %}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.684 13.342C9.886 14.555 11.729 14.696 13.093 13.689L15.4 11.985m-7.48-1.97L5.613 8.31C4.25 7.303 2.407 7.444 1.205 8.658a3.357 3.357 0 000 4.72c1.202 1.213 3.045 1.354 4.408.347l2.307-1.704m4.374.004l2.307 1.704c1.363 1.007 3.206.866 4.408-.347a3.357 3.357 0 000-4.72c-1.202-1.214-3.045-1.355-4.408-.348L12.294 10.02"></path>
+                                    </svg>
+                                    Partager le lien de paiement
+                                </button>
+                                {% endif %}
+                                <a href="{% url 'invoices:invoice-preview' inv.id %}" class="dropdown-item">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    Prévisualiser
+                                </a>
+                                <a href="{% url 'invoices:invoice-edit' inv.id %}" class="dropdown-item">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    Modifier
+                                </a>
+                                <button type="button" class="dropdown-item" @click="open=false" onclick="duplicateInvoice('{{ inv.id }}')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Dupliquer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">Aucune facture</p>
+                {% endfor %}
+            </div>
+
+            <div class="mt-4 text-right">
+                <a href="{% url 'invoices:invoice-list' %}" class="billio-link text-sm">Voir tout →</a>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="dash-panel dash-span-12 dash-reveal" style="animation-delay: 0.35s" draggable="true" data-widget="actions">
+            <h2 class="dash-panel-title mb-4">Actions à faire</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center justify-between p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                    <div>
+                        <p class="text-sm font-medium">Paiements en échec</p>
+                        <p class="text-xs text-gray-500">{% if non_justifiees_count %}{{ non_justifiees_count }} tentative{{ non_justifiees_count|pluralize }} sur la période{% else %}Aucun échec{% endif %}</p>
+                    </div>
+                    {% if non_justifiees_count %}
+                    <a href="{% url 'payments:payments-page' %}" class="btn-primary-black text-xs px-3 py-1.5 rounded-lg">Voir</a>
+                    {% else %}
+                    <span class="text-xs text-gray-400">OK</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center justify-between p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                    <div>
+                        <p class="text-sm font-medium">Ventes en retard</p>
+                        <p class="text-xs text-gray-500">{{ overdue_sales_count }} facture{{ overdue_sales_count|pluralize }} · {{ overdue_sales_ht_formatted }}</p>
+                    </div>
+                    <a href="{% url 'invoices:invoice-list' %}?status=overdue" class="text-xs px-3 py-1.5 rounded-lg border font-medium hover:bg-gray-50">Relancer</a>
+                </div>
+                <div class="flex items-center justify-between p-4 rounded-xl border" style="border-color: var(--billio-border);">
+                    <div>
+                        <p class="text-sm font-medium">Achats en retard</p>
+                        <p class="text-xs text-gray-500">{% if overdue_purchases_count %}{{ overdue_purchases_count }} facture{{ overdue_purchases_count|pluralize }}{% else %}Aucun retard{% endif %}</p>
+                    </div>
+                    {% if overdue_purchases_count %}
+                    <a href="{% url 'invoices:invoice-list' %}?status=overdue&invoice_type=purchase" class="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white font-medium">Relancer</a>
+                    {% else %}
+                    <span class="text-xs text-gray-400">OK</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (!window.miniBandChart) {
+        window.miniBandChart = function (jsonScriptId) {
+            return {
+                points: [],
+                activeIndex: 0,
+                init() {
+                    const el = document.getElementById(jsonScriptId);
+                    if (!el) return;
+                    try { this.points = JSON.parse(el.textContent || '[]'); } catch (e) { this.points = []; }
+                    this.activeIndex = this.points.length ? this.points.length - 1 : 0;
+                },
+                get activePoint() { return this.points[this.activeIndex] || null; }
+            };
+        };
+    }
+</script>
+{% endblock %}

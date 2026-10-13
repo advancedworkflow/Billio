@@ -1,0 +1,21 @@
+{# Carte d'un modèle : ouvre la fenêtre « Nouveau document » (client + champs du modèle à remplir). #}
+<div class="doc-template-card">
+    <button type="button" class="doc-thumb" title="Utiliser « {{ template.name }} »"
+            data-url="{% url 'documents:document-create-from-template' template.id %}"
+            data-name="{{ template.name }}" data-fields="{{ template.fill_fields_json }}"
+            @click="$dispatch('doc-fill', { url: $el.dataset.url, name: $el.dataset.name, fields: JSON.parse($el.dataset.fields || '[]') })">
+        {# Première page du modèle réduite à la largeur de la carte (variables affichées en jetons). #}
+        <span class="doc-thumb-page" style="height: {{ template.thumb_height }}px;">
+            <span class="doc-thumb-scale" translate="no" style="transform: scale({{ template.thumb_scale }});">{{ template.thumb_html|safe }}</span>
+        </span>
+        <span class="doc-thumb-cta">Utiliser ce modèle</span>
+    </button>
+    <div class="doc-template-card-footer">
+        <div class="min-w-0">
+            <p class="font-semibold text-sm truncate">{{ template.name }}</p>
+            <p class="text-xs" style="color: var(--billio-text-muted);">
+                {% if badge %}{{ badge }} · {% endif %}{{ template.page_count }} page{{ template.page_count|pluralize }}{% if template.description %} · {{ template.description|truncatechars:30 }}{% endif %}
+            </p>
+        </div>
+    </div>
+</div>

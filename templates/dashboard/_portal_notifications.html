@@ -1,0 +1,21 @@
+<details class="pt-notif" data-portal-notif data-read-url="{% url 'dashboard:public-portal-notifications-read' client.portal_token %}" data-csrf="{{ csrf_token }}">
+    <summary class="pt-notif-bell" aria-label="Notifications" title="Notifications">
+        <i data-lucide="bell" class="w-4 h-4"></i>
+        {% if unread_count %}<span class="pt-notif-count" data-notif-count>{{ unread_count }}</span>{% endif %}
+    </summary>
+    <div class="pt-notif-panel">
+        <p class="pt-notif-head">Notifications</p>
+        {% for n in notifications %}
+        <a href="{{ n.link|default:'#' }}" class="pt-notif-item{% if not n.read_at %} is-unread{% endif %}">
+            <span class="pt-notif-icon{% if n.is_major %} is-major{% endif %}"><i data-lucide="{% if n.event == 'phase_changed' %}flag{% elif n.event == 'deliverable_submitted' %}package-check{% elif n.event == 'document_shared' %}file-text{% elif n.event == 'meeting_scheduled' or n.event == 'meeting_changed' %}calendar-clock{% elif n.event == 'milestone_completed' %}circle-check{% elif n.event == 'file_shared' %}paperclip{% else %}message-circle{% endif %}" class="w-4 h-4"></i></span>
+            <span class="pt-notif-text" translate="no">
+                <strong>{{ n.title }}</strong>
+                {% if n.message %}<small>{{ n.message|truncatechars:140 }}</small>{% endif %}
+                <em>{{ n.created_at|date:"d/m/Y à H:i" }}{% if n.is_major %} · Important{% endif %}</em>
+            </span>
+        </a>
+        {% empty %}
+        <p class="pt-notif-empty">Aucune notification pour le moment.</p>
+        {% endfor %}
+    </div>
+</details>

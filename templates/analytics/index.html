@@ -1,0 +1,229 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Analytics - Billio{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block page_subtitle %}Indicateurs sur la période{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    {% include "components/page_header.html" with title="Analytics" subtitle=period_label icon_d="M4 21V11M9 21V5m5 16V9m5 12v-7" %}
+
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <form method="get" class="flex items-center gap-3 flex-wrap">
+            <div class="tabs-pills">
+                <button type="submit" name="period" value="7" class="tab-pill {% if period_days == 7 %}tab-pill-active{% endif %}">7 jours</button>
+                <button type="submit" name="period" value="30" class="tab-pill {% if period_days == 30 %}tab-pill-active{% endif %}">30 jours</button>
+                <button type="submit" name="period" value="90" class="tab-pill {% if period_days == 90 %}tab-pill-active{% endif %}">90 jours</button>
+                <button type="submit" name="period" value="365" class="tab-pill {% if period_days == 365 %}tab-pill-active{% endif %}">365 jours</button>
+            </div>
+        </form>
+
+        <div class="text-sm text-gray-600">
+            Du <span class="font-medium text-gray-900">{{ start_date }}</span> au <span class="font-medium text-gray-900">{{ today }}</span>
+        </div>
+    </div>
+
+    <!-- KPI Premium -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 dash-reveal">
+        <div class="kpi-premium">
+            <p class="kpi-label">Ventes payées</p>
+            <p class="kpi-value">{{ sales_paid_formatted }}</p>
+            <p class="text-xs text-gray-500 mt-2">Taux de paiement : <span class="font-semibold text-gray-700">{{ sales_payment_rate|floatformat:1 }}%</span></p>
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Achats payés</p>
+            <p class="kpi-value">{{ purchases_paid_formatted }}</p>
+            <p class="text-xs text-gray-500 mt-2">Taux de paiement : <span class="font-semibold text-gray-700">{{ purchases_payment_rate|floatformat:1 }}%</span></p>
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Factures en retard</p>
+            <p class="kpi-value">{{ overdue_total_count }}</p>
+            <p class="text-xs text-gray-500 mt-2">Ventes : {{ overdue_sales_count }} · Achats : {{ overdue_purchases_count }}</p>
+        </div>
+
+        <div class="kpi-premium">
+            <p class="kpi-label">Meilleur client</p>
+            {% if top_clients_formatted %}
+            <p class="kpi-value truncate">{{ top_clients_formatted.0.client_name }}</p>
+            <p class="text-xs text-gray-500 mt-2">{{ top_clients_formatted.0.total_formatted }} encaissés</p>
+            {% else %}
+            <p class="kpi-value text-gray-400">—</p>
+            <p class="text-xs text-gray-500 mt-2">Aucune donnée pour cette période</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Modular grid -->
+    <div class="dash-modular">
+        {{ mini_band_data|json_script:"analytics-mini-band-data" }}
+
+        <!-- Trend -->
+        <div class="dash-panel dash-span-8 dash-reveal" style="animation-delay: 0.05s" x-data="miniBandChart('analytics-mini-band-data')" x-init="init()">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="dash-panel-title">Ventes payées — tendance</h2>
+                <span class="text-xs text-gray-400">4 derniers mois</span>
+            </div>
+            <div class="flex items-end gap-3 h-32 border-b" style="border-color: var(--billio-border);">
+                <template x-for="(item, index) in points" :key="item.full_label">
+                    <button
+                        type="button"
+                        class="chart-bar flex-1 rounded-t-lg transition-all duration-200"
+                        :class="activeIndex === index ? 'chart-bar--active' : ''"
+                        :style="`height:${item.height_pct}%`"
+                        @mouseenter="activeIndex = index"
+                        @focus="activeIndex = index"
+                        @click="activeIndex = index"
+                    ></button>
+                </template>
+            </div>
+            <div class="mt-4 flex items-center justify-between rounded-xl border px-3 py-2" style="border-color: var(--billio-border); background: var(--billio-bg);">
+                <p class="text-xs font-medium text-gray-500" x-text="activePoint ? activePoint.full_label : '-'"></p>
+                <span class="text-xs text-gray-500" x-text="activePoint ? `${activePoint.count} facture(s)` : '0 facture'"></span>
+                <p class="text-sm font-semibold text-gray-900" x-text="activePoint ? activePoint.amount_formatted : '0,00 EUR'"></p>
+            </div>
+        </div>
+
+        <!-- Top clients -->
+        <div class="dash-panel dash-span-4 dash-reveal" style="animation-delay: 0.1s">
+            <h2 class="dash-panel-title mb-3">Top clients</h2>
+            <div class="space-y-2">
+                {% for c in top_clients_formatted %}
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                        {{ c.client_name|slice:":2"|upper }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ c.client_name }}</p>
+                    </div>
+                    <p class="text-sm font-semibold text-gray-900 whitespace-nowrap">{{ c.total_formatted }}</p>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">Aucune donnée pour cette période.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Statuts Ventes -->
+        <div class="dash-panel dash-span-6 dash-reveal" style="animation-delay: 0.15s">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="timeline-legend-dot" style="background: var(--billio-primary);"></span>
+                <h2 class="dash-panel-title">Statuts — Ventes</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% for item in sales_status_breakdown %}
+                    <div class="flex items-center justify-between rounded-lg border px-4 py-3" style="border-color: var(--billio-border); background: var(--billio-bg);">
+                        <div class="min-w-0">
+                            <span class="text-sm font-medium" style="color: var(--billio-text-muted);">{{ item.label }}</span>
+                            <div class="mt-2 h-1.5 w-28 rounded-full overflow-hidden" style="background: var(--billio-border);">
+                                <div class="h-full rounded-full" style="width: {% widthratio item.count sales_status_max 100 %}%; background: var(--billio-primary);"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-semibold" style="color: var(--billio-text);">{{ item.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Statuts Achats -->
+        <div class="dash-panel dash-span-6 dash-reveal" style="animation-delay: 0.2s">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="timeline-legend-dot" style="background: var(--billio-cta-hover);"></span>
+                <h2 class="dash-panel-title">Statuts — Achats</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% for item in purchases_status_breakdown %}
+                    <div class="flex items-center justify-between rounded-lg border px-4 py-3" style="border-color: var(--billio-border); background: var(--billio-bg);">
+                        <div class="min-w-0">
+                            <span class="text-sm font-medium" style="color: var(--billio-text-muted);">{{ item.label }}</span>
+                            <div class="mt-2 h-1.5 w-28 rounded-full overflow-hidden" style="background: var(--billio-border);">
+                                <div class="h-full rounded-full" style="width: {% widthratio item.count purchases_status_max 100 %}%; background: var(--billio-cta-hover);"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-semibold" style="color: var(--billio-text);">{{ item.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Produits -->
+        <div class="dash-panel dash-span-6 dash-reveal" style="animation-delay: 0.25s">
+            <h2 class="dash-panel-title mb-3">Produits — les plus vendus</h2>
+            <div class="space-y-3">
+                {% for p in top_products_formatted %}
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700 truncate">{{ p.name }}</span>
+                        <span class="text-sm font-semibold text-gray-900 whitespace-nowrap ml-2">{{ p.total_formatted }}</span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full overflow-hidden" style="background: var(--billio-border);">
+                        <div class="h-full rounded-full" style="width: {{ p.pct }}%; background: var(--billio-gradient);"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">Aucune vente sur cette période.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Rentabilité -->
+        <div class="dash-panel dash-span-6 dash-reveal" style="animation-delay: 0.3s">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="dash-panel-title">Rentabilité</h2>
+                <span class="text-xs font-semibold" style="color: {% if profitability.margin_rate >= 0 %}var(--billio-success){% else %}var(--billio-error){% endif %};">
+                    Marge {{ profitability.margin_rate|floatformat:0 }}%
+                </span>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <div class="flex items-center justify-between mb-1 text-sm">
+                        <span class="font-medium text-gray-700">Revenus encaissés</span>
+                        <span class="font-semibold text-gray-900">{{ profitability.revenue_formatted }}</span>
+                    </div>
+                    <div class="h-2 w-full rounded-full overflow-hidden" style="background: var(--billio-border);">
+                        <div class="h-full rounded-full" style="width: {{ profitability.revenue_pct }}%; background: var(--billio-success);"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1 text-sm">
+                        <span class="font-medium text-gray-700">Achats payés</span>
+                        <span class="font-semibold text-gray-900">{{ profitability.costs_formatted }}</span>
+                    </div>
+                    <div class="h-2 w-full rounded-full overflow-hidden" style="background: var(--billio-border);">
+                        <div class="h-full rounded-full" style="width: {{ profitability.costs_pct }}%; background: var(--billio-error);"></div>
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">Marge nette</span>
+                    <span class="text-base font-semibold text-gray-900">{{ profitability.margin_formatted }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    if (!window.miniBandChart) {
+        window.miniBandChart = function (jsonScriptId) {
+            return {
+                points: [],
+                activeIndex: 0,
+                init() {
+                    const el = document.getElementById(jsonScriptId);
+                    if (!el) return;
+                    try {
+                        this.points = JSON.parse(el.textContent || '[]');
+                    } catch (e) {
+                        this.points = [];
+                    }
+                    this.activeIndex = this.points.length ? this.points.length - 1 : 0;
+                },
+                get activePoint() {
+                    return this.points[this.activeIndex] || null;
+                }
+            };
+        };
+    }
+</script>
+{% endblock %}

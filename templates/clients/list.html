@@ -1,0 +1,725 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Gérez vos clients et contacts professionnels{% endblock %}
+
+{% block content %}
+{{ clients_data|json_script:"clients-data" }}
+<div class="space-y-6" x-data="clientTable()" x-init="init()" @open-new-client-modal.window="newClientModal = true">
+    {% include "components/page_header.html" with title=page_title subtitle="Gérez vos clients et contacts professionnels" action_href="javascript:void(0)" action_label="Nouveau client" action_id="new-client-btn" action_onclick="window.dispatchEvent(new CustomEvent('open-new-client-modal'))" icon_d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" %}
+    <script>
+        if (typeof window.clientTable !== 'function') {
+            window.clientTable = function () {
+                return {
+                    newClientModal: false,
+                    newClient: { name: '', email: '', phone: '' },
+                    newClientError: '',
+                    async createClient() {
+                        this.newClientError = '';
+                        if (!this.newClient.name || !this.newClient.email) {
+                            this.newClientError = 'Nom et email requis.';
+                            return;
+                        }
+                        const csrf = this.$refs.csrfForm?.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+                        const payload = new URLSearchParams();
+                        payload.set('name', this.newClient.name);
+                        payload.set('email', this.newClient.email);
+                        payload.set('phone', this.newClient.phone || '');
+                        const response = await fetch('{% url "clients:client-quick-create" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                                'X-CSRFToken': csrf,
+                            },
+                            body: payload.toString(),
+                        });
+                        const data = await response.json();
+                        if (!response.ok || !data.ok) {
+                            this.newClientError = data.error || 'Impossible de creer le client.';
+                            return;
+                        }
+                        window.location.reload();
+                    },
+                };
+            };
+        }
+    </script>
+
+    {% if clients %}
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            <div class="px-6 pt-5 pb-4 border-b border-gray-200 bg-gray-50">
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-wrap items-center gap-3 text-sm">
+                        <button type="button" class="inline-flex items-center px-3 py-1.5 rounded-lg border font-medium"
+                                :class="viewMode === 'table' ? 'border-gray-300 bg-white text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                @click="viewMode = 'table'">Tableau</button>
+                        <button type="button" class="inline-flex items-center px-3 py-1.5 rounded-lg border font-medium"
+                                :class="viewMode === 'board' ? 'border-gray-300 bg-white text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                @click="viewMode = 'board'">Cartes</button>
+                        <button type="button" class="inline-flex items-center px-3 py-1.5 rounded-lg border font-medium"
+                                :class="viewMode === 'list' ? 'border-gray-300 bg-white text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                @click="viewMode = 'list'">Liste</button>
+                        <span class="ml-auto text-sm text-gray-600">Total <span class="font-semibold text-gray-900" x-text="filteredClients().length"></span> clients</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative" @keydown.escape.window="filterOpen = false">
+                            <button type="button" class="dropdown-trigger min-w-[140px]" @click="filterOpen = !filterOpen">
+                                <span class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 5h18l-7 8v6l-4-2v-4L3 5z"></path>
+                                    </svg>
+                                    Filter
+                                    <span class="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold" x-text="statusFilter === 'all' ? '0' : '1'"></span>
+                                </span>
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="filterOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="filterOpen = false" class="absolute left-0 mt-2 w-56 dropdown-panel z-20">
+                                <div class="dropdown-section">
+                                    <button type="button" class="dropdown-item justify-between" @click="statusFilter = 'all'; filterOpen = false">
+                                        <span>Tous</span>
+                                        <svg x-show="statusFilter === 'all'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                    <button type="button" class="dropdown-item justify-between" @click="statusFilter = 'active'; filterOpen = false">
+                                        <span>Actifs</span>
+                                        <svg x-show="statusFilter === 'active'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                    <button type="button" class="dropdown-item justify-between" @click="statusFilter = 'inactive'; filterOpen = false">
+                                        <span>Inactifs</span>
+                                        <svg x-show="statusFilter === 'inactive'" class="w-4 h-4 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="relative" @keydown.escape.window="sortOpen = false">
+                            <button type="button" class="dropdown-trigger min-w-[128px]" @click="sortOpen = !sortOpen">
+                                <span class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-gray-500 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M8 7l4-4 4 4M16 17l-4 4-4-4M12 4v16"></path>
+                                    </svg>
+                                    Sort
+                                </span>
+                                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+                            <div x-show="sortOpen" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 -translate-y-1 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100" x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 -translate-y-1 scale-95" x-cloak @click.away="sortOpen = false" class="absolute left-0 mt-2 w-56 dropdown-panel z-20">
+                                <div class="dropdown-section">
+                                    <button type="button" class="dropdown-item" @click="sortBy = 'name'; sortOpen = false">Nom (A-Z)</button>
+                                    <button type="button" class="dropdown-item" @click="sortBy = 'recent'; sortOpen = false">Plus récents</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ml-auto flex items-center gap-2">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-4 w-4 text-gray-400 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    x-model="searchQuery"
+                                    @input.debounce.200ms="noop()"
+                                    class="block w-72 pl-10 pr-3 py-2 border border-gray-300 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                                    placeholder="Search name, email, phone"
+                                >
+                            </div>
+                            <button type="button" class="btn-secondary-yellow inline-flex items-center gap-2 px-4 py-2 text-sm rounded-xl" @click="noop()">
+                                <svg class="w-4 h-4 outline-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                                Rechercher
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto" x-show="viewMode === 'table'">
+                <table class="billio-table">
+                    <thead>
+                        <tr>
+                            <th class="w-10">
+                                <input type="checkbox" class="custom-checkbox">
+                            </th>
+                            <th>Client</th>
+                            <th>Email</th>
+                            <th>Téléphone</th>
+                            <th>Statut</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <template x-for="client in filteredClients()" :key="client.id">
+                            <tr @contextmenu.prevent="openContextMenu($event, client)">
+                                <td>
+                                    <input type="checkbox" class="custom-checkbox">
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <div class="billio-table-avatar" x-text="(client.name || '').slice(0,2).toUpperCase()"></div>
+                                        <div class="min-w-0">
+                                            <div class="text-sm font-semibold truncate" style="color: var(--billio-text);" x-text="client.name"></div>
+                                            <div class="text-xs truncate" style="color: var(--billio-text-muted);" x-text="'ID ' + client.id.slice(0,6).toUpperCase()"></div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="text-sm truncate" style="color: var(--billio-text-muted);" x-text="client.email || '—'"></div>
+                                </td>
+
+                                <td>
+                                    <div class="text-sm" style="color: var(--billio-text-muted);" x-text="client.phone || '—'"></div>
+                                </td>
+
+                                <td>
+                                    <span class="status-badge" :class="client.is_active ? 'status-badge--paid' : 'status-badge--cancelled'" x-text="client.is_active ? 'Actif' : 'Inactif'"></span>
+                                </td>
+
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <button type="button" class="billio-table-action-btn" title="Voir" @click="setContextFromRow(client); openClientDetails()">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="billio-table-action-btn" title="Modifier" @click="setContextFromRow(client); openClientEdit()">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-4 space-y-2" x-show="viewMode === 'list'">
+                <template x-for="client in filteredClients()" :key="client.id">
+                    <div class="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition"
+                         @contextmenu.prevent="openContextMenu($event, client)">
+                        <div class="billio-table-avatar" x-text="(client.name || '').slice(0,2).toUpperCase()"></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-sm font-semibold truncate" style="color: var(--billio-text);" x-text="client.name"></div>
+                            <div class="text-xs truncate" style="color: var(--billio-text-muted);" x-text="[client.email, client.phone].filter(Boolean).join(' · ') || '—'"></div>
+                        </div>
+                        <span class="status-badge shrink-0" :class="client.is_active ? 'status-badge--paid' : 'status-badge--cancelled'" x-text="client.is_active ? 'Actif' : 'Inactif'"></span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" class="billio-table-action-btn" title="Voir" @click="setContextFromRow(client); openClientDetails()">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" class="billio-table-action-btn" title="Modifier" @click="setContextFromRow(client); openClientEdit()">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4" x-show="viewMode === 'board'">
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <h3 class="text-sm font-semibold text-gray-900">Actifs</h3>
+                        <span class="text-xs text-gray-400" x-text="'(' + filteredClients().filter(c => c.is_active).length + ')'"></span>
+                    </div>
+                    <div class="space-y-2">
+                        <template x-for="client in filteredClients().filter(c => c.is_active)" :key="client.id">
+                            <div class="p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition cursor-pointer"
+                                 @contextmenu.prevent="openContextMenu($event, client)"
+                                 @click="setContextFromRow(client); openClientDetails()">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="billio-table-avatar" x-text="(client.name || '').slice(0,2).toUpperCase()"></div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold truncate" style="color: var(--billio-text);" x-text="client.name"></p>
+                                        <p class="text-xs truncate" style="color: var(--billio-text-muted);" x-text="client.email || '—'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                        <h3 class="text-sm font-semibold text-gray-900">Inactifs</h3>
+                        <span class="text-xs text-gray-400" x-text="'(' + filteredClients().filter(c => !c.is_active).length + ')'"></span>
+                    </div>
+                    <div class="space-y-2">
+                        <template x-for="client in filteredClients().filter(c => !c.is_active)" :key="client.id">
+                            <div class="p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition cursor-pointer"
+                                 @contextmenu.prevent="openContextMenu($event, client)"
+                                 @click="setContextFromRow(client); openClientDetails()">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="billio-table-avatar" x-text="(client.name || '').slice(0,2).toUpperCase()"></div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold truncate" style="color: var(--billio-text);" x-text="client.name"></p>
+                                        <p class="text-xs truncate" style="color: var(--billio-text-muted);" x-text="client.email || '—'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div
+            x-show="contextMenu.open"
+            x-cloak
+            class="fixed inset-0 z-40"
+            @click="contextMenu.open = false"
+            @keydown.escape.window="contextMenu.open = false"
+        >
+            <div
+                class="absolute dropdown-panel z-50 min-w-[240px]"
+                :style="`left:${contextMenu.x}px;top:${contextMenu.y}px;`"
+                @click.stop
+            >
+                <div class="dropdown-section">
+                    <button type="button" class="dropdown-item" @click="openClientDetails(); contextMenu.open=false;">Voir le client</button>
+                    <button type="button" class="dropdown-item" @click="openClientEdit(); contextMenu.open=false;">Modifier</button>
+                    <button type="button" class="dropdown-item" @click="openAutomationModal(); contextMenu.open=false;">Automatisations</button>
+                    <button type="button" class="dropdown-item" @click="copyAutomationLink('quote'); contextMenu.open=false;">Copier lien devis</button>
+                    <button type="button" class="dropdown-item" @click="copyAutomationLink('invoice'); contextMenu.open=false;">Copier lien facture</button>
+                    <button type="button" class="dropdown-item" @click="sendAutomationEmail(); contextMenu.open=false;">Envoyer liens (email)</button>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item dropdown-item-danger" @click="deleteClientSoft(); contextMenu.open=false;">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+        <div x-show="viewClientModal" x-cloak class="client-drawer-layer" @keydown.escape.window="viewClientModal = false">
+            <div
+                x-show="viewClientModal"
+                x-transition:enter="transition-opacity ease-linear duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition-opacity ease-linear duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="client-drawer-backdrop"
+                @click="viewClientModal = false"
+            ></div>
+            <div
+                x-show="viewClientModal"
+                x-transition:enter="transition ease-out duration-220"
+                x-transition:enter-start="transform translate-x-full"
+                x-transition:enter-end="transform translate-x-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="transform translate-x-0"
+                x-transition:leave-end="transform translate-x-full"
+                class="client-drawer"
+            >
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
+                    <h3 class="text-lg font-semibold text-gray-900">Fiche client</h3>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" @click="viewClientModal = false">✕</button>
+                </div>
+                <div class="p-6 space-y-4 overflow-y-auto">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full border flex items-center justify-center text-xs font-semibold text-amber-800" style="background-color: rgb(254, 240, 216); border-color: rgb(245, 222, 179);">
+                            <span x-text="(selectedClient.name || '--').slice(0,2).toUpperCase()"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-base font-semibold text-gray-900 truncate" x-text="selectedClient.name || '—'"></p>
+                            <p class="text-xs text-gray-500 truncate" x-text="selectedClient.email || '—'"></p>
+                        </div>
+                        <span class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
+                              :class="selectedClient.is_active ? 'bg-lime-50 text-lime-700 border-lime-200' : 'bg-red-50 text-red-700 border-red-200'">
+                            <span class="w-1.5 h-1.5 rounded-full" :class="selectedClient.is_active ? 'bg-lime-500' : 'bg-red-500'"></span>
+                            <span x-text="selectedClient.is_active ? 'Active' : 'Inactive'"></span>
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="interactive-card">
+                            <p class="text-[11px] uppercase tracking-wide text-gray-500">ID</p>
+                            <p class="text-sm font-semibold text-gray-900 mt-1" x-text="selectedClient.id || '—'"></p>
+                        </div>
+                        <div class="interactive-card">
+                            <p class="text-[11px] uppercase tracking-wide text-gray-500">Téléphone</p>
+                            <p class="text-sm font-semibold text-gray-900 mt-1" x-text="selectedClient.phone || '—'"></p>
+                        </div>
+                        <div class="interactive-card">
+                            <p class="text-[11px] uppercase tracking-wide text-gray-500">Créé le</p>
+                            <p class="text-sm font-semibold text-gray-900 mt-1" x-text="selectedClient.created_at || '—'"></p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div><p class="text-gray-500">Adresse</p><p class="font-medium text-gray-900 mt-1" x-text="selectedClient.address || '—'"></p></div>
+                        <div><p class="text-gray-500">Notes</p><p class="font-medium text-gray-900 mt-1" x-text="selectedClient.notes || '—'"></p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="editClientModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="editClientModal = false">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="editClientModal = false"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="w-full max-w-xl max-h-full flex flex-col bg-white rounded-2xl border border-gray-200 shadow-xl">
+                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Modifier client</h3>
+                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="editClientModal = false">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4 overflow-y-auto">
+                        <div>
+                            <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="text" x-model="editClient.name" class="interactive-input" placeholder="Nom complet">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Email <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="email" x-model="editClient.email" class="interactive-input" placeholder="email@client.com">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Téléphone <span class="interactive-hint">Format international</span></label>
+                            <input type="text" x-model="editClient.phone" class="interactive-input" placeholder="+33 ...">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Adresse <span class="interactive-hint">Optionnel</span></label>
+                            <textarea rows="2" x-model="editClient.address" class="interactive-textarea" placeholder="Adresse postale"></textarea>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" x-model="editClient.postal_code" class="interactive-input" placeholder="Code postal">
+                            <input type="text" x-model="editClient.city" class="interactive-input col-span-2" placeholder="Ville">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Client professionnel <span class="interactive-hint">Requis pour la facture électronique</span></label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" x-model="editClient.company_name" class="interactive-input col-span-2" placeholder="Raison sociale">
+                                <input type="text" x-model="editClient.registration_number" class="interactive-input" placeholder="SIREN / SIRET">
+                                <input type="text" x-model="editClient.tax_id" class="interactive-input" placeholder="N° TVA intracom.">
+                                <input type="text" x-model="editClient.country" class="interactive-input col-span-2" placeholder="Pays (France par défaut)">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="interactive-label">Notes <span class="interactive-hint">Interne</span></label>
+                            <textarea rows="2" x-model="editClient.notes" class="interactive-textarea" placeholder="Informations utiles..."></textarea>
+                        </div>
+                        <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" class="custom-checkbox" x-model="editClient.is_active"><span>Client actif</span></label>
+                        <p x-show="editClientError" x-cloak x-text="editClientError" class="text-sm text-red-600"></p>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="editClientModal = false">Annuler</button>
+                        <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" @click="saveClientEdit()">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="automationModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="automationModal = false">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="automationModal = false"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Automatisations client</h3>
+                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="automationModal = false">✕</button>
+                    </div>
+                    <div class="p-6 space-y-3">
+                        <button type="button" class="dropdown-item border border-gray-200 rounded-lg" @click="copyAutomationLink('quote')">Copier lien devis</button>
+                        <button type="button" class="dropdown-item border border-gray-200 rounded-lg" @click="copyAutomationLink('invoice')">Copier lien facture</button>
+                        <button type="button" class="dropdown-item border border-gray-200 rounded-lg" @click="sendAutomationEmail()">Envoyer les liens par email</button>
+                    </div>
+                </div>
+            </div>
+                    </div>
+
+        <div
+            x-show="newClientModal"
+            x-cloak
+            class="fixed inset-0 z-50"
+            @keydown.escape.window="newClientModal = false"
+        >
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="newClientModal = false"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Nouveau client</h3>
+                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="newClientModal = false">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="interactive-card">
+                            <p class="text-sm font-semibold text-gray-900">Informations client</p>
+                            <p class="text-xs text-gray-500 mt-1">Ces données seront utilisées dans vos factures et devis.</p>
+                        </div>
+                        <form x-ref="csrfForm" class="hidden">{% csrf_token %}</form>
+                        <div>
+                            <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="text" x-model="newClient.name" class="interactive-input" placeholder="Nom du client">
+                            </div>
+                        <div>
+                            <label class="interactive-label">Email <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="email" x-model="newClient.email" class="interactive-input" placeholder="email@client.com">
+                            </div>
+                        <div>
+                            <label class="interactive-label">Téléphone <span class="interactive-hint">Optionnel</span></label>
+                            <input type="text" x-model="newClient.phone" class="interactive-input" placeholder="+33 ...">
+                        </div>
+                        <p x-show="newClientError" x-cloak x-text="newClientError" class="text-sm text-red-600"></p>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="newClientModal = false">Annuler</button>
+                        <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" @click="createClient()">Créer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function clientTable() {
+            return {
+                clients: [],
+                viewMode: 'table',
+                statusFilter: 'all',
+                filterOpen: false,
+                sortOpen: false,
+                sortBy: 'name',
+                searchQuery: '',
+                newClientModal: false,
+                viewClientModal: false,
+                editClientModal: false,
+                automationModal: false,
+                newClient: { name: '', email: '', phone: '' },
+                newClientError: '',
+                selectedClient: {},
+                editClient: { id: '', name: '', email: '', phone: '', address: '', notes: '', is_active: true },
+                editClientError: '',
+                contextMenu: {
+                    open: false,
+                    x: 0,
+                    y: 0,
+                    clientId: null,
+                    clientName: '',
+                    clientEmail: '',
+                },
+                noop() {},
+                init() {
+                    const el = document.getElementById('clients-data');
+                    try { this.clients = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { this.clients = []; }
+                },
+                filteredClients() {
+                    let list = this.clients.filter((c) => {
+                        const status = c.is_active ? 'active' : 'inactive';
+                        if (this.statusFilter !== 'all' && status !== this.statusFilter) return false;
+                        if (!this.searchQuery) return true;
+                        const q = this.searchQuery.toLowerCase();
+                        return (c.name || '').toLowerCase().includes(q)
+                            || (c.email || '').toLowerCase().includes(q)
+                            || (c.phone || '').toLowerCase().includes(q);
+                    });
+                    list = list.slice();
+                    if (this.sortBy === 'name') {
+                        list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    } else if (this.sortBy === 'recent') {
+                        list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    }
+                    return list;
+                },
+                openContextMenu(evt, client) {
+                    this.contextMenu.open = true;
+                    this.contextMenu.x = evt.clientX;
+                    this.contextMenu.y = evt.clientY;
+                    this.contextMenu.clientId = client.id;
+                    this.contextMenu.clientName = client.name || '';
+                    this.contextMenu.clientEmail = client.email || '';
+                },
+                setContextFromRow(client) {
+                    if (!client) return;
+                    this.contextMenu.clientId = client.id;
+                    this.contextMenu.clientName = client.name || '';
+                    this.contextMenu.clientEmail = client.email || '';
+                },
+                async fetchClientDetails() {
+                    if (!this.contextMenu.clientId) return null;
+                    const response = await fetch(`{% url "clients:client-list" %}`.replace('/list/', `/quick-detail/${this.contextMenu.clientId}/`));
+                    const data = await response.json();
+                    return data.ok ? data : null;
+                },
+                async openClientDetails() {
+                    // Fiche client complète (projets, devis, factures, documents, fichiers…).
+                    if (this.contextMenu.clientId) window.location.href = `/clients/${this.contextMenu.clientId}/`;
+                },
+                async openClientEdit() {
+                    const data = await this.fetchClientDetails();
+                    if (!data) return;
+                    this.editClient = {
+                        id: data.id,
+                        name: data.name || '',
+                        email: data.email || '',
+                        phone: data.phone || '',
+                        address: data.address || '',
+                        notes: data.notes || '',
+                        company_name: data.company_name || '',
+                        registration_number: data.registration_number || '',
+                        tax_id: data.tax_id || '',
+                        postal_code: data.postal_code || '',
+                        city: data.city || '',
+                        country: data.country || '',
+                        is_active: !!data.is_active,
+                    };
+                    this.editClientError = '';
+                    this.editClientModal = true;
+                },
+                openAutomationModal() {
+                    this.automationModal = true;
+                },
+                automationUrl(kind) {
+                    const id = this.contextMenu.clientId;
+                    if (!id) return '#';
+                    if (kind === 'quote') return `{% url 'invoices:quote-create' %}?client=${id}`;
+                    return `{% url 'invoices:invoice-create' %}?client=${id}&invoice_type=sale`;
+                },
+                async copyAutomationLink(kind) {
+                    const url = `${window.location.origin}${this.automationUrl(kind)}`;
+                    try {
+                        await navigator.clipboard.writeText(url);
+                        alert('Lien copie.');
+                    } catch (e) {
+                        prompt('Copiez ce lien :', url);
+                    }
+                },
+                sendAutomationEmail() {
+                    const quoteLink = `${window.location.origin}${this.automationUrl('quote')}`;
+                    const invoiceLink = `${window.location.origin}${this.automationUrl('invoice')}`;
+                    const subject = encodeURIComponent('Vos liens Billio : devis et facture');
+                    const body = encodeURIComponent(`Bonjour,\n\nVoici vos liens :\n- Devis : ${quoteLink}\n- Facture : ${invoiceLink}\n\nMerci.`);
+                    window.location.href = `mailto:${this.contextMenu.clientEmail || ''}?subject=${subject}&body=${body}`;
+                },
+                async saveClientEdit() {
+                    this.editClientError = '';
+                    if (!this.editClient.name || !this.editClient.email) {
+                        this.editClientError = 'Nom et email requis.';
+                        return;
+                    }
+                    const csrf = this.$refs.csrfForm?.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+                    const payload = new URLSearchParams();
+                    payload.set('name', this.editClient.name);
+                    payload.set('email', this.editClient.email);
+                    payload.set('phone', this.editClient.phone || '');
+                    payload.set('address', this.editClient.address || '');
+                    payload.set('notes', this.editClient.notes || '');
+                    ['company_name', 'registration_number', 'tax_id', 'postal_code', 'city', 'country'].forEach((k) => payload.set(k, this.editClient[k] || ''));
+                    payload.set('is_active', this.editClient.is_active ? 'true' : 'false');
+
+                    const response = await fetch(`{% url "clients:client-list" %}`.replace('/list/', `/quick-update/${this.editClient.id}/`), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'X-CSRFToken': csrf,
+                        },
+                        body: payload.toString(),
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) {
+                        this.editClientError = data.error || 'Mise a jour impossible.';
+                        return;
+                    }
+                    window.location.reload();
+                },
+                deleteClientSoft() {
+                    alert('Suppression client en cours d\'integration');
+                },
+                async createClient() {
+                    this.newClientError = '';
+                    if (!this.newClient.name || !this.newClient.email) {
+                        this.newClientError = 'Nom et email requis.';
+                        return;
+                    }
+
+                    const csrf = this.$refs.csrfForm?.querySelector('input[name="csrfmiddlewaretoken"]')?.value || '';
+                    const payload = new URLSearchParams();
+                    payload.set('name', this.newClient.name);
+                    payload.set('email', this.newClient.email);
+                    payload.set('phone', this.newClient.phone || '');
+
+                    const response = await fetch('{% url "clients:client-quick-create" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'X-CSRFToken': csrf,
+                        },
+                        body: payload.toString(),
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) {
+                        this.newClientError = data.error || 'Impossible de creer le client.';
+                        return;
+                    }
+
+                    window.location.reload();
+                },
+            }
+        }
+        </script>
+        {% else %}
+        <div class="bg-white rounded-xl border border-gray-200 p-10 text-center">
+            <div class="mx-auto w-16 h-16 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center text-white mb-5">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900">Aucun client trouvé</h3>
+            <p class="text-sm text-gray-600 mt-2 max-w-md mx-auto">
+                Commencez par ajouter votre premier client pour pouvoir créer des factures professionnelles.
+            </p>
+        </div>
+
+        <div
+            x-show="newClientModal"
+            x-cloak
+            class="fixed inset-0 z-50"
+            @keydown.escape.window="newClientModal = false"
+        >
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="newClientModal = false"></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Nouveau client</h3>
+                        <button type="button" class="text-gray-500 hover:text-gray-700" @click="newClientModal = false">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="interactive-card">
+                            <p class="text-sm font-semibold text-gray-900">Informations client</p>
+                            <p class="text-xs text-gray-500 mt-1">Ces données seront utilisées dans vos factures et devis.</p>
+                        </div>
+                        <form x-ref="csrfForm" class="hidden">{% csrf_token %}</form>
+                        <div>
+                            <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="text" x-model="newClient.name" class="interactive-input" placeholder="Nom du client">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Email <span class="interactive-hint">Obligatoire</span></label>
+                            <input type="email" x-model="newClient.email" class="interactive-input" placeholder="email@client.com">
+                        </div>
+                        <div>
+                            <label class="interactive-label">Téléphone <span class="interactive-hint">Optionnel</span></label>
+                            <input type="text" x-model="newClient.phone" class="interactive-input" placeholder="+33 ...">
+                        </div>
+                        <p x-show="newClientError" x-cloak x-text="newClientError" class="text-sm text-red-600"></p>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50" @click="newClientModal = false">Annuler</button>
+                        <button type="button" class="btn-primary-black px-4 py-2 text-sm rounded-lg hover:text-white" @click="createClient()">Créer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+</div>
+{% endblock %}
+

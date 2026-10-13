@@ -1,0 +1,65 @@
+{% extends "dashboard/_portal_base.html" %}
+{% load billio_format %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <a href="{% url 'dashboard:public-portal-overview' client.portal_token %}" class="pt-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Espace client</a>
+
+    {% if form.status == 'submitted' %}
+    <section class="pt-card pt-card-pad text-center">
+        <span class="pt-row-icon mx-auto" style="background: var(--pt-ok-soft); color: var(--pt-ok); width: 44px; height: 44px;"><i data-lucide="check" class="w-5 h-5"></i></span>
+        <h1 class="pt-hello mt-4">Merci, c'est envoyé !</h1>
+        <p class="pt-sub">Vos réponses à « {{ form.title }} » ont bien été transmises à {{ form.organization.name }}{% if form.submitted_at %} le {{ form.submitted_at|date:"d/m/Y à H:i" }}{% endif %}.</p>
+    </section>
+    <section class="pt-card mt-6">
+        <p class="pt-group-label">Vos réponses</p>
+        <div class="pt-list">
+            {% for answer in form.answered_fields %}
+            <div class="pt-row">
+                <div class="pt-row-main">
+                    <p class="pt-row-meta">{{ answer.label }}</p>
+                    <p class="whitespace-pre-line">{{ answer.value|default:"—" }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% else %}
+    <h1 class="pt-hello">{{ form.title }}</h1>
+    <p class="pt-sub">{% if form.intro %}{{ form.intro|linebreaksbr }}{% else %}{{ form.organization.name }} a besoin de quelques informations.{% endif %}</p>
+
+    <form method="post" class="pt-card pt-card-pad mt-6 space-y-5" novalidate>
+        {% csrf_token %}
+        {% for field in form.fields %}
+        <div>
+            {% if field.type == 'checkbox' %}
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" name="{{ field.id }}" value="1" class="w-4 h-4" style="accent-color: var(--pt-accent);" {% if values|get_item:field.id == 'Oui' %}checked{% endif %}>
+                <span>{{ field.label }}</span>
+            </label>
+            {% else %}
+            <label class="pt-label" for="{{ field.id }}">{{ field.label }}{% if field.required %} <span style="color: var(--pt-danger);">*</span>{% endif %}</label>
+            {% if field.type == 'textarea' %}
+            <textarea id="{{ field.id }}" name="{{ field.id }}" rows="4" class="pt-input">{{ values|get_item:field.id|default:'' }}</textarea>
+            {% elif field.type == 'select' %}
+            <select id="{{ field.id }}" name="{{ field.id }}" class="pt-input">
+                <option value="">Choisir…</option>
+                {% for option in field.options|split_options %}
+                <option value="{{ option }}" {% if values|get_item:field.id == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <input id="{{ field.id }}" name="{{ field.id }}" class="pt-input" value="{{ values|get_item:field.id|default:'' }}"
+                   type="{% if field.type == 'email' %}email{% elif field.type == 'phone' %}tel{% elif field.type == 'number' %}number{% elif field.type == 'date' %}date{% else %}text{% endif %}">
+            {% endif %}
+            {% endif %}
+            {% if errors|get_item:field.id %}<p class="text-sm mt-1" style="color: var(--pt-danger);">{{ errors|get_item:field.id }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="flex justify-end pt-2">
+            <button type="submit" class="pt-btn"><i data-lucide="send" class="w-4 h-4"></i> Envoyer mes réponses</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

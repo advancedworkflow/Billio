@@ -1,0 +1,637 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}Timeline - Billio{% endblock %}
+{% block page_title %}Timeline{% endblock %}
+{% block page_subtitle %}Ce qui s'est passé, et ce qui arrive{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/timeline.css' %}?v=1.1">
+{% endblock %}
+
+{% block content %}
+{{ calendar_events|json_script:"timeline-calendar-data" }}
+{{ gantt_projects|json_script:"timeline-gantt-data" }}
+{{ calendar_marks|json_script:"timeline-marks-data" }}
+{{ quick_create_projects|json_script:"timeline-quick-create-data" }}
+<div class="space-y-5" x-data="timelinePage('timeline-calendar-data', 'timeline-gantt-data', 'timeline-marks-data', 'timeline-quick-create-data')" x-init="init()">
+
+    <!-- Barre d'outils : vue + filtres -->
+    <div class="tl-toolbar">
+        <div class="tl-seg" role="tablist">
+            <button type="button" :class="view === 'list' && 'is-active'" @click="view = 'list'"><i data-lucide="activity" class="w-3.5 h-3.5"></i> Activité</button>
+            <button type="button" :class="view === 'schedule' && 'is-active'" @click="view = 'schedule'">
+                <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> À venir
+                {% if upcoming_late_count %}<span class="tl-seg-badge">{{ upcoming_late_count }}</span>{% endif %}
+            </button>
+            <button type="button" :class="view === 'calendar' && 'is-active'" @click="view = 'calendar'"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i> Planning</button>
+        </div>
+        <div class="tl-filters" x-show="view === 'list'">
+            <label class="tl-select">
+                <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                <select x-model="filter">
+                    <option value="all">Tout ({{ stats.total }})</option>
+                    {% for key, label in timeline_categories %}{% if stats|get_item:key %}<option value="{{ key }}">{{ label }} ({{ stats|get_item:key }})</option>{% endif %}{% endfor %}
+                </select>
+            </label>
+            <label class="tl-select">
+                <i data-lucide="calendar-range" class="w-3.5 h-3.5"></i>
+                <select x-model="period">
+                    <option value="all">Toute période</option>
+                    <option value="today">Aujourd'hui</option>
+                    <option value="week">Cette semaine</option>
+                    <option value="month">Ce mois</option>
+                </select>
+            </label>
+        </div>
+    </div>
+
+    <!-- ===================== Activité ===================== -->
+    <div x-show="view === 'list'" class="tl-layout">
+        <section class="tl-feed">
+            {% if has_events %}
+            {% for group in groups %}
+            <div class="tl-day" x-data="{ cats: '{{ group.categories }}'.split(',') }" x-show="(filter === 'all' || cats.includes(filter)) && matchesPeriod('{{ group.date_iso }}')">
+                <p class="tl-day-label">{{ group.label }}</p>
+                <ol class="tl-list">
+                    {% for event in group.items %}
+                    <li class="tl-item tl-item--{{ event.category }}{% if event.is_milestone %} is-milestone{% endif %}" x-show="filter === 'all' || filter === '{{ event.category }}'">
+                        <span class="tl-icon"><i data-lucide="{{ event.icon }}" class="w-3.5 h-3.5"></i></span>
+                        {% if event.url %}<a href="{{ event.url }}" class="tl-body">{% else %}<div class="tl-body">{% endif %}
+                            <p class="tl-title">{{ event.title }}{% if event.is_automated %} <span class="tl-auto">auto</span>{% endif %}</p>
+                            {% if event.description %}<p class="tl-desc">{{ event.description }}</p>
+                            {% elif event.subtitle %}<p class="tl-desc">{{ event.subtitle }}</p>{% endif %}
+                        {% if event.url %}</a>{% else %}</div>{% endif %}
+                        <time class="tl-time" datetime="{{ event.date|date:'c' }}">{{ event.date|date:"H:i" }}</time>
+                    </li>
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="tl-empty"><i data-lucide="sparkles" class="w-5 h-5"></i><p>Aucune activité pour le moment.</p></div>
+            {% endif %}
+        </section>
+
+        <aside class="tl-side">
+            <div class="tl-panel">
+                <div class="tl-panel-head">
+                    <p class="tl-panel-title">À venir</p>
+                    {% if upcoming %}<button type="button" class="tl-link" @click="view = 'schedule'">Tout voir</button>{% endif %}
+                </div>
+                {% for u in upcoming|slice:":5" %}
+                <a href="{{ u.url }}" class="tl-mini">
+                    <span class="tl-mini-dot tl-mini-dot--{{ u.bucket }}"></span>
+                    <span class="tl-mini-main"><span class="tl-mini-title">{{ u.title }}</span><span class="tl-mini-meta">{{ u.project_name }}</span></span>
+                    <span class="tl-mini-when{% if u.is_late %} is-late{% endif %}">{% if u.is_late %}−{{ u.days_abs }} j{% elif u.days == 0 %}Auj.{% else %}{{ u.due_date|date:"d/m" }}{% endif %}</span>
+                </a>
+                {% empty %}
+                <p class="tl-panel-empty">Aucune échéance.</p>
+                {% endfor %}
+            </div>
+
+            {% if projects_summary %}
+            <div class="tl-panel">
+                <div class="tl-panel-head"><p class="tl-panel-title">Projets actifs</p></div>
+                {% for p in projects_summary|slice:":6" %}
+                <a href="{{ p.url }}" class="tl-project">
+                    <span class="tl-project-row"><span class="tl-mini-title">{{ p.name }}</span><span class="tl-mini-meta">{{ p.progress_percent }} %</span></span>
+                    <span class="tl-progress"><span style="width: {{ p.progress_percent }}%"></span></span>
+                    <span class="tl-mini-meta">{{ p.client_name }} · {{ p.status_display }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </aside>
+    </div>
+
+    <!-- ===================== À venir ===================== -->
+    <section x-show="view === 'schedule'" x-cloak class="tl-panel tl-panel--wide">
+        {% if upcoming %}
+        {% regroup upcoming by bucket as buckets %}
+        {% for b in buckets %}
+        <p class="tl-group tl-group--{{ b.grouper }}">{% if b.grouper == 'late' %}En retard{% elif b.grouper == 'week' %}Dans les 7 jours{% else %}Plus tard{% endif %} <span>{{ b.list|length }}</span></p>
+        {% for u in b.list %}
+        <a href="{{ u.url }}" class="tl-row">
+            <span class="tl-icon"><i data-lucide="{% if u.type == 'project' %}flag{% else %}package{% endif %}" class="w-3.5 h-3.5"></i></span>
+            <span class="tl-mini-main"><span class="tl-title">{{ u.title }}</span><span class="tl-desc">{{ u.project_name }}</span></span>
+            <span class="tl-row-when{% if u.is_late %} is-late{% endif %}">
+                {% if u.is_late %}{{ u.days_abs }} j de retard{% elif u.days == 0 %}Aujourd'hui{% elif u.days == 1 %}Demain{% else %}{{ u.due_date|date:"d/m/Y" }}{% endif %}
+            </span>
+        </a>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <div class="tl-empty"><p>Rien de prévu pour l'instant.</p></div>
+        {% endif %}
+    </section>
+
+    <!-- ===================== Planning ===================== -->
+    <section x-show="view === 'calendar'" x-cloak class="pl-wrap">
+        <div class="pl-main">
+            <div class="pl-head">
+                <div class="pl-nav">
+                    <button type="button" class="pl-icon-btn" @click="prevMonth()" aria-label="Mois précédent"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <h2 class="pl-month" x-text="monthLabel"></h2>
+                    <button type="button" class="pl-icon-btn" @click="nextMonth()" aria-label="Mois suivant"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    <button type="button" class="pl-today" @click="goToday()">Aujourd'hui</button>
+                </div>
+                <div class="pl-tools">
+                    <div class="pl-seg">
+                        <button type="button" :class="planFilter === 'plan' && 'is-active'" @click="planFilter = 'plan'">Planifié</button>
+                        <button type="button" :class="planFilter === 'activity' && 'is-active'" @click="planFilter = 'activity'">Activité</button>
+                        <button type="button" :class="planFilter === 'all' && 'is-active'" @click="planFilter = 'all'">Tout</button>
+                    </div>
+                    <label class="pl-toggle" x-show="ganttProjects.length"><input type="checkbox" x-model="showProjects"> Projets</label>
+                </div>
+            </div>
+
+            <div class="pl-weekdays"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div>
+            <div class="pl-grid">
+                <template x-for="(week, wi) in weeks" :key="wi">
+                    <div class="pl-week">
+                        <div class="pl-lanes" x-show="showProjects && week.segments.length" :style="'grid-template-rows: repeat(' + maxLanes + ', 16px);'">
+                            <template x-for="(seg, si) in week.segments" :key="si">
+                                <a :href="seg.url" class="pl-bar" :class="{ 'is-start': seg.isFirst, 'is-end': seg.isLast, 'is-late': seg.isLate }"
+                                   :style="'grid-column:' + (seg.col + 1) + ' / span ' + seg.span + '; grid-row:' + (seg.lane + 1) + '; --bar:' + seg.color + ';'"
+                                   :title="seg.name + ' — ' + seg.progressPercent + ' % · ' + (seg.isLate ? 'en retard' : 'en cours')">
+                                    <span x-text="seg.isFirst || seg.col === 0 ? seg.name : ''"></span>
+                                </a>
+                            </template>
+                        </div>
+                        <div class="pl-days">
+                            <template x-for="cell in week.cells" :key="cell.key">
+                                <div class="pl-day" :class="{ 'is-outside': !cell.inMonth, 'is-today': cell.isToday, 'is-selected': cell.key === selectedDate, 'is-weekend': isWeekend(cell.key) }"
+                                     @click="selectDay(cell, true)" @dblclick="selectDay(cell, true); openCreateModal()" @contextmenu.prevent="openDayMenu($event, cell)">
+                                    <div class="pl-day-top">
+                                        <span class="pl-daynum" x-text="cell.day"></span>
+                                        <span x-show="cell.mark" class="pl-mark" :style="cell.mark ? ('background:' + cell.mark.color) : ''" :title="cell.mark ? cell.mark.label || 'Jour marqué' : ''"></span>
+                                    </div>
+                                    <template x-for="ev in filteredEvents(cell.events).slice(0, 3)" :key="ev.title + ev.time">
+                                        <span class="pl-ev" :class="'pl-ev--' + ev.category"><i></i><span x-text="(ev.time ? ev.time + ' ' : '') + ev.title"></span></span>
+                                    </template>
+                                    <span x-show="filteredEvents(cell.events).length > 3" class="pl-more" x-text="'+ ' + (filteredEvents(cell.events).length - 3) + ' autres'"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <p class="pl-hint">Double-clic sur un jour pour ajouter · clic droit pour marquer un jour</p>
+        </div>
+
+        <!-- Agenda du jour -->
+        <aside class="pl-side">
+            <p class="pl-side-date" x-text="selectedDate ? formatDayLabel(selectedDate) : ''"></p>
+            <p class="pl-side-count" x-text="selectedDayEvents.length ? selectedDayEvents.length + ' élément' + (selectedDayEvents.length > 1 ? 's' : '') : 'Rien de prévu'"></p>
+            <div class="pl-add">
+                <button type="button" @click="openCreateModal(); createForm.type = 'task'"><i data-lucide="check-square" class="w-3.5 h-3.5"></i> Tâche</button>
+                <button type="button" @click="openCreateModal(); createForm.type = 'meeting'"><i data-lucide="video" class="w-3.5 h-3.5"></i> Réunion</button>
+                <button type="button" @click="openCreateModal(); createForm.type = 'milestone'"><i data-lucide="flag" class="w-3.5 h-3.5"></i> Jalon</button>
+                <button type="button" @click="openCreateModal(); createForm.type = 'deliverable'"><i data-lucide="package" class="w-3.5 h-3.5"></i> Livrable</button>
+            </div>
+            <div class="pl-agenda">
+                <template x-for="ev in selectedDayEvents" :key="ev.title + ev.time">
+                    <button type="button" class="pl-agenda-item" @click="openEventDetail(ev)">
+                        <span class="pl-agenda-time" x-text="ev.time || 'Journée'"></span>
+                        <span class="pl-agenda-bar" :class="'pl-ev--' + ev.category"></span>
+                        <span class="pl-agenda-main">
+                            <span class="pl-agenda-title" x-text="ev.title"></span>
+                            <span class="pl-agenda-sub" x-text="ev.subtitle"></span>
+                        </span>
+                    </button>
+                </template>
+                <p x-show="!selectedDayEvents.length" class="pl-empty">Aucun élément ce jour. Ajoutez une tâche, une réunion…</p>
+            </div>
+        </aside>
+    </section>
+
+    <!-- Menu contextuel (clic droit) d'un jour du calendrier -->
+    <div
+        x-show="dayMenu.open"
+        x-cloak
+        class="fixed inset-0 z-40"
+        @click="dayMenu.open = false"
+        @contextmenu.prevent="dayMenu.open = false"
+        @keydown.escape.window="dayMenu.open = false"
+    >
+        <div class="absolute dropdown-panel z-50 min-w-[220px]" :style="`left:${dayMenu.x}px;top:${dayMenu.y}px;`" @click.stop>
+            <div class="dropdown-section">
+                <button type="button" class="dropdown-item" @click="selectDay(dayMenu.cell, true); dayMenu.open = false;">Voir les événements</button>
+                <button type="button" class="dropdown-item" @click="openMarkModal(dayMenu.cell); dayMenu.open = false;">Marquer ce jour</button>
+                <template x-if="dayMenu.cell && dayMenu.cell.mark">
+                    <button type="button" class="dropdown-item dropdown-item-danger" @click="deleteMark(dayMenu.cell.key)">Supprimer le repère</button>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup : marquer un jour -->
+    <div x-show="markModalOpen" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="markModalOpen = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="markModalOpen = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-xl p-5">
+                <h3 class="text-sm font-semibold mb-1" style="color: var(--billio-text);">Marquer ce jour</h3>
+                <p class="text-xs mb-4 capitalize" style="color: var(--billio-text-muted);" x-text="formatDayLabel(markForm.date)"></p>
+
+                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Note (optionnel)</label>
+                <input type="text" x-model="markForm.label" placeholder="Ex. Jour férié, indisponible..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+
+                <label class="text-xs font-medium block mb-2" style="color: var(--billio-text-muted);">Couleur</label>
+                <div class="flex items-center gap-2 mb-5">
+                    <template x-for="c in markColors" :key="c">
+                        <button type="button" class="calendar-mark-swatch" :class="markForm.color === c ? 'is-active' : ''" :style="'background:' + c" @click="markForm.color = c" :aria-label="c"></button>
+                    </template>
+                </div>
+
+                <div class="flex justify-between items-center gap-2">
+                    <button type="button" x-show="markForm.id" class="text-xs text-red-600 font-medium" @click="deleteMark(markForm.date)">Supprimer le repère</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button type="button" class="text-xs px-2 py-2" style="color: var(--billio-text-muted);" @click="markModalOpen = false">Annuler</button>
+                        <button type="button" class="btn-primary-black px-3 py-2 rounded-lg text-xs font-medium" @click="saveMark()">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup : ajout rapide (tâche / jalon / réunion / livrable) -->
+    <div x-show="createModalOpen" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="createModalOpen = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="createModalOpen = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl p-5 my-8">
+                <h3 class="text-sm font-semibold mb-1" style="color: var(--billio-text);">
+                    Ajouter — <span class="capitalize" x-text="formatDayLabel(createForm.date)"></span>
+                </h3>
+
+                <div class="tabs-pills mt-3 mb-4">
+                    <button type="button" class="tab-pill" :class="createForm.type === 'task' ? 'tab-pill-active' : ''" @click="createForm.type = 'task'">Tâche</button>
+                    <button type="button" class="tab-pill" :class="createForm.type === 'milestone' ? 'tab-pill-active' : ''" @click="createForm.type = 'milestone'">Jalon</button>
+                    <button type="button" class="tab-pill" :class="createForm.type === 'meeting' ? 'tab-pill-active' : ''" @click="createForm.type = 'meeting'">Réunion</button>
+                    <button type="button" class="tab-pill" :class="createForm.type === 'deliverable' ? 'tab-pill-active' : ''" @click="createForm.type = 'deliverable'">Livrable</button>
+                </div>
+
+                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Projet</label>
+                <select x-model="createForm.projectId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+                    <option value="">—</option>
+                    <template x-for="p in quickCreateProjects" :key="p.id">
+                        <option :value="p.id" x-text="p.name"></option>
+                    </template>
+                </select>
+
+                <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Titre</label>
+                <input type="text" x-model="createForm.title" placeholder="Titre" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-3">
+
+                <div class="grid grid-cols-2 gap-2 mb-3" x-show="createForm.type !== 'meeting'">
+                    <div>
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Date</label>
+                        <input type="date" x-model="createForm.date" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div x-show="createForm.type === 'task'">
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Jalon</label>
+                        <select x-model="createForm.milestoneId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">—</option>
+                            <template x-for="m in selectedProjectMilestones" :key="m.id">
+                                <option :value="m.id" x-text="m.title"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <div x-show="createForm.type === 'task'" class="mb-3">
+                    <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Assigné</label>
+                    <select x-model="createForm.assigneeId" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <option value="">—</option>
+                        <template x-for="mbr in selectedProjectMembers" :key="mbr.id">
+                            <option :value="mbr.id" x-text="mbr.name"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mb-3" x-show="createForm.type === 'meeting'">
+                    <div>
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Heure</label>
+                        <input type="time" x-model="createForm.time" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium block mb-1" style="color: var(--billio-text-muted);">Durée (min)</label>
+                        <input type="number" min="5" step="5" x-model="createForm.duration" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                </div>
+
+                <p x-show="createError" x-text="createError" class="text-xs text-red-600 mb-2"></p>
+                <div class="flex justify-end gap-2 mt-2">
+                    <button type="button" class="text-xs px-2 py-2" style="color: var(--billio-text-muted);" @click="createModalOpen = false">Annuler</button>
+                    <button type="button" class="btn-primary-black px-3 py-2 rounded-lg text-xs font-medium" @click="submitCreate()">Ajouter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup : détail d'un événement -->
+    <div x-show="eventModalOpen" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="eventModalOpen = false">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="eventModalOpen = false"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-xl p-5" x-show="selectedEvent">
+                <div class="flex items-center gap-2 flex-wrap mb-2">
+                    <span class="timeline-cat-chip" :class="selectedEvent ? ('timeline-cat-chip--' + selectedEvent.category) : ''" x-text="selectedEvent ? categoryLabel(selectedEvent.category) : ''"></span>
+                    <span class="text-xs whitespace-nowrap ml-auto" style="color: var(--billio-text-muted);" x-text="selectedEvent ? selectedEvent.time : ''"></span>
+                </div>
+                <p class="text-sm font-semibold mb-1" style="color: var(--billio-text);" x-text="selectedEvent ? selectedEvent.title : ''"></p>
+                <p class="text-xs mb-4" style="color: var(--billio-text-muted);" x-text="selectedEvent ? selectedEvent.subtitle : ''"></p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="text-xs px-2 py-2" style="color: var(--billio-text-muted);" @click="eventModalOpen = false">Fermer</button>
+                    <a x-show="selectedEvent && selectedEvent.url" :href="selectedEvent ? selectedEvent.url : '#'" class="btn-primary-black px-3 py-2 rounded-lg text-xs font-medium inline-block">Ouvrir</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+if (!window.timelinePage) {
+    window.timelinePage = function (jsonScriptId, ganttJsonScriptId, marksJsonId, quickCreateJsonId) {
+        return {
+            view: 'list',
+            filter: 'all',
+            planFilter: 'plan',
+            showProjects: true,
+            period: 'all',
+            periodOpen: false,
+            events: [],
+            ganttProjects: [],
+            maxLanes: 1,
+            current: new Date(),
+            cells: [],
+            weeks: [],
+            monthLabel: '',
+            selectedDate: null,
+            marks: {},
+            dayMenu: { open: false, x: 0, y: 0, cell: null },
+            markModalOpen: false,
+            markForm: { date: '', label: '', color: '#f59e0b', id: null },
+            markColors: ['#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#a855f7', '#64748b'],
+            createModalOpen: false,
+            createForm: { type: 'task', projectId: '', title: '', date: '', milestoneId: '', assigneeId: '', time: '09:00', duration: 30 },
+            createError: '',
+            quickCreateProjects: [],
+            eventModalOpen: false,
+            selectedEvent: null,
+            init() {
+                const el = document.getElementById(jsonScriptId);
+                try { this.events = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { this.events = []; }
+                this.loadGanttProjects(ganttJsonScriptId);
+                this.loadMarks(marksJsonId);
+                this.loadQuickCreateProjects(quickCreateJsonId);
+                this.selectedDate = this.toKey(new Date());
+                this.build();
+                this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+            },
+            isWeekend(key) { const d = new Date(key + 'T00:00:00').getDay(); return d === 0 || d === 6; },
+            loadMarks(id) {
+                const el = document.getElementById(id);
+                let list = [];
+                try { list = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { list = []; }
+                this.marks = {};
+                list.forEach((m) => { this.marks[m.date] = m; });
+            },
+            loadQuickCreateProjects(id) {
+                const el = document.getElementById(id);
+                try { this.quickCreateProjects = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { this.quickCreateProjects = []; }
+            },
+            loadGanttProjects(ganttJsonScriptId) {
+                const el = document.getElementById(ganttJsonScriptId);
+                let projects = [];
+                try { projects = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { projects = []; }
+                // Numérotation de couloir stable par projet (coloration d'intervalles) : deux projets
+                // dont les dates se chevauchent ne partagent jamais le même couloir, sur tout le calendrier.
+                const sorted = [...projects].sort((a, b) => new Date(a.start) - new Date(b.start));
+                const laneEnds = []; // dernière date de fin occupée par couloir
+                const MAX_LANES = 4;
+                this.ganttProjects = sorted.map((p) => {
+                    const start = new Date(p.start + 'T00:00:00');
+                    const end = new Date(p.end + 'T00:00:00');
+                    let lane = laneEnds.findIndex((endDate) => endDate < start);
+                    if (lane === -1) lane = laneEnds.length;
+                    if (lane < MAX_LANES) laneEnds[lane] = end;
+                    return { ...p, start, end, lane };
+                }).filter((p) => p.lane < MAX_LANES);
+                this.maxLanes = this.ganttProjects.reduce((max, p) => Math.max(max, p.lane + 1), 1);
+            },
+            weekGanttSegments(weekCells) {
+                const weekStart = new Date(weekCells[0].key + 'T00:00:00');
+                const weekEnd = new Date(weekCells[6].key + 'T00:00:00');
+                const segments = [];
+                this.ganttProjects.forEach((p) => {
+                    if (p.end < weekStart || p.start > weekEnd) return;
+                    const overlapStart = p.start > weekStart ? p.start : weekStart;
+                    const overlapEnd = p.end < weekEnd ? p.end : weekEnd;
+                    const col = Math.round((overlapStart - weekStart) / 86400000);
+                    const span = Math.round((overlapEnd - overlapStart) / 86400000) + 1;
+                    segments.push({
+                        name: p.name, url: p.url, lane: p.lane, col, span,
+                        isFirst: overlapStart.getTime() === p.start.getTime(),
+                        isLast: overlapEnd.getTime() === p.end.getTime(),
+                        color: p.phase_color, isLate: p.is_late, progressPercent: p.progress_percent,
+                    });
+                });
+                return segments;
+            },
+            matchesPeriod(dateIso) {
+                if (this.period === 'all' || !dateIso) return true;
+                const d = new Date(dateIso + 'T00:00:00');
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                if (this.period === 'today') return d.getTime() === today.getTime();
+                if (this.period === 'week') {
+                    const start = new Date(today); start.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+                    const end = new Date(start); end.setDate(start.getDate() + 6);
+                    return d >= start && d <= end;
+                }
+                if (this.period === 'month') return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+                return true;
+            },
+            toKey(d) {
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            },
+            prevMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() - 1, 1); this.build(); },
+            nextMonth() { this.current = new Date(this.current.getFullYear(), this.current.getMonth() + 1, 1); this.build(); },
+            goToday() {
+                this.current = new Date();
+                this.selectedDate = this.toKey(new Date());
+                this.build();
+            },
+            build() {
+                const year = this.current.getFullYear();
+                const month = this.current.getMonth();
+                this.monthLabel = this.current.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+                const byDate = {};
+                this.events.forEach((ev) => { (byDate[ev.date] ||= []).push(ev); });
+
+                const firstOfMonth = new Date(year, month, 1);
+                const startOffset = (firstOfMonth.getDay() + 6) % 7; // Monday = 0
+                const gridStart = new Date(year, month, 1 - startOffset);
+                const todayStr = this.toKey(new Date());
+
+                const cells = [];
+                for (let i = 0; i < 42; i++) {
+                    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
+                    const key = this.toKey(d);
+                    cells.push({
+                        key,
+                        day: d.getDate(),
+                        inMonth: d.getMonth() === month,
+                        isToday: key === todayStr,
+                        events: byDate[key] || [],
+                        mark: this.marks[key] || null,
+                    });
+                }
+                this.cells = cells;
+
+                const weeks = [];
+                for (let i = 0; i < cells.length; i += 7) {
+                    const weekCells = cells.slice(i, i + 7);
+                    weeks.push({ cells: weekCells, segments: this.weekGanttSegments(weekCells) });
+                }
+                this.weeks = weeks;
+            },
+            // Planning : « Planifié » (tâches, jalons, réunions, livrables, échéances), « Activité » ou tout.
+            filteredEvents(list) {
+                const order = (ev) => (ev.time ? ev.time : '00:00');
+                const kept = this.planFilter === 'all' ? list : list.filter((ev) => (ev.kind || 'activity') === this.planFilter);
+                return [...kept].sort((a, b) => order(a).localeCompare(order(b)));
+            },
+            selectDay(cell, force) {
+                this.selectedDate = force ? cell.key : (this.selectedDate === cell.key ? null : cell.key);
+                this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
+            },
+            get selectedDayEvents() {
+                if (!this.selectedDate) return [];
+                return this.filteredEvents(this.events.filter((ev) => ev.date === this.selectedDate));
+            },
+            get selectedDayLabel() {
+                return this.formatDayLabel(this.selectedDate);
+            },
+            formatDayLabel(dateStr) {
+                if (!dateStr) return '';
+                const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                return label.charAt(0).toUpperCase() + label.slice(1);
+            },
+            categoryLabel(cat) {
+                return {
+                    invoice: 'Facture', quote: 'Devis', client: 'Client', project: 'Projet',
+                    deliverable: 'Livrable', file: 'Fichier', communication: 'Communication',
+                    automation: 'Automatisation', payment: 'Paiement',
+                }[cat] || cat;
+            },
+
+            // --- Clic droit / marquage de jour ---
+            openDayMenu(evt, cell) {
+                this.dayMenu = { open: true, x: evt.clientX, y: evt.clientY, cell };
+            },
+            openMarkModal(cell) {
+                const mark = this.marks[cell.key];
+                this.markForm = {
+                    date: cell.key,
+                    label: mark ? mark.label : '',
+                    color: mark ? mark.color : this.markColors[0],
+                    id: mark ? mark.id : null,
+                };
+                this.markModalOpen = true;
+            },
+            applyMarksToCells() {
+                this.weeks.forEach((w) => w.cells.forEach((c) => { c.mark = this.marks[c.key] || null; }));
+            },
+            async saveMark() {
+                const body = new URLSearchParams({ date: this.markForm.date, label: this.markForm.label, color: this.markForm.color });
+                const response = await fetch('{% url "dashboard:calendar-mark-create" %}', {
+                    method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    this.marks[this.markForm.date] = data.mark;
+                    this.applyMarksToCells();
+                    this.markModalOpen = false;
+                }
+            },
+            async deleteMark(dateKey) {
+                const mark = this.marks[dateKey];
+                if (!mark) { this.markModalOpen = false; return; }
+                await fetch(`/dashboard/timeline/marks/${mark.id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+                delete this.marks[dateKey];
+                this.applyMarksToCells();
+                this.markModalOpen = false;
+            },
+
+            // --- Popup détail d'un événement ---
+            openEventDetail(ev) {
+                this.selectedEvent = ev;
+                this.eventModalOpen = true;
+            },
+
+            // --- Popup de création rapide ---
+            get selectedProjectMilestones() {
+                const p = this.quickCreateProjects.find((pp) => String(pp.id) === String(this.createForm.projectId));
+                return p ? p.milestones : [];
+            },
+            get selectedProjectMembers() {
+                const p = this.quickCreateProjects.find((pp) => String(pp.id) === String(this.createForm.projectId));
+                return p ? p.members : [];
+            },
+            openCreateModal() {
+                if (!this.selectedDate) return;
+                this.createForm = {
+                    type: 'task',
+                    projectId: this.quickCreateProjects[0] ? this.quickCreateProjects[0].id : '',
+                    title: '', date: this.selectedDate, milestoneId: '', assigneeId: '',
+                    time: '09:00', duration: 30,
+                };
+                this.createError = '';
+                this.createModalOpen = true;
+            },
+            async submitCreate() {
+                this.createError = '';
+                if (!this.createForm.projectId) { this.createError = 'Choisissez un projet.'; return; }
+                if (!this.createForm.title.trim()) { this.createError = 'Titre requis.'; return; }
+
+                const pid = this.createForm.projectId;
+                let url = '';
+                let body;
+                if (this.createForm.type === 'task') {
+                    url = `/dashboard/projects/${pid}/tasks/create/`;
+                    body = new URLSearchParams({
+                        title: this.createForm.title, due_date: this.createForm.date,
+                        milestone_id: this.createForm.milestoneId, assignee_id: this.createForm.assigneeId,
+                    });
+                } else if (this.createForm.type === 'milestone') {
+                    url = `/dashboard/projects/${pid}/milestones/create/`;
+                    body = new URLSearchParams({ title: this.createForm.title, due_date: this.createForm.date });
+                } else if (this.createForm.type === 'meeting') {
+                    url = `/dashboard/projects/${pid}/meetings/create/`;
+                    body = new URLSearchParams({
+                        title: this.createForm.title,
+                        scheduled_at: `${this.createForm.date}T${this.createForm.time}`,
+                        duration_minutes: this.createForm.duration,
+                    });
+                } else {
+                    url = `/dashboard/projects/${pid}/deliverables/create/`;
+                    body = new URLSearchParams({ title: this.createForm.title, due_date: this.createForm.date });
+                }
+
+                const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body });
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    this.createError = "Une erreur est survenue.";
+                }
+            },
+        };
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block page_title %}Devis{% endblock %}
+{% block page_subtitle %}Prestations, conditions et échéancier{% endblock %}
+
+{% block title %}Créer un devis - Billio{% endblock %}
+
+{% block header_finance_chip %}
+{% include "components/focus_mode_button.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h1 class="text-2xl font-semibold text-gray-900">Créer un devis</h1>
+        <p class="text-sm text-gray-500 mt-2">Créez une estimation (devis) pour un client.</p>
+    </div>
+
+    <form method="post" class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        {% csrf_token %}
+
+        <div class="space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Client</label>
+                <select name="client" required class="modern-select dropdown-custom creation-dropdown w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+                    <option value="">Sélectionner un client</option>
+                    {% for client in clients %}
+                        <option value="{{ client.id }}" {% if preselected_client_id == client.id|stringformat:"s" %}selected{% endif %}>{{ client.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Titre</label>
+                <input
+                    type="text"
+                    name="title"
+                    value="Devis"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date d'émission</label>
+                    <input
+                        type="date"
+                        name="issue_date"
+                        value="{{ default_issue_date }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date d'expiration</label>
+                    <input
+                        type="date"
+                        name="expiry_date"
+                        value="{{ default_expiry_date }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Devise</label>
+                <select name="currency" class="modern-select dropdown-custom creation-dropdown w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none">
+                    <option value="EUR" {% if currency == "EUR" %}selected{% endif %}>EUR (€)</option>
+                    <option value="USD" {% if currency == "USD" %}selected{% endif %}>USD ($)</option>
+                    <option value="GBP" {% if currency == "GBP" %}selected{% endif %}>GBP (£)</option>
+                    <option value="CAD" {% if currency == "CAD" %}selected{% endif %}>CAD ($)</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Sous-total</label>
+                    <input
+                        type="number"
+                        name="subtotal"
+                        value="0"
+                        step="0.01"
+                        min="0"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">TVA</label>
+                    <input
+                        type="number"
+                        name="tax_amount"
+                        value="0"
+                        step="0.01"
+                        min="0"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Remise</label>
+                    <input
+                        type="number"
+                        name="discount_amount"
+                        value="0"
+                        step="0.01"
+                        min="0"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    />
+                </div>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center justify-between gap-4">
+                    <p class="text-sm font-semibold text-gray-700">Total estimé</p>
+                    <p class="text-sm font-semibold text-gray-900" id="quote-total-preview">0,00 €</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Calculé : sous-total + TVA - remise</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Notes</label>
+                <textarea
+                    name="notes"
+                    rows="4"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-500"
+                    placeholder="Conditions, informations supplémentaires..."
+                ></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <a href="{% url 'dashboard:dashboard-home' %}" class="btn-secondary-yellow px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                    Annuler
+                </a>
+                <button type="submit" class="btn-primary-black px-5 py-2 text-sm font-medium rounded-lg transition-colors hover:text-white">
+                    Créer le devis
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function () {
+        function parseNumber(v) {
+            const n = parseFloat(String(v).replace(',', '.'));
+            return isNaN(n) ? 0 : n;
+        }
+
+        const subtotal = document.querySelector('input[name="subtotal"]');
+        const taxAmount = document.querySelector('input[name="tax_amount"]');
+        const discountAmount = document.querySelector('input[name="discount_amount"]');
+        const currencySelect = document.querySelector('select[name="currency"]');
+        const preview = document.getElementById('quote-total-preview');
+
+        function formatEUR(value) {
+            try {
+                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value);
+            } catch (e) {
+                return value.toFixed(2) + ' €';
+            }
+        }
+
+        function update() {
+            const total = parseNumber(subtotal.value) + parseNumber(taxAmount.value) - parseNumber(discountAmount.value);
+            const currency = currencySelect.value || 'EUR';
+            // Simple preview: only EUR formatting for now.
+            preview.textContent = currency === 'EUR' ? formatEUR(total) : (total.toFixed(2) + ' ' + currency);
+        }
+
+        [subtotal, taxAmount, discountAmount, currencySelect].forEach(el => {
+            if (el) el.addEventListener('input', update);
+            if (el) el.addEventListener('change', update);
+        });
+
+        update();
+    })();
+</script>
+{% endblock %}
+
