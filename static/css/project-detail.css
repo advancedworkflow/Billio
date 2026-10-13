@@ -237,3 +237,17 @@
 /* Option non incluse dans le forfait */
 .pd-plan-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--billio-primary-soft, #f3effd); color: var(--billio-primary-hover, #4c1d95); font-size: 13.5px; }
 .pd-plan-note a { font-weight: 600; text-decoration: underline; }
+
+/* Étapes : sélection (consultation) et panneau de l'étape choisie */
+.pd-step.is-selected { box-shadow: 0 0 0 2px var(--billio-primary, #6d28d9); }
+.pd-stage { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding: 16px 18px; border-radius: 12px; background: #fafafa; border: 1px solid #f0f0f2; }
+.pd-stage-info { min-width: 0; }
+.pd-stage-kicker { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: .05em; }
+.pd-stage-info h3 { margin: 4px 0 2px; font-size: 18px; font-weight: 700; color: #18181b; }
+.pd-stage-progress { margin: 0; font-size: 13.5px; color: #52525b; }
+.pd-stage-chip { padding: 2px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0; text-transform: none; }
+.pd-stage-chip.current { background: var(--billio-primary-soft, #f5f3ff); color: var(--billio-primary, #6d28d9); }
+.pd-stage-chip.done { background: #f0fdf4; color: #15803d; }
+.pd-stage-chip.todo { background: #f4f4f5; color: #52525b; }
+.pd-stage-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pd-stage-note { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: #15803d; font-weight: 600; }

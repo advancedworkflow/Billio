@@ -441,6 +441,12 @@ def project_detail(request, project_id):
             'tasks_done': sum(1 for t in group_tasks if t.status == 'done'),
         })
 
+    # Résumé par étape pour le sélecteur d'étapes (jalons et tâches atteints / total).
+    phase_stats = {p['value']: {'label': p['label'], 'milestones': 0, 'done': 0, 'tasks': 0, 'tasks_done': 0} for p in phases}
+    for g in phase_groups:
+        phase_stats.setdefault(g['value'], {'label': g['label']}).update(
+            milestones=len(g['milestones']), done=g['milestones_done'], tasks=g['tasks_total'], tasks_done=g['tasks_done'])
+
     meetings = list(project.meetings.all())
     for m in meetings:
         m.is_past_display = m.is_past
@@ -459,6 +465,7 @@ def project_detail(request, project_id):
         'milestones': milestones,
         'tasks': tasks,
         'phase_groups': phase_groups,
+        'phase_stats_json': json.dumps(phase_stats),
         'time': __import__('apps.dashboard.time_views', fromlist=['time_summary']).time_summary(project),
         'time_access': _time_access(project.organization),
         'orphan_tasks': orphan_tasks,

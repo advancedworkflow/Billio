@@ -6,7 +6,7 @@
 {% block page_subtitle %}{{ project.client.name }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/project-detail.css' %}?v=1.5">
+<link rel="stylesheet" href="{% static 'css/project-detail.css' %}?v=1.6">
 {% endblock %}
 
 {% block content %}
@@ -63,26 +63,54 @@
     <div class="pd-layout">
         <div class="pd-main">
 
-            <!-- Phases du projet -->
+            <!-- Étapes du projet : cliquer = consulter ; avancer = bouton explicite -->
             <section class="pd-card">
                 <div class="pd-card-head">
                     <div>
-                        <h2>Étape du projet</h2>
-                        <p>Cliquez sur une étape pour faire avancer le projet. Le client voit l'étape en cours dans son espace.</p>
+                        <h2>Étapes du projet</h2>
+                        <p>Cliquez sur une étape pour voir ses jalons. Quand l'étape en cours est finie, passez à la suivante : votre client le voit dans son espace.</p>
                     </div>
                 </div>
-                <ol class="pd-steps">
+                <ol class="pd-steps" role="tablist" aria-label="Étapes du projet">
                     {% for p in phases %}
                     <li>
-                        <button type="button" class="pd-step" style="--phase: {{ p.color }};" @click="setPhase('{{ p.value }}')"
-                                :class="{ 'is-current': status === '{{ p.value }}', 'is-done': phaseIndex('{{ p.value }}') < phaseIndex(status) }">
+                        <button type="button" class="pd-step" style="--phase: {{ p.color }};" role="tab" @click="selectPhase('{{ p.value }}')"
+                                :aria-selected="(selectedPhase === '{{ p.value }}').toString()"
+                                :class="{ 'is-current': status === '{{ p.value }}', 'is-done': phaseIndex('{{ p.value }}') < phaseIndex(status), 'is-selected': selectedPhase === '{{ p.value }}' }">
                             <span class="pd-step-dot"><i data-lucide="check" class="w-3 h-3"></i><em>{{ forloop.counter }}</em></span>
                             <span class="pd-step-label">{{ p.label }}</span>
-                            <small>{% if p.count %}{{ p.count }} jalon{{ p.count|pluralize }}{% else %}—{% endif %}</small>
+                            <small x-text="stepCaption('{{ p.value }}')">{% if p.count %}{{ p.count }} jalon{{ p.count|pluralize }}{% else %}—{% endif %}</small>
                         </button>
                     </li>
                     {% endfor %}
                 </ol>
+
+                <div class="pd-stage" x-show="selectedPhase" x-cloak>
+                    <div class="pd-stage-info">
+                        <p class="pd-stage-kicker">
+                            <span x-text="`Étape ${phaseIndex(selectedPhase) + 1} sur ${phaseOrder.length}`"></span>
+                            <span class="pd-stage-chip" :class="stageState(selectedPhase)" x-text="{ current: 'En cours', done: 'Terminée', todo: 'À venir' }[stageState(selectedPhase)]"></span>
+                        </p>
+                        <h3 x-text="phaseLabel(selectedPhase)"></h3>
+                        <p class="pd-stage-progress" x-text="stageProgress(selectedPhase)"></p>
+                    </div>
+                    <div class="pd-stage-actions">
+                        <template x-if="stageState(selectedPhase) === 'current' && nextPhase()">
+                            <button type="button" class="pd-btn pd-btn--primary" @click="advance()">
+                                <span x-text="`Terminer et passer à « ${phaseLabel(nextPhase())} »`"></span><i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </template>
+                        <template x-if="stageState(selectedPhase) === 'current' && !nextPhase()">
+                            <span class="pd-stage-note"><i data-lucide="party-popper" class="w-4 h-4"></i> Dernière étape du projet</span>
+                        </template>
+                        <template x-if="stageState(selectedPhase) === 'todo'">
+                            <button type="button" class="pd-btn" @click="setPhase(selectedPhase)">Passer directement à cette étape</button>
+                        </template>
+                        <template x-if="stageState(selectedPhase) === 'done'">
+                            <button type="button" class="pd-btn pd-btn--ghost" @click="setPhase(selectedPhase)">Revenir à cette étape</button>
+                        </template>
+                    </div>
+                </div>
             </section>
 
             <!-- Onglets -->
@@ -110,9 +138,9 @@
 
                 <div class="pd-filter">
                     <span>Afficher</span>
-                    <button type="button" :class="viewPhase === '' ? 'is-active' : ''" @click="viewPhase = ''">Toutes les étapes</button>
+                    <button type="button" :class="viewPhase === '' ? 'is-active' : ''" @click="viewPhase = ''; selectedPhase = ''">Toutes les étapes</button>
                     {% for p in phases %}{% if p.count %}
-                    <button type="button" style="--phase: {{ p.color }};" :class="viewPhase === '{{ p.value }}' ? 'is-active' : ''" @click="viewPhase = '{{ p.value }}'">{{ p.label }}</button>
+                    <button type="button" style="--phase: {{ p.color }};" :class="viewPhase === '{{ p.value }}' ? 'is-active' : ''" @click="selectPhase('{{ p.value }}')">{{ p.label }}</button>
                     {% endif %}{% endfor %}
                 </div>
 
@@ -125,7 +153,7 @@
                         <button type="button" class="pd-btn pd-btn--ghost" @click="addingMilestone = false">Annuler</button>
                         <button type="button" class="pd-btn pd-btn--primary" @click="createMilestone()">Ajouter le jalon</button>
                     </div>
-                    <p class="pd-help">Le jalon est ajouté à l'étape en cours ({{ current_phase.label|default:"phase actuelle" }}).</p>
+                    <p class="pd-help" x-text="`Le jalon est ajouté à l'étape « ${phaseLabel(selectedPhase || status)} ».`"></p>
                 </div>
 
                 <div x-show="addingTask" x-cloak class="pd-form">
@@ -146,6 +174,9 @@
                     </div>
                 </div>
 
+                <p class="pd-empty-line" x-show="viewPhase && !(phaseStats[viewPhase] || {}).milestones" x-cloak>
+                    Aucun jalon dans l'étape « <span x-text="phaseLabel(viewPhase)"></span> » pour l'instant. Ajoutez-en un avec le bouton « Jalon ».
+                </p>
                 <div class="pd-milestones">
                     {% for g in phase_groups %}
                     <section class="pd-phase-group{% if g.is_current %} is-current{% endif %}" style="--phase: {{ g.color }};" x-show="!viewPhase || viewPhase === '{{ g.value }}'">
@@ -597,7 +628,10 @@ function projectDetail() {
     return {
         tab: hash === 'specifications-client' ? 'cadrage' : (TABS.includes(hash) ? hash : 'plan'),
         status: '{{ project.status }}',
-        viewPhase: '',
+        // À l'ouverture : les jalons de l'étape en cours.
+        viewPhase: '{{ project.status }}',
+        selectedPhase: '{{ project.status }}',
+        phaseStats: {{ phase_stats_json|default:"{}"|safe }},
         briefPhase: '{{ project.status }}',
         phaseOrder: [{% for p in phases %}'{{ p.value }}',{% endfor %}],
         billingMode: '{{ project.billing_mode }}',
@@ -611,14 +645,55 @@ function projectDetail() {
             this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
         },
         phaseIndex(key) { return this.phaseOrder.indexOf(key); },
+        selectPhase(key) {
+            this.selectedPhase = key;
+            this.viewPhase = key;
+            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+        },
+        stageState(key) {
+            const i = this.phaseIndex(key), c = this.phaseIndex(this.status);
+            return i === c ? 'current' : (i < c ? 'done' : 'todo');
+        },
+        nextPhase() { return this.phaseOrder[this.phaseIndex(this.status) + 1] || null; },
+        stepCaption(key) {
+            const st = this.phaseStats[key] || {};
+            if (!st.milestones) return '—';
+            return `${st.done}/${st.milestones} jalon${st.milestones > 1 ? 's' : ''}`;
+        },
+        stageProgress(key) {
+            const st = this.phaseStats[key] || {};
+            if (!st.milestones) return "Aucun jalon dans cette étape pour l'instant : ajoutez-en un ci-dessous.";
+            const parts = [`${st.done} jalon${st.done > 1 ? 's' : ''} atteint${st.done > 1 ? 's' : ''} sur ${st.milestones}`];
+            if (st.tasks) parts.push(`${st.tasks_done}/${st.tasks} tâche${st.tasks > 1 ? 's' : ''} terminée${st.tasks > 1 ? 's' : ''}`);
+            return parts.join(' · ');
+        },
+        async advance() {
+            const next = this.nextPhase();
+            if (!next) return;
+            const st = this.phaseStats[this.status] || {};
+            const open = (st.milestones || 0) - (st.done || 0);
+            const pending = open > 0
+                ? `${open} jalon${open > 1 ? 's' : ''} de « ${this.phaseLabel(this.status)} » ${open > 1 ? 'restent ouverts' : 'reste ouvert'} : vous pourrez ${open > 1 ? 'les' : 'le'} cocher plus tard. `
+                : '';
+            const ok = await billioConfirm({
+                title: `Passer à « ${this.phaseLabel(next)} » ?`,
+                message: pending + `Votre client verra l'étape « ${this.phaseLabel(next)} » dans son espace.`,
+                confirmLabel: "Passer à l'étape suivante", icon: 'flag',
+            });
+            if (!ok) return;
+            await this.changePhase(next);
+        },
         async setPhase(key) {
             if (key === this.status) return;
             const ok = await billioConfirm({
-                title: `Passer à l'étape « ${this.phaseLabel(key)} » ?`,
-                message: "Le client verra la nouvelle étape dans son espace.",
+                title: `Mettre le projet à l'étape « ${this.phaseLabel(key)} » ?`,
+                message: 'Votre client verra cette étape dans son espace.',
                 confirmLabel: "Changer d'étape", icon: 'flag',
             });
             if (!ok) return;
+            await this.changePhase(key);
+        },
+        async changePhase(key) {
             this.status = key;
             this.briefPhase = key;
             await this.updateStatus();
@@ -709,6 +784,7 @@ function projectDetail() {
             const body = new URLSearchParams({
                 title: this.newMilestoneTitle, start_date: this.newMilestoneStartDate, due_date: this.newMilestoneDate,
                 amount: this.newMilestoneAmount,
+                phase: this.selectedPhase || this.status,  // étape sélectionnée au-dessus
             });
             const response = await fetch('{% url "dashboard:milestone-create" project.id %}', {
                 method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
