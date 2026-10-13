@@ -45,3 +45,36 @@ class LegalPagesTests(TestCase):
         home = http.get(reverse('landing:home')).content.decode()
         self.assertIn(reverse('landing:privacy'), home)
         self.assertNotIn('href="#">CGU', home)
+
+
+class SignupTests(TestCase):
+    def setUp(self):
+        self.http = HttpClient(HTTP_HOST='127.0.0.1')
+
+    def signup(self, **overrides):
+        data = {'name': 'Julie Moreau', 'email': 'Julie@Moreau-Photo.fr', 'password': 'Photo-Lumiere-2026', 'trade': 'audiovisuel'}
+        data.update(overrides)
+        return self.http.post(reverse('accounts:register'), data)
+
+    def test_four_fields_create_account_and_organization(self):
+        from apps.organizations.models import Organization
+        response = self.signup()
+        self.assertRedirects(response, reverse('dashboard:dashboard-home'), fetch_redirect_response=False)
+        user = User.objects.get(email='julie@moreau-photo.fr')
+        self.assertEqual((user.first_name, user.last_name), ('Julie', 'Moreau'))
+        self.assertTrue(user.check_password('Photo-Lumiere-2026'))
+        organization = Organization.objects.get(owner=user)
+        self.assertEqual(organization.name, 'Julie Moreau')
+        self.assertTrue(organization.members.filter(user=user, role='owner').exists())
+
+    def test_errors_are_shown_next_to_fields(self):
+        User.objects.create_user(username='julie', email='julie@moreau-photo.fr', password='x-Test-1234')
+        html = self.signup(password='12345678').content.decode()
+        self.assertIn('Un compte existe déjà avec cet email', html)
+        self.assertIn('auth-error', html)
+        self.assertEqual(User.objects.filter(email__iexact='julie@moreau-photo.fr').count(), 1)
+
+    def test_weak_password_rejected(self):
+        html = self.signup(password='12345678').content.decode()
+        self.assertFalse(User.objects.filter(email='julie@moreau-photo.fr').exists())
+        self.assertIn('auth-error', html)

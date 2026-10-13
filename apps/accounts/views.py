@@ -154,7 +154,7 @@ def register_view(request):
             from apps.organizations.trade_packs import apply_trade_pack
             organization = Organization.objects.create(
                 owner=user, email=user.email,
-                name=(form.cleaned_data.get('company_name') or user.get_full_name() or user.email).strip()[:200],
+                name=(user.get_full_name() or user.email).strip()[:200],
             )
             OrganizationMember.objects.create(organization=organization, user=user, role='owner',
                                               **OrganizationMember.ROLE_PERMISSIONS['owner'])
@@ -162,8 +162,6 @@ def register_view(request):
             auth_login(request, user)
             messages.success(request, f'Compte créé avec succès ! Bienvenue, {user.get_full_name() or user.email}!')
             return redirect(_safe_next(request) or 'dashboard:dashboard-home')
-        else:
-            messages.error(request, 'Veuillez corriger les erreurs ci-dessous.')
     else:
         form = RegisterForm(initial={'email': (request.GET.get('email') or '').strip()[:254]})
 

@@ -21,14 +21,12 @@ class RegistrationTests(TestCase):
     def test_signup_asks_trade_and_prepares_organization(self):
         http = HttpClient(HTTP_HOST='127.0.0.1')
         response = http.post(reverse('accounts:register'), {
-            'first_name': 'Inès', 'last_name': 'Martin', 'email': 'ines@atelier.test',
-            'password1': 'Tr3s-Solide-2026', 'password2': 'Tr3s-Solide-2026',
-            'trade': 'btp', 'company_name': 'Martin Rénovation', 'accept_terms': 'on',
+            'name': 'Inès Martin', 'email': 'ines@atelier.test', 'password': 'Tr3s-Solide-2026', 'trade': 'btp',
         })
         self.assertEqual(response.status_code, 302, response.content[:500])
         user = User.objects.get(email='ines@atelier.test')
         org = Organization.objects.get(owner=user)
-        self.assertEqual((org.name, org.trade), ('Martin Rénovation', 'btp'))
+        self.assertEqual((org.name, org.trade), ('Inès Martin', 'btp'))  # nom modifiable ensuite dans Paramètres
         self.assertTrue(OrganizationMember.objects.get(organization=org, user=user).can_manage_members)
         labels = list(ProjectPhase.objects.filter(organization=org).values_list('label', flat=True))
         self.assertEqual(labels[0], 'Visite & métré')
@@ -38,10 +36,7 @@ class RegistrationTests(TestCase):
 
     def test_signup_without_trade_is_refused(self):
         http = HttpClient(HTTP_HOST='127.0.0.1')
-        http.post(reverse('accounts:register'), {
-            'first_name': 'A', 'last_name': 'B', 'email': 'nobody@test.fr',
-            'password1': 'Tr3s-Solide-2026', 'password2': 'Tr3s-Solide-2026',
-        })
+        http.post(reverse('accounts:register'), {'name': 'A B', 'email': 'nobody@test.fr', 'password': 'Tr3s-Solide-2026'})
         self.assertFalse(User.objects.filter(email='nobody@test.fr').exists())
 
 

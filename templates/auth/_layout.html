@@ -7,69 +7,74 @@
     <title>{% block title %}Billio{% endblock %} - Billio</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
     <link href="{% static 'css/app.css' %}?v=1.6" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 17px; color: var(--billio-text); }
-        .auth-shell { min-height: 100vh; display: grid; grid-template-columns: 1fr; }
-        @media (min-width: 1024px) { .auth-shell { grid-template-columns: 5fr 7fr; } }
-        .auth-aside { display: none; position: relative; overflow: hidden; padding: 3rem; background: var(--billio-gradient-premium); color: #fff; flex-direction: column; justify-content: space-between; }
-        @media (min-width: 1024px) { .auth-aside { display: flex; } }
-        .auth-logo { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-        .auth-logo-badge { width: 2.25rem; height: 2.25rem; border-radius: 0.6rem; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; }
-        .auth-logo-text { font-family: var(--font-titles); font-weight: 700; font-size: 1.125rem; letter-spacing: -0.02em; color: #fff; }
-        .auth-aside-title { font-family: var(--font-titles); font-weight: 700; letter-spacing: -0.03em; font-size: 2.5rem; line-height: 1.15; }
-        .auth-aside-sub { color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.6; max-width: 22rem; }
-        .auth-form-side { display: flex; align-items: center; justify-content: center; padding: 3rem 1.5rem; background: #fff; }
-        .auth-form-wrap { width: 100%; max-width: 26rem; }
-        .auth-mobile-logo { display: flex; }
-        @media (min-width: 1024px) { .auth-mobile-logo { display: none; } }
-        .auth-title { font-family: var(--font-titles); font-weight: 700; font-size: 1.875rem; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
-        .auth-lead { color: #374151; font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.55; }
-        .auth-field { display: block; margin-bottom: 1rem; }
-        .auth-field span { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.4rem; }
-        .auth-input { width: 100%; height: 3.25rem; padding: 0 1rem; font-size: 1rem; font-weight: 500; border: 1.5px solid var(--billio-border); border-radius: 0.75rem; transition: border-color .2s, box-shadow .2s; }
-        .auth-input:focus { outline: none; border-color: var(--billio-primary); box-shadow: 0 0 0 4px var(--billio-primary-soft); }
-        .auth-error { margin-top: 0.4rem; font-size: 0.875rem; color: var(--billio-error); }
-        .auth-help { margin-top: 0.4rem; font-size: 0.8125rem; color: var(--billio-text-muted); }
-        .auth-help ul { margin: 0; padding-left: 1.1rem; list-style: disc; }
-        .auth-alert { border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: var(--billio-text); background: var(--billio-bg); display: flex; flex-direction: column; align-items: center; padding: 48px 16px; }
+        .auth-top { position: fixed; top: 16px; right: 16px; }
+        @media (max-width: 480px) { body { padding-top: 76px; } }
+        .auth-logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 28px; text-decoration: none; color: var(--billio-text); font-family: var(--font-titles); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+        .auth-logo-badge { width: 36px; height: 36px; border-radius: 10px; background: var(--billio-primary); display: inline-flex; align-items: center; justify-content: center; }
+        .auth-card { width: 100%; max-width: 400px; background: #fff; border: 1px solid var(--billio-border); border-radius: 16px; padding: 32px 28px; box-shadow: 0 1px 2px rgba(24, 24, 27, .04); }
+        @media (max-width: 440px) { .auth-card { padding: 26px 20px; } }
+        .auth-title { font-family: var(--font-titles); font-weight: 800; font-size: 24px; letter-spacing: -0.02em; margin: 0 0 6px; }
+        .auth-lead { color: var(--billio-text-muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; }
+        .auth-field { display: block; margin-bottom: 16px; }
+        .auth-field > span { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+        .auth-field > span a { font-weight: 500; font-size: 13px; }
+        .auth-input { width: 100%; height: 44px; padding: 0 12px; font: inherit; font-size: 15px; color: var(--billio-text); background: #fff; border: 1px solid var(--billio-border-strong); border-radius: 10px; transition: border-color .15s, box-shadow .15s; }
+        .auth-input:focus { outline: none; border-color: var(--billio-primary); box-shadow: 0 0 0 3px var(--billio-primary-soft); }
+        select.auth-input { appearance: auto; }
+        .auth-password { position: relative; }
+        .auth-password .auth-input { padding-right: 76px; }
+        .auth-toggle { position: absolute; right: 6px; top: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--billio-text-muted); font: 500 13px/1 Inter, sans-serif; cursor: pointer; }
+        .auth-toggle:hover { background: var(--billio-bg); color: var(--billio-text); }
+        .auth-error { margin: 6px 0 0; font-size: 13px; color: var(--billio-error); }
+        .auth-help { margin: 6px 0 0; font-size: 13px; color: var(--billio-text-muted); }
+        .auth-help ul { margin: 0; padding-left: 18px; }
+        .auth-alert { border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; font-size: 14px; line-height: 1.45; }
         .auth-alert--error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
         .auth-alert--success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-        .auth-submit-btn { display: flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%; padding: 0.85rem 1.25rem; font-weight: 600; font-size: 0.95rem; color: var(--billio-text); background: linear-gradient(135deg, var(--billio-cta) 0%, var(--billio-cta-hover) 100%); border: none; border-radius: 0.65rem; text-decoration: none; transition: transform .15s; }
-        .auth-submit-btn:hover { transform: translateY(-1px); }
-        .auth-link { color: var(--billio-primary); font-weight: 600; }
-        .auth-link:hover { color: var(--billio-primary-hover); }
-        .auth-icon { width: 3rem; height: 3rem; border-radius: 0.9rem; display: flex; align-items: center; justify-content: center; background: var(--billio-primary-soft); color: var(--billio-primary); margin-bottom: 1.25rem; }
+        .auth-alert--info { background: var(--billio-primary-soft); border: 1px solid var(--billio-primary-soft-border); color: var(--billio-primary-hover); }
+        .auth-submit-btn { display: flex; align-items: center; justify-content: center; width: 100%; height: 46px; margin-top: 4px; font: 600 15px/1 Inter, sans-serif; color: #fff; background: var(--billio-primary); border: 0; border-radius: 10px; cursor: pointer; text-decoration: none; transition: background .15s; }
+        .auth-submit-btn:hover { background: var(--billio-primary-hover); }
+        .auth-submit-btn:focus-visible, .auth-input:focus-visible, .auth-toggle:focus-visible { outline: 2px solid var(--billio-primary); outline-offset: 2px; }
+        .auth-link { color: var(--billio-primary); font-weight: 600; text-decoration: none; }
+        .auth-link:hover { text-decoration: underline; }
+        .auth-legal { margin: 14px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--billio-text-muted); text-align: center; }
+        .auth-legal a { color: inherit; text-decoration: underline; }
+        .auth-switch { margin-top: 22px; font-size: 14px; color: var(--billio-text-muted); text-align: center; }
+        .auth-logo-badge svg { width: 20px; height: 20px; }
+        .auth-icon svg { width: 22px; height: 22px; }
+        .auth-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--billio-primary-soft); color: var(--billio-primary); margin-bottom: 16px; }
     </style>
 </head>
-<body class="text-[#111827] min-h-screen">
-    <div style="position:fixed;top:16px;right:16px;z-index:60">{% include "components/language_switcher.html" %}</div>
-    <div class="auth-shell">
-        <aside class="auth-aside">
-            <a href="/" class="auth-logo">
-                <span class="auth-logo-badge">{% include "components/logo_mark_dark.html" with class="w-5 h-5" %}</span>
-                <span class="auth-logo-text">Billio</span>
-            </a>
-            <div>
-                <h1 class="auth-aside-title mb-4">{% block aside_title %}Votre activité, en ordre.{% endblock %}</h1>
-                <p class="auth-aside-sub">{% block aside_sub %}Factures, devis, paiements et projets au même endroit.{% endblock %}</p>
-            </div>
-        </aside>
-        <main class="auth-form-side">
-            <div class="auth-form-wrap">
-                <a href="/" class="auth-logo auth-mobile-logo mb-8">
-                    <span class="auth-logo-badge" style="background: var(--billio-primary); border: none;">{% include "components/logo_mark_on_violet.html" with class="w-5 h-5" %}</span>
-                    <span class="auth-logo-text" style="color: var(--billio-text);">Billio</span>
-                </a>
-                {% block content %}{% endblock %}
-            </div>
-        </main>
-    </div>
-    <script>window.lucide && lucide.createIcons();</script>
+<body>
+    <div class="auth-top">{% include "components/language_switcher.html" %}</div>
+    <a href="/" class="auth-logo">
+        <span class="auth-logo-badge">{% include "components/logo_mark_on_violet.html" with class="w-5 h-5" %}</span>
+        Billio
+    </a>
+    <main class="auth-card">
+        {% block content %}{% endblock %}
+    </main>
+    {% block after_card %}{% endblock %}
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script>
+        window.lucide && lucide.createIcons();
+        // Afficher / masquer le mot de passe
+        document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+            const input = document.getElementById(button.dataset.togglePassword);
+            button.addEventListener('click', () => {
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                button.textContent = show ? 'Masquer' : 'Afficher';
+                button.setAttribute('aria-pressed', String(show));
+            });
+        });
+    </script>
 </body>
 </html>

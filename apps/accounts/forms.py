@@ -2,72 +2,56 @@
 Forms for accounts app.
 """
 from django import forms
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import get_user_model
 from .models import UserProfile
 
 User = get_user_model()
 
 
-class RegisterForm(UserCreationForm):
-    """Form for user registration."""
-    first_name = forms.CharField(
-        max_length=30,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'input-focus block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white/50 backdrop-blur-sm',
-            'placeholder': 'Votre prénom'
-        })
-    )
-    last_name = forms.CharField(
-        max_length=30,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'input-focus block w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white/50 backdrop-blur-sm',
-            'placeholder': 'Votre nom'
-        })
-    )
-    email = forms.EmailField(
-        required=True,
-        widget=forms.EmailInput(attrs={
-            'class': 'input-focus block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white/50 backdrop-blur-sm',
-            'placeholder': 'votre@email.com'
-        })
-    )
-
-    company_name = forms.CharField(max_length=200, required=False)
-    trade = forms.ChoiceField(required=True, error_messages={'required': 'Choisissez votre métier.'})
-
-    class Meta:
-        model = User
-        fields = ('first_name', 'last_name', 'email', 'password1', 'password2')
+class RegisterForm(forms.Form):
+    """
+    Inscription en quatre champs : nom, email, mot de passe, activité.
+    Le nom de l'entreprise reprend le nom saisi ; il se change ensuite dans Paramètres.
+    """
+    name = forms.CharField(max_length=60, error_messages={'required': 'Indiquez votre nom.'})
+    email = forms.EmailField(error_messages={'required': 'Indiquez votre email.', 'invalid': 'Cette adresse email ne semble pas valide.'})
+    password = forms.CharField(strip=False, error_messages={'required': 'Choisissez un mot de passe.'})
+    trade = forms.ChoiceField(error_messages={'required': 'Choisissez votre activité.'})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.organizations.trade_packs import TRADE_CHOICES
         self.fields['trade'].choices = TRADE_CHOICES
-        self.fields['password1'].widget.attrs.update({
-            'class': 'input-focus block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white/50 backdrop-blur-sm',
-            'placeholder': 'Minimum 8 caractères'
-        })
-        self.fields['password2'].widget.attrs.update({
-            'class': 'input-focus block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 bg-white/50 backdrop-blur-sm',
-            'placeholder': 'Répétez votre mot de passe'
-        })
 
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        if not user.username:
-            base = (self.cleaned_data.get('email') or '').split('@')[0] or 'user'
-            username = base
-            suffix = 1
-            while User.objects.filter(username=username).exclude(pk=user.pk).exists():
-                suffix += 1
-                username = f"{base}{suffix}"
-            user.username = username
-        if commit:
-            user.save()
-        return user
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Un compte existe déjà avec cet email. Connectez-vous ou utilisez « Mot de passe oublié ».')
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        password = cleaned.get('password')
+        if password:
+            from django.contrib.auth.password_validation import validate_password
+            first, _, last = (cleaned.get('name') or '').strip().partition(' ')
+            try:
+                validate_password(password, User(email=cleaned.get('email', ''), first_name=first, last_name=last))
+            except forms.ValidationError as exc:
+                self.add_error('password', exc)
+        return cleaned
+
+    def save(self):
+        first, _, last = self.cleaned_data['name'].strip().partition(' ')
+        email = self.cleaned_data['email']
+        base = email.split('@')[0] or 'user'
+        username, suffix = base, 1
+        while User.objects.filter(username=username).exists():
+            suffix += 1
+            username = f"{base}{suffix}"
+        return User.objects.create_user(username=username, email=email, password=self.cleaned_data['password'],
+                                         first_name=first[:30], last_name=last.strip()[:30])
 
 
 class LoginForm(AuthenticationForm):
