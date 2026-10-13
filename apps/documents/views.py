@@ -364,5 +364,22 @@ def document_pdf(request, document_id):
     document = get_object_or_404(_user_documents_queryset(request.user), id=document_id)
     pdf_bytes = document.generate_pdf_bytes()
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="{document.number}.pdf"'
+    disposition = 'attachment' if request.GET.get('download') else 'inline'
+    response['Content-Disposition'] = f'{disposition}; filename="{document.number}.pdf"'
     return response
+
+
+@login_required
+def document_view(request, document_id):
+    """Lecture du document dans Billio (pages HTML), sans téléchargement ; le PDF est proposé à part."""
+    document = get_object_or_404(_user_documents_queryset(request.user), id=document_id)
+    from .canvas_render import WEB_CANVAS_CSS, render_canvas_pages
+    pages = render_canvas_pages(
+        document.canvas_data,
+        page_format=document.get_style('page_format') or 'A4',
+        orientation=document.get_style('page_orientation') or 'portrait',
+        resolve=document.resolve_variables, sources=document.table_sources(),
+    )
+    return render(request, 'documents/view.html', {
+        'document': document, 'pages': pages, 'canvas_css': WEB_CANVAS_CSS, 'page_title': document.title,
+    })

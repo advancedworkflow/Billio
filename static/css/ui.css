@@ -1,0 +1,170 @@
+/*
+ * Billio — couche de style commune (chargée en dernier dans l'application).
+ * Aligne boutons, champs et onglets de toutes les pages sur le style des pages de connexion :
+ * hauteur 38 px, coins 10 px, bouton principal violet, anneau de focus violet, onglets segmentés.
+ * Les surfaces de document (facture en cours d'édition, canvas de document, page de modèle)
+ * ne sont pas touchées.
+ */
+:root {
+  --ui-h: 38px;
+  --ui-r: 10px;
+  --ui-border: var(--billio-border-strong, #d4d4d8);
+  --ui-ring: var(--billio-primary-soft, rgba(109, 40, 217, .12));
+  --ui-primary: var(--billio-primary, #6d28d9);
+  --ui-primary-hover: var(--billio-primary-hover, #4c1d95);
+  --ui-text: var(--billio-text, #18181b);
+  --ui-muted: var(--billio-text-muted, #52525b);
+  --ui-danger: var(--billio-error, #b91c1c);
+}
+
+/* ---------- Boutons ---------- */
+.billio-dashboard :is(
+  .btn-primary, .btn-primary-black, .btn-secondary-yellow, .btn-secondary, .btn-ghost, .btn-destructive,
+  .btn-modern, .btn-modern-primary, .btn-modern-secondary,
+  .pd-btn, .st-btn, .pt-btn, .ie-btn, .bl-btn, .ig-btn, .cd-btn, .pr-btn, .te-btn, .tg-btn, .wf-btn, .rs-btn, .docfill-btn
+) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--ui-h); padding-top: 0; padding-bottom: 0; padding-left: 14px; padding-right: 14px;
+  border-radius: var(--ui-r); border: 1px solid var(--ui-border);
+  background: #fff; color: var(--ui-text);
+  font-family: Inter, system-ui, -apple-system, sans-serif; font-size: 13.5px; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; text-decoration: none; cursor: pointer; box-shadow: none;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s;
+}
+.billio-dashboard :is(
+  .btn-secondary-yellow, .btn-secondary, .btn-modern, .btn-modern-secondary,
+  .pd-btn, .st-btn, .pt-btn, .ie-btn, .bl-btn, .ig-btn, .cd-btn, .pr-btn, .te-btn, .tg-btn, .wf-btn, .rs-btn, .docfill-btn
+):hover { background: #fafafa; border-color: #a1a1aa; color: var(--ui-text); }
+
+/* Principal : violet */
+.billio-dashboard :is(
+  .btn-primary, .btn-primary-black, .btn-modern-primary,
+  .pd-btn--primary, .st-btn--primary, .pt-btn--primary, .ie-btn--primary, .bl-btn--primary, .ig-btn--primary,
+  .cd-btn--primary, .pr-btn--primary, .te-btn--primary, .tg-btn--primary, .wf-btn--primary, .docfill-btn--primary
+) { background: var(--ui-primary); border-color: var(--ui-primary); color: #fff; }
+.billio-dashboard :is(
+  .btn-primary, .btn-primary-black, .btn-modern-primary,
+  .pd-btn--primary, .st-btn--primary, .pt-btn--primary, .ie-btn--primary, .bl-btn--primary, .ig-btn--primary,
+  .cd-btn--primary, .pr-btn--primary, .te-btn--primary, .tg-btn--primary, .wf-btn--primary, .docfill-btn--primary
+):hover { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); color: #fff; }
+
+/* Discret : sans bordure */
+.billio-dashboard :is(.btn-ghost, .pd-btn--ghost, .st-btn--ghost, .pt-btn--ghost, .ie-btn--ghost, .bl-btn--ghost) {
+  background: transparent; border-color: transparent; color: var(--ui-muted);
+}
+.billio-dashboard :is(.btn-ghost, .pd-btn--ghost, .st-btn--ghost, .pt-btn--ghost, .ie-btn--ghost, .bl-btn--ghost):hover {
+  background: #f4f4f5; border-color: transparent; color: var(--ui-text);
+}
+
+/* Destructif : texte rouge */
+.billio-dashboard :is(.btn-destructive, .pd-btn--danger, .st-btn--danger, .pr-btn--danger) { color: var(--ui-danger); background: #fff; }
+.billio-dashboard :is(.btn-destructive, .pd-btn--danger, .st-btn--danger, .pr-btn--danger):hover { border-color: var(--ui-danger); background: #fef2f2; color: var(--ui-danger); }
+
+/* Tailles */
+.billio-dashboard :is(.pd-btn--sm, .btn-sm) { min-height: 32px; padding-left: 10px; padding-right: 10px; font-size: 12.5px; }
+.billio-dashboard :is(.ie-btn--block, .te-btn--block, .tg-btn--block, .dc-btn--block) { width: 100%; }
+
+.billio-dashboard :is(button, a)[class*="btn"]:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ui-ring); }
+.billio-dashboard :is(button, a)[class*="btn"]:disabled,
+.billio-dashboard :is(button, a)[class*="btn"][aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+
+/* Boutons-icônes (barre du haut, actions de tableau) */
+.billio-dashboard :is(.billio-icon-btn, .icon-btn, .billio-table-action-btn) { border-radius: var(--ui-r); transition: background-color .15s, color .15s; }
+
+/* ---------- Champs ---------- */
+.billio-dashboard main :is(
+  input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]):not([type=hidden]):not([type=submit]):not([type=button]),
+  select, textarea
+):not(:where(.ie-paper *, .cv-doc *, .ed-page *, .doc-canvas *, [contenteditable] *, .ui-plain)) {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-r);
+  font-size: 14px;
+  color: var(--ui-text);
+  transition: border-color .15s, box-shadow .15s;
+}
+.billio-dashboard main :is(
+  input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]):not([type=hidden]),
+  select, textarea
+):not(:where(.ie-paper *, .cv-doc *, .ed-page *, .doc-canvas *, [contenteditable] *, .ui-plain)):focus {
+  outline: none;
+  border-color: var(--ui-primary);
+  box-shadow: 0 0 0 3px var(--ui-ring);
+}
+.billio-dashboard main ::placeholder { color: #a1a1aa; }
+.billio-dashboard main :is(input[type=checkbox], input[type=radio]) { accent-color: var(--ui-primary); }
+
+/* Champs « de formulaire » connus : même hauteur que la connexion */
+.billio-dashboard :is(.st-field, .pd-field, .rs-field, .te-field, .ie-field, .pr-field, .ig-field, .wf-field, .ed-field)
+  :is(input:not([type=checkbox]):not([type=radio]):not([type=color]), select) { min-height: var(--ui-h); }
+.billio-dashboard :is(.rs-input, .te-input, .pt-input, .modern-select, .interactive-input):not(textarea) { min-height: var(--ui-h); border-radius: var(--ui-r); }
+.billio-dashboard :is(.st-field, .pd-field, .rs-field, .te-field, .ie-field, .pr-field, .ig-field, .wf-field) > span:first-child {
+  font-weight: 600; color: var(--ui-text);
+}
+
+/* ---------- Onglets : contrôle segmenté ---------- */
+.billio-dashboard :is(.tabs-pills, .invoice-view-tabs, .pd-tabs) {
+  display: inline-flex; gap: 2px; padding: 3px; border: 0; border-radius: 12px; background: #f4f4f5;
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
+}
+.billio-dashboard :is(.tabs-pills, .invoice-view-tabs, .pd-tabs)::-webkit-scrollbar { display: none; }
+.billio-dashboard :is(.tab-pill, .invoice-view-tab, .pd-tabs > button) {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--ui-muted);
+  font-size: 13.5px; font-weight: 600; white-space: nowrap; box-shadow: none; transition: background-color .15s, color .15s;
+}
+.billio-dashboard :is(.tab-pill, .invoice-view-tab, .pd-tabs > button):hover { color: var(--ui-text); background: rgba(255, 255, 255, .6); }
+.billio-dashboard :is(.tab-pill-active, .tab-pill.tab-pill-active, .invoice-view-tab.is-active, .pd-tabs > button.is-active) {
+  background: #fff; color: var(--ui-text); box-shadow: 0 1px 2px rgba(24, 24, 27, .1);
+}
+.billio-dashboard :is(.tab-pill, .invoice-view-tab, .pd-tabs > button):focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ui-ring); }
+
+/* ---------- Actions compactes des listes : « Voir » + menu ⋯ ---------- */
+.doc-actions { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.doc-actions-more { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--ui-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.doc-actions-more:hover, .doc-actions-more[aria-expanded="true"] { background: #f4f4f5; color: var(--ui-text); }
+.doc-actions-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 200px; padding: 6px; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 12px; box-shadow: 0 12px 32px rgba(24, 24, 27, .12); }
+.doc-actions-menu > :is(a, button) { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ui-text); font-size: 13.5px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+.doc-actions-menu > :is(a, button):hover { background: #f4f4f5; }
+.doc-actions-menu svg, .doc-actions-menu i { color: var(--ui-muted); flex-shrink: 0; }
+
+/* ---------- Palette de recherche (⌘K) ---------- */
+#cmd-palette { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
+#cmd-palette.hidden { display: none; }
+#cmd-palette .cmd-palette-backdrop { position: fixed; inset: 0; background: rgba(24, 24, 27, .32); backdrop-filter: blur(2px); }
+#cmd-palette .cmd-palette { position: relative; top: auto; left: auto; transform: none; z-index: 1; width: 100%; max-width: 640px; max-height: 72vh; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 16px; box-shadow: 0 24px 64px rgba(24, 24, 27, .22); overflow: hidden; }
+#cmd-palette .cmd-palette-input-wrap { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #f0f0f2; color: #a1a1aa; }
+#cmd-palette .cmd-palette-input { flex: 1; min-width: 0; height: 28px; border: 0 !important; box-shadow: none !important; outline: none; padding: 0; background: transparent; font-size: 16px; color: var(--ui-text); }
+#cmd-palette .cmd-palette-body { overflow-y: auto; padding: 8px; }
+#cmd-palette .cmd-palette-section-label { margin: 10px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #a1a1aa; }
+#cmd-palette .cmd-palette-section-label.hidden { display: none; }
+#cmd-palette .cmd-palette-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: var(--ui-text); text-decoration: none; }
+#cmd-palette .cmd-palette-item.hidden { display: none; }
+#cmd-palette .cmd-palette-item.is-active { background: #f4f4f5; }
+#cmd-palette .cmd-ico { width: 34px; height: 34px; border-radius: 9px; background: #f4f4f5; color: var(--ui-muted); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#cmd-palette .cmd-palette-item.is-active .cmd-ico { background: var(--billio-primary-soft, #f5f3ff); color: var(--ui-primary); }
+#cmd-palette .cmd-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+#cmd-palette .cmd-text strong { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#cmd-palette .cmd-text small { font-size: 12.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#cmd-palette .cmd-enter { color: #a1a1aa; opacity: 0; flex-shrink: 0; }
+#cmd-palette .cmd-palette-item.is-active .cmd-enter { opacity: 1; }
+#cmd-palette .cmd-palette-empty { margin: 18px 10px; font-size: 13.5px; color: #71717a; text-align: center; }
+#cmd-palette .cmd-palette-foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid #f0f0f2; background: #fafafa; font-size: 12px; color: #71717a; }
+#cmd-palette kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; margin-right: 3px; border: 1px solid #e4e4e7; border-bottom-width: 2px; border-radius: 5px; background: #fff; font: 600 11px/1 Inter, system-ui, sans-serif; color: #52525b; }
+@media (max-width: 560px) { #cmd-palette { padding-top: 8vh; } #cmd-palette .cmd-palette-foot { display: none; } }
+
+/* ---------- Carte Billio AI (tableau de bord) ---------- */
+.ai-card { display: flex; flex-direction: column; gap: 14px; }
+.ai-card-head { display: flex; align-items: center; gap: 12px; }
+.ai-card-badge { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #6d28d9, #a78bfa); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-card-sub { margin: 2px 0 0; font-size: 13px; color: var(--ui-muted); }
+.ai-card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ai-card-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 12px; }
+.ai-card-ico { width: 32px; height: 32px; border-radius: 9px; background: var(--billio-primary-soft, #f5f3ff); color: var(--ui-primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-card-ico--danger { background: #fef2f2; color: #b91c1c; }
+.ai-card-ico--ok { background: #f0fdf4; color: #15803d; }
+.ai-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ai-card-text strong { font-size: 14px; font-weight: 600; color: var(--ui-text); }
+.ai-card-text small { font-size: 12.5px; color: #71717a; }
+.ai-card-ask { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: #fafafa; color: var(--ui-muted); font-size: 13.5px; font-weight: 500; cursor: pointer; text-align: left; }
+.ai-card-ask:hover { background: #f4f4f5; color: var(--ui-text); }
+.ai-card-ask-arrow { margin-left: auto; }

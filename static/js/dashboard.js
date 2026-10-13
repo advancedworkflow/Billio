@@ -313,110 +313,141 @@
     const palette = document.getElementById('cmd-palette');
     if (!palette) return;
 
-    const items = Array.from(palette.querySelectorAll('[data-cmd-item]'));
+    const input = palette.querySelector('[data-cmd-input]');
+    const list = palette.querySelector('[data-cmd-list]');
+    const resultsWrap = palette.querySelector('[data-cmd-results]');
     const recentsWrap = palette.querySelector('[data-cmd-recents]');
+    const emptyMsg = palette.querySelector('[data-cmd-empty]');
+    const staticItems = Array.from(list.querySelectorAll('[data-cmd-item]'));
+    const esc = (t) => String(t || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     let activeIndex = 0;
+    let searchTimer = null;
+    let searchToken = 0;
 
-    items.forEach((item) => {
-      item.addEventListener('click', () => {
-        pushCmdRecent(item.getAttribute('href'), (item.getAttribute('data-cmd-label') || item.textContent || '').trim());
+    const row = (href, icon, title, sub, extra = '') => `<a href="${esc(href)}" class="cmd-palette-item" data-cmd-dynamic ${extra}>
+        <span class="cmd-ico"><i data-lucide="${esc(icon)}" class="w-4 h-4"></i></span>
+        <span class="cmd-text"><strong>${esc(title)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</span>
+        <i data-lucide="corner-down-left" class="cmd-enter w-3.5 h-3.5"></i></a>`;
+
+    function renderRecents(show) {
+      const recents = show ? getCmdRecents() : [];
+      recentsWrap.innerHTML = recents.length
+        ? '<p class="cmd-palette-section-label">Récents</p>' + recents.map((r) => row(r.href, 'history', r.label, '')).join('')
+        : '';
+    }
+
+    function visibleItems() {
+      return Array.from(palette.querySelectorAll('.cmd-palette-item')).filter((el) => !el.classList.contains('hidden') && el.offsetParent !== null);
+    }
+
+    function highlight(scroll = true) {
+      const vis = visibleItems();
+      activeIndex = Math.max(0, Math.min(activeIndex, vis.length - 1));
+      vis.forEach((el, i) => el.classList.toggle('is-active', i === activeIndex));
+      if (scroll && vis[activeIndex]) vis[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+
+    function refreshSections() {
+      list.querySelectorAll('[data-cmd-section]').forEach((label) => {
+        let el = label.nextElementSibling;
+        let any = false;
+        while (el && !el.hasAttribute('data-cmd-section')) {
+          if (el.matches('[data-cmd-item]') && !el.classList.contains('hidden')) any = true;
+          el = el.nextElementSibling;
+        }
+        label.classList.toggle('hidden', !any);
       });
-    });
-
-    function renderRecents() {
-      if (!recentsWrap) return;
-      const recents = getCmdRecents();
-      if (!recents.length) {
-        recentsWrap.innerHTML = '';
-        recentsWrap.classList.add('hidden');
-        return;
-      }
-      recentsWrap.classList.remove('hidden');
-      recentsWrap.innerHTML =
-        '<p class="cmd-palette-section-label">Récents</p>' +
-        recents.map((r) => `<a href="${r.href}" class="cmd-palette-item cmd-palette-item--recent"><i data-lucide="history" class="w-4 h-4"></i>${r.label}</a>`).join('');
+      emptyMsg.hidden = visibleItems().length > 0;
       if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function filter(q) {
+      const query = (q || '').trim().toLowerCase();
+      staticItems.forEach((item) => {
+        const label = (item.getAttribute('data-cmd-label') || item.textContent || '').toLowerCase();
+        item.classList.toggle('hidden', !!query && !label.includes(query));
+      });
+      renderRecents(!query);
+      if (query.length < 2) resultsWrap.innerHTML = '';
+      refreshSections();
+      activeIndex = 0;
+      highlight(false);
+      clearTimeout(searchTimer);
+      if (query.length >= 2) searchTimer = setTimeout(() => search(query), 160);
+    }
+
+    async function search(query) {
+      const token = ++searchToken;
+      resultsWrap.innerHTML = '<p class="cmd-palette-section-label">Recherche…</p>';
+      try {
+        const response = await fetch(`/dashboard/search/?q=${encodeURIComponent(query)}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (token !== searchToken) return;
+        const results = data.results || [];
+        const groups = {};
+        results.forEach((r) => { (groups[r.type] = groups[r.type] || []).push(r); });
+        resultsWrap.innerHTML = Object.entries(groups).map(([type, rows]) =>
+          `<p class="cmd-palette-section-label">${esc(type === 'Devis' ? 'Devis' : type + 's')}</p>` +
+          rows.map((r) => row(r.url, r.icon, r.label, r.sub)).join('')).join('');
+      } catch (e) {
+        if (token === searchToken) resultsWrap.innerHTML = '';
+      }
+      refreshSections();
+      activeIndex = 0;
+      highlight(false);
     }
 
     function open() {
       palette.classList.remove('hidden');
-      const input = palette.querySelector('[data-cmd-input]');
-      if (input) {
-        input.value = '';
-        input.focus();
-      }
-      renderRecents();
+      document.body.style.overflow = 'hidden';
+      input.value = '';
       filter('');
-      activeIndex = 0;
-      highlight();
+      setTimeout(() => input.focus(), 10);
     }
 
     function close() {
       palette.classList.add('hidden');
+      document.body.style.overflow = '';
     }
 
-    function filter(q) {
-      const query = (q || '').toLowerCase();
-      items.forEach((item) => {
-        const label = (item.getAttribute('data-cmd-label') || item.textContent || '').toLowerCase();
-        item.classList.toggle('hidden', query && !label.includes(query));
-      });
-      if (recentsWrap && getCmdRecents().length) {
-        recentsWrap.classList.toggle('hidden', !!query);
+    palette.addEventListener('click', (e) => {
+      const item = e.target.closest('.cmd-palette-item');
+      if (item) {
+        pushCmdRecent(item.getAttribute('href'), item.querySelector('strong')?.textContent.trim() || '');
       }
-      activeIndex = 0;
-      highlight();
-    }
-
-    function visibleItems() {
-      return items.filter((i) => !i.classList.contains('hidden'));
-    }
-
-    function highlight() {
-      const vis = visibleItems();
-      vis.forEach((el, i) => el.classList.toggle('is-active', i === activeIndex));
-    }
+    });
+    palette.addEventListener('mousemove', (e) => {
+      const item = e.target.closest('.cmd-palette-item');
+      if (!item) return;
+      const index = visibleItems().indexOf(item);
+      if (index !== -1 && index !== activeIndex) { activeIndex = index; highlight(false); }
+    });
 
     document.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        if (palette.classList.contains('hidden')) open();
-        else close();
+        if (palette.classList.contains('hidden')) open(); else close();
+        return;
       }
-      if (e.key === 'Escape' && !palette.classList.contains('hidden')) {
-        close();
-      }
-      if (!palette.classList.contains('hidden')) {
+      if (palette.classList.contains('hidden')) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIndex += 1; highlight(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); activeIndex -= 1; highlight(); }
+      if (e.key === 'Enter') {
         const vis = visibleItems();
-        if (e.key === 'ArrowDown') {
+        if (vis[activeIndex]) {
           e.preventDefault();
-          activeIndex = Math.min(activeIndex + 1, vis.length - 1);
-          highlight();
-        }
-        if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          activeIndex = Math.max(activeIndex - 1, 0);
-          highlight();
-        }
-        if (e.key === 'Enter' && vis[activeIndex]) {
-          e.preventDefault();
-          const href = vis[activeIndex].getAttribute('href');
-          if (href) window.location.href = href;
+          const item = vis[activeIndex];
+          pushCmdRecent(item.getAttribute('href'), item.querySelector('strong')?.textContent.trim() || '');
+          window.location.href = item.getAttribute('href');
           close();
         }
       }
     });
 
-    document.querySelectorAll('[data-cmd-open]').forEach((btn) => {
-      btn.addEventListener('click', open);
-    });
-
+    document.querySelectorAll('[data-cmd-open]').forEach((btn) => btn.addEventListener('click', open));
     palette.querySelector('[data-cmd-backdrop]')?.addEventListener('click', close);
-
-    const input = palette.querySelector('[data-cmd-input]');
-    if (input) {
-      input.addEventListener('input', () => filter(input.value));
-    }
+    input.addEventListener('input', () => filter(input.value));
   }
 
   function initScrollReveal() {

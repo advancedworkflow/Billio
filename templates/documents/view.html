@@ -1,0 +1,48 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ document.title }} - Billio{% endblock %}
+{% block page_title %}{{ document.title }}{% endblock %}
+{% block page_subtitle %}{{ document.get_document_type_display }} · {{ document.number }}{% endblock %}
+{% block extra_head %}
+<style>{{ canvas_css|safe }}
+.dv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.dv-bar-spacer { flex: 1; }
+.dv-pages { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 24px; background: #ececf1; border-radius: 14px; }
+.dv-page { background: #fff; box-shadow: 0 2px 16px rgba(24, 24, 27, .12); overflow: hidden; position: relative; }
+.dv-page-inner { transform-origin: top left; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="dv-bar">
+    <a href="{% url 'dashboard:documents-list' %}" class="pd-btn pd-btn--ghost"><i data-lucide="arrow-left" class="w-4 h-4"></i> Documents</a>
+    <div class="dv-bar-spacer"></div>
+    <a href="{% url 'documents:document-pdf' document.id %}?download=1" class="pd-btn"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le PDF</a>
+    <a href="{% url 'documents:document-editor' document.id %}" class="pd-btn pd-btn--primary"><i data-lucide="pencil" class="w-4 h-4"></i> Modifier</a>
+</div>
+<div class="dv-pages" data-doc-pages translate="no">
+    {% for page in pages %}
+    <div class="dv-page" data-width="{{ page.width }}" data-height="{{ page.height }}">
+        <div class="dv-page-inner">{{ page.html|safe }}</div>
+    </div>
+    {% empty %}
+    <p>Ce document est vide.</p>
+    {% endfor %}
+</div>
+<script>
+// Pages à leur taille réelle, réduites à la largeur disponible.
+function fitDocPages() {
+    const box = document.querySelector('[data-doc-pages]');
+    if (!box) return;
+    const available = box.clientWidth - 48;
+    box.querySelectorAll('.dv-page').forEach((page) => {
+        const w = +page.dataset.width, h = +page.dataset.height;
+        const scale = Math.min(1, available / w);
+        page.style.width = `${w * scale}px`;
+        page.style.height = `${h * scale}px`;
+        page.firstElementChild.style.transform = `scale(${scale})`;
+        page.firstElementChild.style.width = `${w}px`;
+    });
+}
+window.addEventListener('resize', fitDocPages);
+fitDocPages();
+</script>
+{% endblock %}

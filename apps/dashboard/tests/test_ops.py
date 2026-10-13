@@ -62,3 +62,17 @@ class LoginThrottleTests(TestCase):
         for _ in range(4):
             self.login('faux')
         self.assertEqual(self.login('Bon-Mot-2026').status_code, 302)
+
+
+class GlobalSearchTests(TestCase):
+    def test_search_finds_only_own_records(self):
+        from apps.clients.models import Client
+        owner = User.objects.create_user(username='o', email='o@test.fr', password='x-Test-1234')
+        other = User.objects.create_user(username='p', email='p@test.fr', password='x-Test-1234')
+        Client.objects.create(organization=Organization.objects.create(name='A', owner=owner), name='Brasserie du Canal', email='b@test.fr')
+        Client.objects.create(organization=Organization.objects.create(name='B', owner=other), name='Brasserie Secrète', email='s@test.fr')
+        http = HttpClient(HTTP_HOST='127.0.0.1')
+        http.force_login(owner)
+        labels = [r['label'] for r in http.get(reverse('dashboard:global-search') + '?q=bras').json()['results']]
+        self.assertEqual(labels, ['Brasserie du Canal'])
+        self.assertEqual(http.get(reverse('dashboard:global-search') + '?q=b').json()['results'], [])

@@ -91,27 +91,48 @@
             {% endwith %}
         </div>
 
-        <!-- Billio AI -->
-        <div class="dash-panel dash-ai-card dash-span-6 dash-reveal" style="animation-delay: 0.15s" draggable="true" data-widget="ai">
-            <div class="flex items-center gap-2">
-                <i data-lucide="sparkles" class="w-5 h-5"></i>
-                <h2 class="dash-panel-title">Billio AI</h2>
-            </div>
-            <p class="text-sm text-white/80 mt-3">Quels clients dois-je relancer ?</p>
-            <div class="dash-ai-response">
-                <p><strong>{{ overdue_sales_count }}</strong> facture{{ overdue_sales_count|pluralize }} dépasse{{ overdue_sales_count|pluralize:",nt" }} 15 jours.</p>
-                <p class="mt-2 text-white/70">Créer les relances ?</p>
-                <div class="flex items-center gap-2 mt-3">
-                    <a href="{% url 'invoices:invoice-list' %}?status=overdue" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-violet-700 text-sm font-semibold hover:bg-violet-50 transition-colors">
-                        <i data-lucide="wand-2" class="w-4 h-4"></i>
-                        Générer
-                    </a>
-                    <button type="button" @click="aiDockOpen = true" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white/90 border border-white/25 hover:bg-white/10 transition-colors">
-                        <i data-lucide="message-circle" class="w-4 h-4"></i>
-                        Ouvrir l'assistant
-                    </button>
+        <!-- Billio AI : suggestions tirées des données -->
+        <div class="dash-panel dash-span-6 dash-reveal ai-card" style="animation-delay: 0.15s" draggable="true" data-widget="ai">
+            <div class="ai-card-head">
+                <span class="ai-card-badge"><i data-lucide="sparkles" class="w-4 h-4"></i></span>
+                <div>
+                    <h2 class="dash-panel-title">Billio AI</h2>
+                    <p class="ai-card-sub">Ce qui mérite votre attention aujourd'hui</p>
                 </div>
             </div>
+            <ul class="ai-card-list">
+                {% if overdue_sales_count %}
+                <li>
+                    <span class="ai-card-ico ai-card-ico--danger"><i data-lucide="alarm-clock" class="w-4 h-4"></i></span>
+                    <span class="ai-card-text"><strong>{{ overdue_sales_count }} facture{{ overdue_sales_count|pluralize }} en retard</strong><small>{{ overdue_sales_ht_formatted }} HT à encaisser</small></span>
+                    <a href="{% url 'invoices:invoice-list' %}?status=overdue" class="pd-btn pd-btn--sm">Relancer</a>
+                </li>
+                {% endif %}
+                {% if pending_quotes_count %}
+                <li>
+                    <span class="ai-card-ico"><i data-lucide="file-clock" class="w-4 h-4"></i></span>
+                    <span class="ai-card-text"><strong>{{ pending_quotes_count }} devis sans réponse</strong><small>{{ pending_quotes_total_formatted }} en attente de signature</small></span>
+                    <a href="{% url 'invoices:quote-list' %}" class="pd-btn pd-btn--sm">Voir</a>
+                </li>
+                {% endif %}
+                {% if draft_invoices_count %}
+                <li>
+                    <span class="ai-card-ico"><i data-lucide="file-pen-line" class="w-4 h-4"></i></span>
+                    <span class="ai-card-text"><strong>{{ draft_invoices_count }} brouillon{{ draft_invoices_count|pluralize }} à envoyer</strong><small>Finalisez-les pour être payé plus vite</small></span>
+                    <a href="{% url 'invoices:invoice-list' %}?status=draft" class="pd-btn pd-btn--sm">Ouvrir</a>
+                </li>
+                {% endif %}
+                {% if not overdue_sales_count and not pending_quotes_count and not draft_invoices_count %}
+                <li class="ai-card-calm">
+                    <span class="ai-card-ico ai-card-ico--ok"><i data-lucide="check" class="w-4 h-4"></i></span>
+                    <span class="ai-card-text"><strong>Tout est à jour</strong><small>Aucune facture en retard ni devis en attente.</small></span>
+                </li>
+                {% endif %}
+            </ul>
+            <button type="button" class="ai-card-ask" @click="aiDockOpen = true">
+                <i data-lucide="message-circle" class="w-4 h-4"></i> Poser une question à l'assistant
+                <i data-lucide="arrow-right" class="w-4 h-4 ai-card-ask-arrow"></i>
+            </button>
         </div>
 
         <!-- Activity Feed -->

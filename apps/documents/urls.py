@@ -16,4 +16,5 @@ urlpatterns = [
     path('<uuid:document_id>/favorite/', views.document_toggle_favorite, name='document-toggle-favorite'),
     path('<uuid:document_id>/save-as-template/', views.document_save_as_template, name='document-save-as-template'),
     path('<uuid:document_id>/pdf/', views.document_pdf, name='document-pdf'),
+    path('<uuid:document_id>/view/', views.document_view, name='document-view'),
 ]

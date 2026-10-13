@@ -68,32 +68,24 @@
                         <td>{{ doc.client }}</td>
                         <td>{{ doc.date|date:"d/m/Y"|default:"—" }}</td>
                         <td>{% if doc.amount %}{{ doc.amount }} €{% else %}—{% endif %}</td>
-                        <td><span class="status-badge status-badge--{{ doc.status }}">{{ doc.status }}</span></td>
+                        <td><span class="status-badge status-badge--{{ doc.status }}">{{ doc.status_label|default:doc.status }}</span></td>
                         <td>
-                            <div class="flex items-center gap-1">
-                                {% if doc.view_url %}
-                                <a href="{{ doc.view_url }}" title="Voir" class="p-1.5 rounded-lg hover:bg-gray-100" style="color: var(--billio-text-muted);">
-                                    <i data-lucide="eye" class="w-4 h-4"></i>
-                                </a>
-                                {% endif %}
-                                {% if doc.edit_url %}
-                                <a href="{{ doc.edit_url }}" title="Modifier" class="p-1.5 rounded-lg hover:bg-gray-100" style="color: var(--billio-text-muted);">
-                                    <i data-lucide="pencil" class="w-4 h-4"></i>
-                                </a>
-                                {% endif %}
-                                {% if doc.favorite_url %}
-                                <button type="button" title="Mettre en favoris" class="p-1.5 rounded-lg hover:bg-gray-100"
-                                        :style="fav ? 'color: var(--billio-primary);' : 'color: var(--billio-text-muted);'"
-                                        @click="
-                                            fav = !fav;
-                                            fetch('{{ doc.favorite_url }}', {
-                                                method: 'POST',
-                                                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
-                                            }).catch(() => { fav = !fav; });
-                                        ">
-                                    <i data-lucide="star" class="w-4 h-4" :fill="fav ? 'currentColor' : 'none'"></i>
+                            <div class="doc-actions" x-data="{ menu: false }" @keydown.escape="menu = false" @click.outside="menu = false">
+                                {% if doc.view_url %}<a href="{{ doc.view_url }}" class="pd-btn pd-btn--sm">Voir</a>{% endif %}
+                                <button type="button" class="doc-actions-more" @click="menu = !menu" :aria-expanded="menu.toString()" aria-label="Plus d'actions">
+                                    <i data-lucide="more-horizontal" class="w-4 h-4"></i>
                                 </button>
-                                {% endif %}
+                                <div class="doc-actions-menu" x-show="menu" x-cloak x-transition.opacity.duration.100ms>
+                                    {% if doc.edit_url %}<a href="{{ doc.edit_url }}"><i data-lucide="pencil" class="w-4 h-4"></i> Modifier</a>{% endif %}
+                                    {% if doc.download_url %}<a href="{{ doc.download_url }}"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le PDF</a>{% endif %}
+                                    {% if doc.favorite_url %}
+                                    <button type="button" @click="
+                                            fav = !fav; menu = false;
+                                            fetch('{{ doc.favorite_url }}', { method: 'POST', headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value } }).catch(() => { fav = !fav; });">
+                                        <i data-lucide="star" class="w-4 h-4"></i> <span x-text="fav ? 'Retirer des favoris' : 'Ajouter aux favoris'"></span>
+                                    </button>
+                                    {% endif %}
+                                </div>
                             </div>
                         </td>
                     </tr>

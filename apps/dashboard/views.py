@@ -384,6 +384,13 @@ def dashboard_home(request):
     overdue_sales_count = overdue_sales_qs.count()
     overdue_sales_ht_total = overdue_sales_qs.aggregate(total=Sum("subtotal")).get("total") or Decimal("0")
 
+    # Suggestions de l'assistant : devis sans réponse, brouillons non envoyés.
+    from apps.invoices.models import Quote
+    pending_quotes_qs = Quote.objects.filter(organization_id__in=org_ids, status__in=("sent", "viewed"))
+    pending_quotes_count = pending_quotes_qs.count()
+    pending_quotes_total = pending_quotes_qs.aggregate(total=Sum("total_amount")).get("total") or Decimal("0")
+    draft_invoices_count = Invoice.objects.filter(organization_id__in=org_ids, invoice_type="sale", status="draft").count()
+
     overdue_purchases_qs = Invoice.objects.filter(
         organization_id__in=org_ids,
         invoice_type="purchase",
@@ -475,6 +482,9 @@ def dashboard_home(request):
         "non_justifiees_count": non_justifiees_count,
         "overdue_sales_count": overdue_sales_count,
         "overdue_sales_ht_formatted": format_eur(overdue_sales_ht_total),
+        "pending_quotes_count": pending_quotes_count,
+        "pending_quotes_total_formatted": format_eur(pending_quotes_total),
+        "draft_invoices_count": draft_invoices_count,
         "overdue_purchases_count": overdue_purchases_count,
         "overdue_purchases_ht_formatted": format_eur(overdue_purchases_ht_total),
         "recent_transactions_data": recent_transactions_data,
@@ -1062,10 +1072,12 @@ def documents_list(request):
                 "title": doc.title,
                 "client": doc.client.name if doc.client_id else "—",
                 "status": doc.status,
+                "status_label": doc.get_status_display(),
                 "date": doc.created_at.date(),
                 "amount": None,
                 "is_favorite": doc.is_favorite,
-                "view_url": reverse("documents:document-pdf", args=[doc.id]),
+                "view_url": reverse("documents:document-view", args=[doc.id]),
+                "download_url": reverse("documents:document-pdf", args=[doc.id]) + "?download=1",
                 "edit_url": reverse("documents:document-editor", args=[doc.id]),
                 "favorite_url": reverse("documents:document-toggle-favorite", args=[doc.id]),
             })
@@ -1077,10 +1089,12 @@ def documents_list(request):
                 "title": invoice.title or (invoice.client.name if invoice.client_id else ""),
                 "client": invoice.client.name if invoice.client_id else "—",
                 "status": invoice.status,
+                "status_label": invoice.get_status_display(),
                 "date": invoice.issue_date,
                 "amount": invoice.total_amount,
                 "is_favorite": invoice.is_favorite,
                 "view_url": reverse("invoices:invoice-preview", args=[invoice.id]),
+                "download_url": (reverse("invoices:public-invoice-pdf", args=[invoice.id]) + "?download=1") if invoice.status != "draft" else "",
                 "edit_url": reverse("invoices:invoice-edit", args=[invoice.id]),
                 "favorite_url": reverse("invoices:invoice-toggle-favorite", args=[invoice.id]),
             })
@@ -1092,6 +1106,7 @@ def documents_list(request):
                 "title": quote.title or (quote.client.name if quote.client_id else ""),
                 "client": quote.client.name if quote.client_id else "—",
                 "status": quote.status,
+                "status_label": quote.get_status_display(),
                 "date": quote.issue_date,
                 "amount": quote.total_amount,
                 "is_favorite": quote.is_favorite,
@@ -1663,3 +1678,37 @@ def client_portal_preview(request):
         "documents": documents,
         "organization": organization,
     })
+
+@login_required
+def global_search(request):
+    """Recherche rapide (palette ⌘K) : clients, factures, devis et projets de l'organisation."""
+    from django.db.models import Q
+    from apps.clients.models import Client
+    from apps.invoices.models import Invoice, Quote
+    from .models import Project
+
+    q = (request.GET.get('q') or '').strip()
+    if len(q) < 2:
+        return JsonResponse({'results': []})
+    org_ids = _user_org_ids(request.user)
+    money = lambda value: f"{value:,.2f} €".replace(',', ' ').replace('.', ',')  # noqa: E731
+    results = []
+    for c in Client.objects.filter(organization_id__in=org_ids).filter(
+            Q(name__icontains=q) | Q(email__icontains=q) | Q(contact_person__icontains=q))[:5]:
+        results.append({'type': 'Client', 'icon': 'user', 'label': c.name, 'sub': c.email or '',
+                        'url': reverse('clients:client-detail', args=[c.id])})
+    for i in Invoice.objects.filter(organization_id__in=org_ids).filter(
+            Q(invoice_number__icontains=q) | Q(client__name__icontains=q) | Q(title__icontains=q)).select_related('client').order_by('-created_at')[:5]:
+        results.append({'type': 'Facture', 'icon': 'receipt-text', 'label': f"{i.invoice_number} · {i.client.name if i.client_id else ''}",
+                        'sub': f"{money(i.total_amount or 0)} · {i.get_status_display()}",
+                        'url': reverse('invoices:invoice-preview', args=[i.id])})
+    for d in Quote.objects.filter(organization_id__in=org_ids).filter(
+            Q(quote_number__icontains=q) | Q(client__name__icontains=q) | Q(title__icontains=q)).select_related('client').order_by('-created_at')[:5]:
+        results.append({'type': 'Devis', 'icon': 'file-text', 'label': f"{d.quote_number} · {d.client.name if d.client_id else ''}",
+                        'sub': f"{money(d.total_amount or 0)} · {d.get_status_display()}",
+                        'url': reverse('invoices:quote-preview', args=[d.id])})
+    for p in Project.objects.filter(organization_id__in=org_ids).filter(
+            Q(name__icontains=q) | Q(client__name__icontains=q) | Q(reference__icontains=q)).select_related('client')[:5]:
+        results.append({'type': 'Projet', 'icon': 'kanban-square', 'label': p.name, 'sub': p.client.name if p.client_id else '',
+                        'url': reverse('dashboard:project-detail', args=[p.id])})
+    return JsonResponse({'results': results})
