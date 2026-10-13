@@ -31,6 +31,9 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    # Pas de site dans le worker : sa santé se suit par https://<domaine>/healthz/?worker=1
+    healthcheck:
+      disable: true
     command: ["worker"]
 
   caddy:
