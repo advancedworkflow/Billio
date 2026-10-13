@@ -128,9 +128,9 @@
 .doc-actions-menu svg, .doc-actions-menu i { color: var(--ui-muted); flex-shrink: 0; }
 
 /* ---------- Palette de recherche (⌘K) ---------- */
-#cmd-palette { position: fixed; inset: 0; z-index: 90; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
+#cmd-palette { position: fixed; inset: 0; z-index: 950; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
 #cmd-palette.hidden { display: none; }
-#cmd-palette .cmd-palette-backdrop { position: fixed; inset: 0; background: rgba(24, 24, 27, .32); backdrop-filter: blur(2px); }
+#cmd-palette .cmd-palette-backdrop { position: fixed; inset: 0; z-index: 0; background: rgba(24, 24, 27, .32); backdrop-filter: blur(2px); }  /* sous la fenêtre (dashboard-premium.css lui donne 100) */
 #cmd-palette .cmd-palette { position: relative; top: auto; left: auto; transform: none; z-index: 1; width: 100%; max-width: 640px; max-height: 72vh; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 16px; box-shadow: 0 24px 64px rgba(24, 24, 27, .22); overflow: hidden; }
 #cmd-palette .cmd-palette-input-wrap { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #f0f0f2; color: #a1a1aa; }
 #cmd-palette .cmd-palette-input { flex: 1; min-width: 0; height: 28px; border: 0 !important; box-shadow: none !important; outline: none; padding: 0; background: transparent; font-size: 16px; color: var(--ui-text); }
