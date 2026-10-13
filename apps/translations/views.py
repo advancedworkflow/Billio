@@ -33,5 +33,5 @@ def catalog_js(request, lang):
         lang = 'fr'
     exact, patterns = get_catalog(lang).as_dict()
     payload = json.dumps({'lang': lang, 'exact': exact, 'patterns': patterns}, ensure_ascii=False, separators=(',', ':'))
-    payload = payload.replace('</', '<\/')
+    payload = payload.replace('</', r'<\/')  # « </script> » neutralisé dans le JS généré
     return HttpResponse(f'window.__billioI18n={payload};', content_type='application/javascript; charset=utf-8')
