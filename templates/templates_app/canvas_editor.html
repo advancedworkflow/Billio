@@ -7,7 +7,7 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ font_families|safe }}&display=swap">
 <style>{{ canvas_css|safe }}</style>
-<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.1">
 {% endblock %}
 
 {% block content %}
@@ -69,9 +69,14 @@
                             <span class="ed-band-resize" @pointerdown.stop="startBandResize($event, band)" title="Glisser pour changer la hauteur"></span>
                         </div>
                     </template>
-                    <div class="ed-items cv-body" style="order:1">
-                        <div x-html="previews.items"></div>
+                    <div class="ed-items cv-body" style="order:1" x-show="canvas.items !== false">
+                        <div class="ed-items-preview" x-html="previews.items"></div>
                         <span class="ed-items-label">Tableau des lignes · s'allonge selon le nombre de lignes</span>
+                        <button type="button" class="ed-items-remove" @click="setItems(false)" title="Retirer le tableau des lignes"><i data-lucide="x" class="w-3.5 h-3.5"></i> Retirer</button>
+                    </div>
+                    <div class="ed-items-add" style="order:1" x-show="canvas.items === false">
+                        <button type="button" @click="setItems(true)"><i data-lucide="table" class="w-4 h-4"></i> Ajouter le tableau des lignes</button>
+                        <small>Les produits et prestations du document s'affichent ici.</small>
                     </div>
                     <template x-if="guide !== null"><span class="ed-guide" :style="`left:${guide}px`"></span></template>
                 </div>
@@ -182,6 +187,12 @@ function canvasEditor() {
                 });
                 if (needed > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, Math.ceil(needed / SNAP) * SNAP);
             }
+        },
+        setItems(on) {
+            this.snapshot();
+            this.canvas.items = on;
+            this.dirty = true;
+            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
         },
         pageHeight() { return this.canvas.heights.header + this.canvas.heights.footer + 260; },
         pageStyle() {

@@ -50,6 +50,10 @@ class CanvasEditorTests(TestCase):
         response = self.http.get(reverse('templates_app:template-blank'))
         template = InvoiceTemplate.objects.get(organization=self.org)
         self.assertRedirects(response, reverse('templates_app:template-canvas', args=[template.id]))
+        # Page vraiment vide : ni blocs ni tableau des lignes.
+        self.assertEqual(template.layout_config['canvas']['blocks'], [])
+        self.assertFalse(template.layout_config['canvas']['items'])
+        self.assertNotIn('<table', template.html_structure)
         self.assertContains(self.http.get(reverse('templates_app:template-canvas', args=[template.id])), 'canvas-editor-config')
         payload = {'name': 'Maison', 'accent': '#0f766e', 'font': 'Lora', 'texts': {'thank_you': 'Merci !'},
                    'canvas': {'heights': {'header': 300, 'footer': 200},

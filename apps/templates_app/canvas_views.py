@@ -141,14 +141,14 @@ def canvas_convert(request, template_id):
 
 @login_required
 def canvas_blank(request):
-    """Nouveau modèle vide : seulement le tableau des lignes, à compléter en glissant des blocs."""
+    """Nouveau modèle vide : page blanche, à compléter en glissant des blocs (tableau des lignes compris)."""
     org = _primary_org(request.user)
     if not org:
         return redirect('templates_app:template-list')
     name, n = 'Nouveau modèle', 2
     while InvoiceTemplate.objects.filter(organization=org, name=name).exists():
         name, n = f'Nouveau modèle {n}', n + 1
-    empty = canvas.clean({'heights': {'header': 260, 'footer': 220}, 'blocks': []})
+    empty = canvas.clean({'heights': {'header': 260, 'footer': 220}, 'blocks': [], 'items': False})
     html_source, css = canvas.build(empty)
     schema, defaults = canvas.schema_and_defaults('#111827')
     template = InvoiceTemplate.objects.create(

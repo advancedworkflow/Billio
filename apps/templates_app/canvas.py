@@ -117,7 +117,8 @@ def clean(canvas):
         if block['type'] == 'text':
             block['text'] = str(raw.get('text') or '')[:1500]
         blocks.append(block)
-    return {'version': 1, 'heights': heights, 'blocks': blocks}
+    # Tableau des lignes : présent sauf retrait explicite (nouveau modèle vide).
+    return {'version': 1, 'heights': heights, 'blocks': blocks, 'items': canvas.get('items') is not False}
 
 
 def _escape_text(text):
@@ -174,7 +175,8 @@ def build(canvas):
     """(html, css) du modèle à partir d'une mise en page déjà nettoyée par `clean`."""
     bands = {band: _band_html([b for b in canvas['blocks'] if b['band'] == band], canvas['heights'][band], band)
              for band in BANDS}
-    inner = bands['header'] + f'<div class="{PREFIX}body">{_fill(ITEMS, PREFIX)}</div>' + bands['footer']
+    body = f'<div class="{PREFIX}body">{_fill(ITEMS, PREFIX)}</div>' if canvas.get('items', True) else ''
+    inner = bands['header'] + body + bands['footer']
     return _root(PREFIX, inner), _css(PREFIX, CANVAS_CSS)
 
 
