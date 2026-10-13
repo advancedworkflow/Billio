@@ -1,37 +1,23 @@
-# Billio sur un serveur (VPS) : base PostgreSQL, application, worker et HTTPS automatique (Caddy).
-#   1. copier env.example en .env.production et le remplir (DOMAIN, SECRET_KEY, RESEND_API_KEY…)
+# Billio sur un serveur (VPS) : application, worker et HTTPS automatique (Caddy).
+#   1. copier env.example en .env.production et le remplir (DOMAIN, SECRET_KEY, DATABASE_URL, RESEND_API_KEY…)
 #   2. docker compose --env-file .env.production up -d
+#
+# Base de données :
+#   - base managée (DigitalOcean, Scaleway…) : DATABASE_URL dans .env.production, DATABASE_SSL=1 ;
+#   - base sur le serveur : ajouter --profile local-db, POSTGRES_PASSWORD et
+#     DATABASE_URL=postgres://billio:<POSTGRES_PASSWORD>@db:5432/billio avec DATABASE_SSL=0.
 # Chez un hébergeur « plateforme » (Scaleway Serverless, Render, Railway…), seule l'image
 # (Dockerfile) sert : un service « web » et un service « worker » avec la même image.
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: billio
-      POSTGRES_USER: billio
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Renseignez POSTGRES_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U billio"]
-      interval: 10s
-      retries: 5
-
   web:
     image: ${BILLIO_IMAGE:-billio:latest}
     build: .
     restart: unless-stopped
     env_file: .env.production
     environment:
-      DATABASE_URL: postgres://billio:${POSTGRES_PASSWORD}@db:5432/billio
-      DATABASE_SSL: "0"
       NUM_PROXIES: "1"
     volumes:
       - media:/data/media
-    depends_on:
-      db:
-        condition: service_healthy
     command: ["web"]
 
   worker:
@@ -39,8 +25,7 @@ services:
     restart: unless-stopped
     env_file: .env.production
     environment:
-      DATABASE_URL: postgres://billio:${POSTGRES_PASSWORD}@db:5432/billio
-      DATABASE_SSL: "0"
+      MIGRATE_ON_START: "0"
     volumes:
       - media:/data/media
     depends_on:
@@ -62,6 +47,21 @@ services:
       - media:/srv/media:ro
     depends_on:
       - web
+
+  db:
+    image: postgres:16-alpine
+    profiles: ["local-db"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: billio
+      POSTGRES_USER: billio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billio"]
+      interval: 10s
+      retries: 5
 
 volumes:
   pgdata:

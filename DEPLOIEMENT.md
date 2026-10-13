@@ -83,8 +83,9 @@ Le plus économique, données en France, tout sur une machine. VPS conseillé : 
 3. Sur le serveur :
    ```
    git clone <dépôt> /opt/billio && cd /opt/billio
-   cp env.example .env.production   # puis le remplir (DOMAIN, SECRET_KEY, POSTGRES_PASSWORD, RESEND_API_KEY…)
+   cp env.example .env.production   # puis le remplir (DOMAIN, SECRET_KEY, DATABASE_URL, RESEND_API_KEY…)
    docker compose --env-file .env.production up -d --build
+   # base sur le serveur plutôt que managée : ajouter --profile local-db (voir docker-compose.yml)
    docker compose exec web python manage.py createsuperuser
    ```
 4. HTTPS : automatique (Caddy obtient le certificat Let's Encrypt au premier accès).
