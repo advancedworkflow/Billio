@@ -133,6 +133,7 @@ class InvoiceTemplate(models.Model):
                 'unit_price': str(i.unit_price),
                 'unit': i.unit,
                 'tax_rate': str(i.tax_rate),
+                'discount_percent': str(getattr(i, 'discount_percent', 0) or 0),
                 'total': str(i.total),
             })
 

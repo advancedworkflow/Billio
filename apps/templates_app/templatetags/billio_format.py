@@ -99,3 +99,30 @@ def get_item(mapping, key):
 def split_options(value):
     """« Option A, Option B » -> ['Option A', 'Option B'] (listes de choix des formulaires)."""
     return [part.strip() for part in str(value or '').split(',') if part.strip()]
+
+
+def _line_field(item, name):
+    return item.get(name) if isinstance(item, dict) else getattr(item, name, None)
+
+
+@register.filter
+def line_tax(item):
+    """Montant de TVA d'une ligne : total HT × taux."""
+    total, rate = _to_decimal(_line_field(item, 'total')), _to_decimal(_line_field(item, 'tax_rate'))
+    if total is None or rate is None:
+        return ''
+    return (total * rate / 100).quantize(Decimal('0.01'))
+
+
+@register.filter
+def line_ttc(item):
+    """Total TTC d'une ligne."""
+    tax = line_tax(item)
+    total = _to_decimal(_line_field(item, 'total'))
+    return '' if total is None or tax == '' else total + tax
+
+
+@register.filter
+def nonzero(value):
+    number = _to_decimal(value)
+    return bool(number)

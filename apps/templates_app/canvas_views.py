@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template import Context, Template
 from django.views.decorators.http import require_POST
 
-from . import canvas
+from . import canvas, canvas_table
 from .editor_views import _defaults, _primary_org, _schema, _user_templates
 from .models import InvoiceTemplate
 from .preview import FONT_CHOICES, sample_context
@@ -33,12 +33,12 @@ def _context(organization, defaults, document_type):
     return ctx
 
 
-def block_previews(organization, defaults, document_type='invoice'):
+def block_previews(organization, defaults, document_type='invoice', table=None):
     """HTML de chaque type de bloc et du tableau des lignes, avec des données d'exemple."""
     ctx = Context(_context(organization, defaults, document_type))
     render = lambda source: Template('{% load billio_format %}' + source).render(ctx)  # noqa: E731
     previews = {key: render(canvas._fill(spec[3], canvas.PREFIX)) for key, spec in canvas.BLOCKS.items() if spec[3]}
-    previews['items'] = render(canvas._fill(canvas.ITEMS, canvas.PREFIX))
+    previews['items'] = render(canvas.build_items(table, canvas.PREFIX))
     return previews
 
 
@@ -61,7 +61,9 @@ def canvas_editor(request, template_id):
         'fontStacks': {key: value[0] for key, value in FONT_CHOICES.items()},
         'texts': {key: defaults.get(key, '') for key in TEXT_FIELDS},
         'palette': canvas.palette(),
-        'previews': block_previews(template.organization, defaults),
+        'previews': block_previews(template.organization, defaults, table=canvas.clean(layout['canvas'])['table']),
+        'tableVariables': canvas_table.variables_for_editor(),
+        'mandatory': canvas.MANDATORY,
         'pageWidth': canvas.PAGE_WIDTH,
         'padding': canvas.PAGE_PADDING,
     }
@@ -79,7 +81,7 @@ def canvas_previews(request, template_id):
     defaults = dict(_defaults(template))
     defaults.update({key: str(value)[:2000] for key, value in (data.get('texts') or {}).items() if key in TEXT_FIELDS})
     document_type = 'quote' if data.get('document_type') == 'quote' else 'invoice'
-    return JsonResponse({'ok': True, 'previews': block_previews(template.organization, defaults, document_type)})
+    return JsonResponse({'ok': True, 'previews': block_previews(template.organization, defaults, document_type, data.get('table'))})
 
 
 @login_required

@@ -7,7 +7,7 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ font_families|safe }}&display=swap">
 <style>{{ canvas_css|safe }}</style>
-<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.4">
 {% endblock %}
 
 {% block content %}
@@ -31,6 +31,7 @@
         </button>
     </div>
     <p class="ed-error" x-show="error" x-text="error" role="alert"></p>
+    <p class="ed-warning" x-show="warning" x-text="warning" role="status"></p>
 
     <div class="ed-main">
         <!-- Blocs -->
@@ -42,6 +43,16 @@
                     <button type="button" class="ed-chip" draggable="true" @dragstart="dragNew = item.type; $event.dataTransfer.setData('text/plain', item.type)" @dragend="dragNew = null" @click="addBlock(item.type)">
                         <i :data-lucide="icons[item.type] || 'square'" class="w-4 h-4"></i>
                         <span x-text="item.label"></span>
+                    </button>
+                </template>
+            </div>
+            <p class="ed-panel-title ed-panel-title--gap">Formes</p>
+            <p class="ed-hint">Pour des en-têtes créatifs : placées derrière les blocs, elles peuvent toucher les bords de la page.</p>
+            <div class="ed-shapes">
+                <button type="button" class="ed-shape-btn ed-shape-btn--wide" @click="addBanner()"><svg viewBox="0 0 40 24"><rect width="40" height="12" rx="1"/></svg><span>Bandeau d'en-tête</span></button>
+                <template x-for="sh in shapeKinds" :key="sh.kind">
+                    <button type="button" class="ed-shape-btn" @click="addShape(sh.kind)" :title="sh.label">
+                        <svg viewBox="0 0 40 24" x-html="sh.icon"></svg><span x-text="sh.label"></span>
                     </button>
                 </template>
             </div>
@@ -57,7 +68,7 @@
                              @pointerdown.self="select(null)">
                             <span class="ed-band-label" x-text="band === 'header' ? 'En-tête' : 'Bas de page'"></span>
                             <template x-for="b in blocksIn(band)" :key="b.id">
-                                <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px`"
+                                <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px` + (b.type === 'shape' ? `;height:${b.h}px` : '')"
                                      tabindex="0" role="button" :aria-label="labelOf(b.type) + ' — déplacer avec les flèches'"
                                      @pointerdown="startMove($event, b)" @focus="select(b.id)">
                                     <div class="ed-block-content" x-html="blockHtml(b)"></div>
@@ -69,10 +80,11 @@
                             <span class="ed-band-resize" @pointerdown.stop="startBandResize($event, band)" title="Glisser pour changer la hauteur"></span>
                         </div>
                     </template>
-                    <div class="ed-items cv-body" style="order:1" x-show="canvas.items !== false">
+                    <div class="ed-items cv-body" style="order:1" x-show="canvas.items !== false" :class="selectedId === 'table' && 'is-selected'"
+                         @pointerdown.self="select('table')" @click="select('table')" tabindex="0" role="button" aria-label="Régler le tableau des lignes">
                         <div class="ed-items-preview" x-html="previews.items"></div>
-                        <span class="ed-items-label">Tableau des lignes · s'allonge selon le nombre de lignes</span>
-                        <button type="button" class="ed-items-remove" @click="setItems(false)" title="Retirer le tableau des lignes"><i data-lucide="x" class="w-3.5 h-3.5"></i> Retirer</button>
+                        <span class="ed-items-label">Tableau des lignes · cliquez pour choisir les colonnes et le style</span>
+                        <button type="button" class="ed-items-remove" @click.stop="setItems(false); select(null)" title="Retirer le tableau des lignes"><i data-lucide="x" class="w-3.5 h-3.5"></i> Retirer</button>
                     </div>
                     <div class="ed-items-add" style="order:1" x-show="canvas.items === false">
                         <button type="button" @click="setItems(true)"><i data-lucide="table" class="w-4 h-4"></i> Ajouter le tableau des lignes</button>
@@ -88,7 +100,35 @@
             <template x-if="selected()">
                 <div class="ed-props-body">
                     <p class="ed-panel-title" x-text="labelOf(selected().type)"></p>
-                    <div class="ed-field">
+<template x-if="selected().type === 'shape'">
+                        <div class="ed-props-group">
+                            <label class="ed-field"><span>Forme</span>
+                                <select class="ed-input" :value="selected().shape" @change="update({shape: $event.target.value})">
+                                    <template x-for="sh in shapeKinds" :key="sh.kind"><option :value="sh.kind" x-text="sh.label" :selected="selected().shape === sh.kind"></option></template>
+                                </select></label>
+                            <div class="ed-field">
+                        <span>Couleur</span>
+                        <div class="ed-swatches">
+                            <template x-for="t in colorTokens.filter((t) => t)" :key="t">
+                                <button type="button" class="ed-swatch" :class="[(selected().fill || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ fill: t })"></button>
+                            </template>
+                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().fill || '') && 'is-on'" :style="/^#/.test(selected().fill || '') ? `background:${selected().fill}` : ''">
+                                <input type="color" :value="/^#/.test(selected().fill || '') ? selected().fill : '#6d28d9'" @input="update({ fill: $event.target.value }, false)" @change="snapshot()">
+                                <i data-lucide="pipette" class="w-3 h-3"></i>
+                            </label>
+                        </div>
+                    </div>
+                            <label class="ed-field"><span>Opacité <em x-text="`${selected().opacity} %`"></em></span>
+                                <input type="range" min="5" max="100" step="5" :value="selected().opacity" @input="update({opacity: +$event.target.value}, false)" @change="snapshot()"></label>
+                            <label class="ed-field"><span>Arrondi des coins <em x-text="`${selected().radius} px`"></em></span>
+                                <input type="range" min="0" max="60" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
+                            <label class="ed-field"><span>Hauteur</span><input class="ed-input" type="number" min="2" max="900" :value="selected().h" @change="update({h: +$event.target.value})"></label>
+                            <button type="button" class="ed-btn" @click="update({x: 0, w: pageWidth})"><i data-lucide="move-horizontal" class="w-4 h-4"></i> Pleine largeur</button>
+                        </div>
+                    </template>
+                    <template x-if="selected().type !== 'shape'">
+                        <div class="ed-props-group">
+                                        <div class="ed-field">
                         <span>Alignement</span>
                         <div class="ed-segs" role="group">
                             <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
@@ -105,6 +145,36 @@
                         </div>
                     </div>
                     <label class="ed-switch"><input type="checkbox" :checked="selected().accent" @change="update({accent: $event.target.checked})"> <span>Couleur d'accent</span></label>
+                    <div class="ed-field">
+                        <span>Couleur du texte</span>
+                        <div class="ed-swatches">
+                            <template x-for="t in colorTokens" :key="t">
+                                <button type="button" class="ed-swatch" :class="[(selected().color || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ color: t })"></button>
+                            </template>
+                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().color || '') && 'is-on'" :style="/^#/.test(selected().color || '') ? `background:${selected().color}` : ''">
+                                <input type="color" :value="/^#/.test(selected().color || '') ? selected().color : '#6d28d9'" @input="update({ color: $event.target.value }, false)" @change="snapshot()">
+                                <i data-lucide="pipette" class="w-3 h-3"></i>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="ed-field">
+                        <span>Fond du bloc</span>
+                        <div class="ed-swatches">
+                            <template x-for="t in colorTokens" :key="t">
+                                <button type="button" class="ed-swatch" :class="[(selected().bg || '') === t && 'is-on', !t && 'is-auto']" :style="t ? `background:${previewColor(t)}` : ''" :title="colorNames[t]" @click="update({ bg: t })"></button>
+                            </template>
+                            <label class="ed-swatch ed-swatch--pick" title="Autre couleur" :class="/^#/.test(selected().bg || '') && 'is-on'" :style="/^#/.test(selected().bg || '') ? `background:${selected().bg}` : ''">
+                                <input type="color" :value="/^#/.test(selected().bg || '') ? selected().bg : '#6d28d9'" @input="update({ bg: $event.target.value }, false)" @change="snapshot()">
+                                <i data-lucide="pipette" class="w-3 h-3"></i>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="ed-grid2">
+                        <label class="ed-field"><span>Marge intérieure</span><input type="range" min="0" max="40" step="2" :value="selected().pad" @input="update({pad: +$event.target.value}, false)" @change="snapshot()"></label>
+                        <label class="ed-field"><span>Arrondi</span><input type="range" min="0" max="60" step="2" :value="selected().radius" @input="update({radius: +$event.target.value}, false)" @change="snapshot()"></label>
+                    </div>
+                        </div>
+                    </template>
                     <template x-if="selected().type === 'text'">
                         <label class="ed-field"><span>Texte</span><textarea class="ed-input" rows="5" maxlength="1500" :value="selected().text" @input="update({text: $event.target.value}, false)" @change="commit()"></textarea></label>
                     </template>
@@ -120,11 +190,114 @@
                     <p class="ed-hint">Flèches : déplacer (Maj + flèche : 10 px). Suppr : retirer le bloc.</p>
                 </div>
             </template>
-            <template x-if="!selected()">
+            <template x-if="selectedId === 'table' && canvas.table">
+                <div class="ed-props-body">
+                    <p class="ed-panel-title">Tableau des lignes</p>
+
+                    <p class="ed-sub">Colonnes</p>
+                    <div class="ed-cols">
+                        <template x-for="(col, i) in canvas.table.columns" :key="i">
+                            <div class="ed-col">
+                                <div class="ed-col-head">
+                                    <span class="ed-col-var" x-text="col.key === 'perso' ? 'Personnalisée' : varLabel(col.key)"></span>
+                                    <button type="button" class="ed-icon" @click="moveColumn(i, -1)" :disabled="i === 0" aria-label="Monter"><i data-lucide="chevron-up" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" class="ed-icon" @click="moveColumn(i, 1)" :disabled="i === canvas.table.columns.length - 1" aria-label="Descendre"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" class="ed-icon ed-icon--danger" @click="removeColumn(i)" :disabled="canvas.table.columns.length === 1" aria-label="Retirer la colonne"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                                <label class="ed-field"><span>Titre de la colonne</span><input class="ed-input" maxlength="40" x-model="col.label" @input="tableChanged()"></label>
+                                <template x-if="col.key === 'perso'">
+                                    <div class="ed-field">
+                                        <span>Contenu</span>
+                                        <input class="ed-input" maxlength="200" x-model="col.text" @input="tableChanged()" placeholder="Ex. {quantite} × {prix_unitaire}" :data-col="i">
+                                        <div class="ed-vars">
+                                            <template x-for="v in tableVars" :key="v.key">
+                                                <button type="button" class="ed-var" @click="insertVar(i, v.key)" x-text="v.label"></button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div class="ed-grid2">
+                                    <label class="ed-field"><span>Alignement</span>
+                                        <select class="ed-input" x-model="col.align" @change="tableChanged(true)">
+                                            <option value="auto">Auto</option><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option>
+                                        </select></label>
+                                    <label class="ed-field"><span>Largeur (%)</span><input class="ed-input" type="number" min="0" max="70" :value="col.width || ''" @change="col.width = Math.max(0, Math.min(70, +$event.target.value || 0)); tableChanged(true)" placeholder="Auto"></label>
+                                </div>
+                                <label class="ed-switch"><input type="checkbox" x-model="col.strong" @change="tableChanged(true)"> <span>En gras</span></label>
+                            </div>
+                        </template>
+                    </div>
+                    <label class="ed-field" x-show="canvas.table.columns.length < 10"><span>Ajouter une colonne</span>
+                        <select class="ed-input" @change="addColumn($event.target.value); $event.target.value = ''">
+                            <option value="">Choisir une variable…</option>
+                            <template x-for="v in tableVars" :key="v.key"><option :value="v.key" x-text="v.label"></option></template>
+                            <option value="perso">Colonne personnalisée (texte + variables)</option>
+                        </select></label>
+
+                    <p class="ed-sub">Style</p>
+                    <label class="ed-field"><span>En-tête</span>
+                        <select class="ed-input" x-model="canvas.table.header" @change="tableChanged(true)">
+                            <option value="line">Trait sous les titres</option><option value="soft">Fond gris</option><option value="accent">Fond couleur d'accent</option><option value="none">Sans</option>
+                        </select></label>
+                    <label class="ed-field"><span>Séparateurs</span>
+                        <select class="ed-input" x-model="canvas.table.borders" @change="tableChanged(true)">
+                            <option value="rows">Entre les lignes</option><option value="grid">Grille complète</option><option value="none">Aucun</option>
+                        </select></label>
+                    <div class="ed-field">
+                        <span>Espacement</span>
+                        <div class="ed-segs" role="group">
+                            <template x-for="d in [['compact','Serré'],['normal','Normal'],['airy','Aéré']]" :key="d[0]">
+                                <button type="button" class="ed-seg" :class="canvas.table.density === d[0] && 'is-on'" @click="canvas.table.density = d[0]; tableChanged(true)" x-text="d[1]"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="ed-field">
+                        <span>Taille du texte</span>
+                        <div class="ed-segs" role="group">
+                            <template x-for="z in [['s','Petit'],['m','Normal'],['l','Grand']]" :key="z[0]">
+                                <button type="button" class="ed-seg" :class="canvas.table.size === z[0] && 'is-on'" @click="canvas.table.size = z[0]; tableChanged(true)" x-text="z[1]"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.stripes" @change="tableChanged(true)"> <span>Lignes alternées</span></label>
+                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.uppercase" @change="tableChanged(true)"> <span>Titres en majuscules</span></label>
+                    <label class="ed-switch"><input type="checkbox" x-model="canvas.table.show_description" @change="tableChanged(true)"> <span>Description sous la désignation</span></label>
+                    <label class="ed-field"><span>Texte si aucune ligne</span><input class="ed-input" maxlength="80" x-model="canvas.table.empty_text" @input="tableChanged()"></label>
+                    <div class="ed-props-actions">
+                        <button type="button" class="ed-btn ed-btn--danger" @click="setItems(false); select(null)"><i data-lucide="trash-2" class="w-4 h-4"></i> Retirer le tableau</button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!selected() && selectedId !== 'table'">
                 <div class="ed-props-body">
                     <p class="ed-panel-title">Modèle</p>
-                    <label class="ed-field"><span>Couleur d'accent</span>
+                    <div class="ed-check" :class="missing().length ? 'is-warn' : 'is-ok'">
+                        <p class="ed-check-title">
+                            <i :data-lucide="missing().length ? 'alert-triangle' : 'shield-check'" class="w-4 h-4"></i>
+                            <span x-text="missing().length ? 'Facture incomplète' : 'Facture conforme'"></span>
+                        </p>
+                        <p class="ed-hint" x-show="!missing().length">Toutes les mentions obligatoires sont sur la page.</p>
+                        <template x-if="missing().length">
+                            <div>
+                                <p class="ed-hint">Une facture doit comporter ces éléments. Cliquez pour les ajouter :</p>
+                                <div class="ed-vars">
+                                    <template x-for="m in missing()" :key="m.key">
+                                        <button type="button" class="ed-var" @click="m.key === 'items' ? setItems(true) : addBlock(m.key)" x-text="'+ ' + m.label"></button>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <p class="ed-sub">Couleurs du modèle</p>
+                    <p class="ed-hint">Chaque couleur est une variable : la changer ici met à jour tous les blocs et formes qui l'utilisent.</p>
+                    <label class="ed-field"><span>Accent</span>
                         <div class="ed-color"><input type="color" x-model="accent" @input="dirty = true"><input class="ed-input" x-model="accent" maxlength="7" @input="dirty = true"></div>
+                    </label>
+                    <label class="ed-field"><span>Secondaire</span>
+                        <div class="ed-color"><input type="color" x-model="canvas.colors.secondary" @input="dirty = true"><input class="ed-input" x-model="canvas.colors.secondary" maxlength="7" @input="dirty = true"></div>
+                    </label>
+                    <label class="ed-field"><span>Texte</span>
+                        <div class="ed-color"><input type="color" x-model="canvas.colors.ink" @input="dirty = true"><input class="ed-input" x-model="canvas.colors.ink" maxlength="7" @input="dirty = true"></div>
                     </label>
                     <label class="ed-field"><span>Police</span>
                         <select class="ed-input" x-model="font" @change="dirty = true">
@@ -154,7 +327,7 @@ function canvasEditor() {
         name: cfg.name, isDefault: cfg.isDefault, accent: cfg.accent, font: cfg.font, fonts: cfg.fonts,
         texts: cfg.texts, palette: cfg.palette, previews: cfg.previews, canvas: clone(cfg.canvas),
         pageWidth: cfg.pageWidth, documentType: 'invoice', selectedId: null, scale: 1, guide: null,
-        history: [], future: [], dirty: false, saving: false, error: '', dragNew: null, dropHint: null, drag: null,
+        history: [], future: [], dirty: false, saving: false, error: '', warning: '', dragNew: null, dropHint: null, drag: null,
         icons: { logo: 'image', title: 'heading-1', issuer: 'building-2', client: 'user', meta: 'calendar', total_due: 'badge-euro',
                  subject: 'text-quote', totals: 'sigma', payment: 'landmark', legal: 'scale', text: 'type', divider: 'minus' },
 
@@ -163,6 +336,8 @@ function canvasEditor() {
             // Une zone s'agrandit d'elle-même si un bloc dépasse (adresse longue, texte…).
             this.$nextTick(() => this.fitBands());
             window.addEventListener('resize', () => this.fit());
+            // La largeur de la zone n'est définitive qu'une fois la page posée (panneaux, polices) : on réajuste à chaque changement.
+            if (window.ResizeObserver && this.$refs.stage) new ResizeObserver(() => this.fit()).observe(this.$refs.stage);
             window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
             this.$watch('selectedId', () => this.icons_());
             this.icons_();
@@ -175,7 +350,8 @@ function canvasEditor() {
         refit() { this.$nextTick(() => requestAnimationFrame(() => this.fitBands())); },
         bottomOf(band) {
             let bottom = 24;
-            this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block`).forEach((el) => { bottom = Math.max(bottom, el.offsetTop + el.offsetHeight + 16); });
+            // Les formes sont un décor : un nouveau bloc se pose par-dessus, pas en dessous.
+            this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block:not(.cv-b-shape)`).forEach((el) => { bottom = Math.max(bottom, el.offsetTop + el.offsetHeight + 16); });
             return bottom;
         },
         fitBands() {
@@ -188,6 +364,98 @@ function canvasEditor() {
                 if (needed > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, Math.ceil(needed / SNAP) * SNAP);
             }
         },
+        // --- Couleurs-variables et formes ---
+        colorTokens: ['', 'accent', 'secondary', 'ink', 'white', 'black', 'muted'],
+        colorNames: { '': 'Automatique', accent: 'Accent', secondary: 'Secondaire', ink: 'Texte', white: 'Blanc', black: 'Noir', muted: 'Gris' },
+        previewColor(token) {
+            return { accent: this.accent, secondary: this.canvas.colors.secondary, ink: this.canvas.colors.ink,
+                     white: '#ffffff', black: '#111827', muted: '#6b7280' }[token] || token || '';
+        },
+        shapeKinds: [
+            { kind: 'rect', label: 'Rectangle', icon: '<rect x="4" y="4" width="32" height="16" rx="2"/>' },
+            { kind: 'ellipse', label: 'Cercle', icon: '<ellipse cx="20" cy="12" rx="10" ry="10"/>' },
+            { kind: 'triangle', label: 'Angle', icon: '<polygon points="4,2 34,2 4,22"/>' },
+            { kind: 'diagonal', label: 'Diagonale', icon: '<polygon points="2,2 38,2 38,12 2,22"/>' },
+            { kind: 'line', label: 'Ligne', icon: '<rect x="2" y="10" width="36" height="3" rx="1"/>' },
+        ],
+        shapeSvg(b) {
+            const w = b.w, h = b.h, fill = this.previewColor(b.fill || 'accent'), op = (b.opacity || 100) / 100;
+            const paint = `fill="${esc(fill)}" fill-opacity="${op}"`;
+            let body;
+            if (b.shape === 'ellipse') body = `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${w / 2}" ry="${h / 2}" ${paint}/>`;
+            else if (b.shape === 'triangle') body = `<polygon points="0,0 ${w},0 0,${h}" ${paint}/>`;
+            else if (b.shape === 'diagonal') body = `<polygon points="0,0 ${w},0 ${w},${Math.round(h * 0.55)} 0,${h}" ${paint}/>`;
+            else body = `<rect width="${w}" height="${h}" rx="${Math.min(b.radius || 0, h / 2, w / 2)}" ${paint}/>`;
+            return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block">${body}</svg>`;
+        },
+        addShape(kind, patch = {}) {
+            this.snapshot();
+            const band = 'header';
+            const base = { rect: [200, 120], ellipse: [140, 140], triangle: [260, 160], diagonal: [794, 180], line: [300, 4] }[kind] || [200, 120];
+            const block = Object.assign(this.newBlock('shape', band, kind === 'diagonal' ? 0 : 40, 20), {
+                shape: kind, w: base[0], h: base[1], fill: 'accent', opacity: 100, radius: 0,
+            }, patch);
+            this.clamp(block);
+            // Après les formes existantes (donc devant elles), mais avant les blocs de contenu.
+            let at = 0;
+            this.canvas.blocks.forEach((x, i) => { if (x.type === 'shape') at = i + 1; });
+            this.canvas.blocks.splice(at, 0, block);
+            this.selectedId = block.id;
+            this.icons_();
+            this.refit();
+        },
+        addBanner() {
+            // Bandeau pleine largeur en haut de page ; les blocs posés dessus passent en blanc d'un clic.
+            this.addShape('rect', { x: 0, y: 0, w: this.pageWidth, h: 150 });
+        },
+        // Éléments obligatoires d'une facture absents de la page.
+        missing() {
+            const present = new Set(this.canvas.blocks.map((b) => b.type));
+            const out = Object.entries(cfg.mandatory || {}).filter(([key]) => !present.has(key)).map(([key, label]) => ({ key, label }));
+            if (this.canvas.items === false) out.unshift({ key: 'items', label: 'Tableau des lignes' });
+            return out;
+        },
+
+        // --- Tableau des lignes ---
+        tableVars: cfg.tableVariables || [],
+        varLabel(key) { return (this.tableVars.find((v) => v.key === key) || {}).label || key; },
+        tableChanged(record = false) {
+            if (record) this.snapshot(); else this.dirty = true;
+            clearTimeout(this._tableTimer);
+            this._tableTimer = setTimeout(() => this.refreshPreviews(), record ? 50 : 400);
+        },
+        addColumn(key) {
+            if (!key) return;
+            this.snapshot();
+            const col = { key, label: key === 'perso' ? 'Colonne' : this.varLabel(key), align: 'auto', width: 0, strong: false };
+            if (key === 'perso') col.text = '';
+            this.canvas.table.columns.push(col);
+            this.tableChanged();
+            this.icons_();
+        },
+        moveColumn(i, delta) {
+            const cols = this.canvas.table.columns, j = i + delta;
+            if (j < 0 || j >= cols.length) return;
+            this.snapshot();
+            [cols[i], cols[j]] = [cols[j], cols[i]];
+            this.tableChanged();
+        },
+        removeColumn(i) {
+            if (this.canvas.table.columns.length <= 1) return;
+            this.snapshot();
+            this.canvas.table.columns.splice(i, 1);
+            this.tableChanged();
+        },
+        insertVar(i, key) {
+            const col = this.canvas.table.columns[i];
+            const input = this.$root.querySelector(`input[data-col="${i}"]`);
+            const token = `{${key}}`;
+            const text = col.text || '';
+            const at = input && document.activeElement === input ? input.selectionStart : text.length;
+            col.text = (text.slice(0, at) + token + text.slice(at)).slice(0, 200);
+            this.tableChanged();
+            this.$nextTick(() => { if (input) { input.focus(); input.setSelectionRange(at + token.length, at + token.length); } });
+        },
         setItems(on) {
             this.snapshot();
             this.canvas.items = on;
@@ -197,9 +465,10 @@ function canvasEditor() {
         pageHeight() { return this.canvas.heights.header + this.canvas.heights.footer + 260; },
         pageStyle() {
             const font = this.font && cfg.fontStacks[this.font] ? `font-family:${cfg.fontStacks[this.font]};` : '';
-            return `transform:scale(${this.scale});--accent:${this.accent};--logo-h:52px;${font}`;
+            const c = this.canvas.colors || {};
+            return `transform:scale(${this.scale});--accent:${this.accent};--c2:${c.secondary || '#f3f4f6'};--ink:${c.ink || '#1f2937'};color:var(--ink);--logo-h:52px;${font}`;
         },
-        labelOf(type) { return (this.palette.find((p) => p.type === type) || {}).label || type; },
+        labelOf(type) { return type === 'shape' ? 'Forme' : ((this.palette.find((p) => p.type === type) || {}).label || type); },
         blocksIn(band) { return this.canvas.blocks.filter((b) => b.band === band); },
         selected() { return this.canvas.blocks.find((b) => b.id === this.selectedId) || null; },
         select(id) { this.selectedId = id; },
@@ -207,22 +476,32 @@ function canvasEditor() {
             return [`cv-b-${b.type}`, `al-${b.align}`, `sz-${b.size}`, b.accent ? 'is-accent' : '', b.id === this.selectedId ? 'is-selected' : ''].join(' ');
         },
         blockHtml(b) {
-            if (b.type === 'text') return `<p class="cv-text">${esc(b.text) || '<span class="ed-placeholder">Votre texte…</span>'}</p>`;
-            const html = this.previews[b.type] || '';
-            return html.trim() ? html : '<span class="ed-placeholder">(vide sur ce document)</span>';
+            if (b.type === 'shape') return this.shapeSvg(b);
+            let html;
+            if (b.type === 'text') html = `<p class="cv-text">${esc(b.text) || '<span class="ed-placeholder">Votre texte…</span>'}</p>`;
+            else {
+                html = this.previews[b.type] || '';
+                if (!html.trim()) html = '<span class="ed-placeholder">(vide sur ce document)</span>';
+            }
+            const css = [];
+            if (b.color) css.push(`color:${this.previewColor(b.color)}`);
+            if (b.bg) css.push(`background:${this.previewColor(b.bg)}`);
+            if (b.pad) css.push(`padding:${b.pad}px`);
+            if (b.radius) css.push(`border-radius:${b.radius}px`);
+            return css.length ? `<div class="cv-box${b.color ? ' has-color' : ''}" style="${esc(css.join(';'))}">${html}</div>` : html;
         },
 
         // --- Historique ---
         snapshot() { this.history.push(clone(this.canvas)); if (this.history.length > 60) this.history.shift(); this.future = []; this.dirty = true; },
         commit() { this.dirty = true; },
-        undo() { if (!this.history.length) return; this.future.push(clone(this.canvas)); this.canvas = this.history.pop(); this.dirty = true; this.icons_(); this.refit(); },
-        redo() { if (!this.future.length) return; this.history.push(clone(this.canvas)); this.canvas = this.future.pop(); this.dirty = true; this.icons_(); },
+        undo() { if (!this.history.length) return; this.future.push(clone(this.canvas)); this.canvas = this.history.pop(); this.dirty = true; this.icons_(); this.refit(); this.refreshPreviews(); },
+        redo() { if (!this.future.length) return; this.history.push(clone(this.canvas)); this.canvas = this.future.pop(); this.dirty = true; this.icons_(); this.refreshPreviews(); },
 
         // --- Blocs ---
         newBlock(type, band, x, y) {
             const spec = this.palette.find((p) => p.type === type);
-            const w = Math.min(spec.w, this.pageWidth - x);
-            const block = { id: 'b' + Math.random().toString(16).slice(2, 10), type, band, x, y, w, align: 'left', size: 'm', accent: false };
+            const w = Math.min(spec ? spec.w : 200, this.pageWidth - x);
+            const block = { id: 'b' + Math.random().toString(16).slice(2, 10), type, band, x, y, w: spec ? w : 200, align: 'left', size: 'm', accent: false, color: '', bg: '', pad: 0, radius: 0 };
             if (type === 'text') block.text = 'Votre texte';
             return block;
         },
@@ -261,7 +540,8 @@ function canvasEditor() {
             this.refit();
         },
         clamp(b) {
-            b.w = Math.max(40, Math.min(this.pageWidth, Math.round(b.w)));
+            if (b.type === 'shape') b.h = Math.max(2, Math.min(900, Math.round(b.h || 0)));
+            b.w = Math.max(b.type === 'shape' ? 2 : 40, Math.min(this.pageWidth, Math.round(b.w)));
             b.x = Math.max(0, Math.min(this.pageWidth - b.w, Math.round(b.x)));
             b.y = Math.max(0, Math.min(this.canvas.heights[b.band] - 10, Math.round(b.y)));
         },
@@ -331,9 +611,13 @@ function canvasEditor() {
         },
         startResize(event, b) {
             this.select(b.id);
-            const start = { x: event.clientX, w: b.w };
+            const start = { x: event.clientX, y: event.clientY, w: b.w, h: b.h };
             const before = clone(this.canvas);
-            const move = (e) => { b.w = Math.round((start.w + (e.clientX - start.x) / this.scale) / SNAP) * SNAP; this.clamp(b); };
+            const move = (e) => {
+                b.w = Math.round((start.w + (e.clientX - start.x) / this.scale) / SNAP) * SNAP;
+                if (b.type === 'shape') b.h = Math.round((start.h + (e.clientY - start.y) / this.scale) / SNAP) * SNAP;
+                this.clamp(b);
+            };
             const up = () => {
                 document.removeEventListener('pointermove', move);
                 document.removeEventListener('pointerup', up);
@@ -378,7 +662,7 @@ function canvasEditor() {
         async refreshPreviews() {
             const response = await fetch('{% url "templates_app:template-canvas-previews" template.id %}', {
                 method: 'POST', headers: { 'X-CSRFToken': this.csrf(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texts: this.texts, document_type: this.documentType }),
+                body: JSON.stringify({ texts: this.texts, document_type: this.documentType, table: this.canvas.table }),
             });
             const data = await response.json().catch(() => ({}));
             if (data.ok) { this.previews = data.previews; this.refit(); }
@@ -398,6 +682,8 @@ function canvasEditor() {
             const data = await response.json().catch(() => ({}));
             this.saving = false;
             if (!response.ok || !data.ok) { this.error = data.error || data.message || 'Enregistrement impossible.'; return; }
+            const gaps = this.missing();
+            this.warning = gaps.length ? `Enregistré, mais il manque des mentions obligatoires : ${gaps.map((m) => m.label).join(', ')}.` : '';
             this.dirty = false;
             if (thenPreview) window.open(`{% url 'templates_app:template-preview-frame' template.id %}?type=${this.documentType}`, '_blank', 'noopener');
         },
