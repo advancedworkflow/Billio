@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000 \
     RELEASE=${RELEASE}
 
-# Bibliothèques système : WeasyPrint (PDF des factures), polices, client PostgreSQL 17 (sauvegardes).
+# Bibliothèques système : WeasyPrint (PDF des factures), polices, client PostgreSQL 18 (sauvegardes ; doit être ≥ la version du serveur).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
  && install -d /usr/share/postgresql-common/pgdg \
@@ -18,7 +18,7 @@ RUN apt-get update \
  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
-      postgresql-client-17 \
+      postgresql-client-18 \
       libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 shared-mime-info \
       fonts-dejavu-core fonts-liberation \
  && apt-get purge -y gnupg && apt-get autoremove -y \
