@@ -1,0 +1,396 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}{{ template.name }} - Modèles - Billio{% endblock %}
+{% block page_title %}Éditeur de modèle{% endblock %}
+{% block page_subtitle %}Glissez les blocs sur la page, cliquez pour les régler{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ font_families|safe }}&display=swap">
+<style>{{ canvas_css|safe }}</style>
+<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+{{ config|json_script:"canvas-editor-config" }}
+<div class="ed" x-data="canvasEditor()" x-init="init()" @keydown.window="onKey($event)">
+
+    <!-- Barre du haut -->
+    <div class="ed-bar">
+        <a href="{% url 'templates_app:template-list' %}" class="ed-btn ed-btn--ghost" aria-label="Retour aux modèles"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+        <input class="ed-input ed-name" x-model="name" aria-label="Nom du modèle" maxlength="100" @input="dirty = true">
+        <div class="ed-bar-group" role="group" aria-label="Aperçu">
+            <button type="button" class="ed-seg" :class="documentType === 'invoice' && 'is-on'" @click="setDocType('invoice')">Facture</button>
+            <button type="button" class="ed-seg" :class="documentType === 'quote' && 'is-on'" @click="setDocType('quote')">Devis</button>
+        </div>
+        <div class="ed-bar-spacer"></div>
+        <button type="button" class="ed-btn ed-btn--ghost" @click="undo()" :disabled="!history.length" aria-label="Annuler" title="Annuler (Ctrl+Z)"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+        <button type="button" class="ed-btn ed-btn--ghost" @click="redo()" :disabled="!future.length" aria-label="Rétablir" title="Rétablir (Ctrl+Y)"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+        <a :href="`{% url 'templates_app:template-preview-frame' template.id %}?type=${documentType}`" target="_blank" rel="noopener" class="ed-btn" @click="if (dirty) { $event.preventDefault(); save(true); }"><i data-lucide="eye" class="w-4 h-4"></i> Aperçu</a>
+        <button type="button" class="ed-btn ed-btn--primary" @click="save()" :disabled="saving">
+            <span x-text="saving ? 'Enregistrement…' : (dirty ? 'Enregistrer' : 'Enregistré')"></span>
+        </button>
+    </div>
+    <p class="ed-error" x-show="error" x-text="error" role="alert"></p>
+
+    <div class="ed-main">
+        <!-- Blocs -->
+        <aside class="ed-panel ed-palette" aria-label="Blocs">
+            <p class="ed-panel-title">Blocs</p>
+            <p class="ed-hint">Glissez un bloc sur la page, ou cliquez pour l'ajouter.</p>
+            <div class="ed-palette-list">
+                <template x-for="item in palette" :key="item.type">
+                    <button type="button" class="ed-chip" draggable="true" @dragstart="dragNew = item.type; $event.dataTransfer.setData('text/plain', item.type)" @dragend="dragNew = null" @click="addBlock(item.type)">
+                        <i :data-lucide="icons[item.type] || 'square'" class="w-4 h-4"></i>
+                        <span x-text="item.label"></span>
+                    </button>
+                </template>
+            </div>
+        </aside>
+
+        <!-- Page A4 -->
+        <section class="ed-stage" x-ref="stage" @pointerdown.self="select(null)">
+            <div class="ed-page-wrap" :style="`width:${pageWidth * scale}px;height:${pageHeight() * scale}px`">
+                <div class="ed-page cv-doc" x-ref="page" :style="pageStyle()" @pointerdown.self="select(null)">
+                    <template x-for="band in ['header', 'footer']" :key="band">
+                        <div :class="`ed-band ed-band--${band}`" :style="`height:${canvas.heights[band]}px;order:${band === 'header' ? 0 : 2}`" :data-band="band"
+                             @dragover.prevent="dropHint = band" @dragleave="dropHint = null" @drop.prevent="dropNew($event, band)"
+                             @pointerdown.self="select(null)">
+                            <span class="ed-band-label" x-text="band === 'header' ? 'En-tête' : 'Bas de page'"></span>
+                            <template x-for="b in blocksIn(band)" :key="b.id">
+                                <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px`"
+                                     tabindex="0" role="button" :aria-label="labelOf(b.type) + ' — déplacer avec les flèches'"
+                                     @pointerdown="startMove($event, b)" @focus="select(b.id)">
+                                    <div class="ed-block-content" x-html="blockHtml(b)"></div>
+                                    <span class="ed-block-tag" x-text="labelOf(b.type)"></span>
+                                    <span class="ed-resize" @pointerdown.stop="startResize($event, b)" aria-hidden="true"></span>
+                                </div>
+                            </template>
+                            <div class="ed-empty" x-show="!blocksIn(band).length">Glissez des blocs ici</div>
+                            <span class="ed-band-resize" @pointerdown.stop="startBandResize($event, band)" title="Glisser pour changer la hauteur"></span>
+                        </div>
+                    </template>
+                    <div class="ed-items cv-body" style="order:1">
+                        <div x-html="previews.items"></div>
+                        <span class="ed-items-label">Tableau des lignes · s'allonge selon le nombre de lignes</span>
+                    </div>
+                    <template x-if="guide !== null"><span class="ed-guide" :style="`left:${guide}px`"></span></template>
+                </div>
+            </div>
+        </section>
+
+        <!-- Réglages -->
+        <aside class="ed-panel ed-props" aria-label="Réglages">
+            <template x-if="selected()">
+                <div class="ed-props-body">
+                    <p class="ed-panel-title" x-text="labelOf(selected().type)"></p>
+                    <div class="ed-field">
+                        <span>Alignement</span>
+                        <div class="ed-segs" role="group">
+                            <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
+                                <button type="button" class="ed-seg" :class="selected().align === a[0] && 'is-on'" @click="update({align: a[0]})" :aria-label="a[0]"><i :data-lucide="a[1]" class="w-4 h-4"></i></button>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="ed-field">
+                        <span>Taille du texte</span>
+                        <div class="ed-segs" role="group">
+                            <template x-for="s in [['s','Petit'],['m','Normal'],['l','Grand']]" :key="s[0]">
+                                <button type="button" class="ed-seg" :class="selected().size === s[0] && 'is-on'" @click="update({size: s[0]})" x-text="s[1]"></button>
+                            </template>
+                        </div>
+                    </div>
+                    <label class="ed-switch"><input type="checkbox" :checked="selected().accent" @change="update({accent: $event.target.checked})"> <span>Couleur d'accent</span></label>
+                    <template x-if="selected().type === 'text'">
+                        <label class="ed-field"><span>Texte</span><textarea class="ed-input" rows="5" maxlength="1500" :value="selected().text" @input="update({text: $event.target.value}, false)" @change="commit()"></textarea></label>
+                    </template>
+                    <div class="ed-grid3">
+                        <label class="ed-field"><span>X</span><input class="ed-input" type="number" :value="selected().x" @change="update({x: +$event.target.value})"></label>
+                        <label class="ed-field"><span>Y</span><input class="ed-input" type="number" :value="selected().y" @change="update({y: +$event.target.value})"></label>
+                        <label class="ed-field"><span>Largeur</span><input class="ed-input" type="number" :value="selected().w" @change="update({w: +$event.target.value})"></label>
+                    </div>
+                    <div class="ed-props-actions">
+                        <button type="button" class="ed-btn" @click="duplicate()"><i data-lucide="copy" class="w-4 h-4"></i> Dupliquer</button>
+                        <button type="button" class="ed-btn ed-btn--danger" @click="remove()"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer</button>
+                    </div>
+                    <p class="ed-hint">Flèches : déplacer (Maj + flèche : 10 px). Suppr : retirer le bloc.</p>
+                </div>
+            </template>
+            <template x-if="!selected()">
+                <div class="ed-props-body">
+                    <p class="ed-panel-title">Modèle</p>
+                    <label class="ed-field"><span>Couleur d'accent</span>
+                        <div class="ed-color"><input type="color" x-model="accent" @input="dirty = true"><input class="ed-input" x-model="accent" maxlength="7" @input="dirty = true"></div>
+                    </label>
+                    <label class="ed-field"><span>Police</span>
+                        <select class="ed-input" x-model="font" @change="dirty = true">
+                            <option value="">Inter (par défaut)</option>
+                            <template x-for="f in fonts" :key="f"><option :value="f" x-text="f" :selected="font === f"></option></template>
+                        </select>
+                    </label>
+                    <label class="ed-field"><span>Conditions de paiement</span><textarea class="ed-input" rows="3" x-model="texts.payment_terms" @input="textsChanged()"></textarea></label>
+                    <label class="ed-field"><span>Mot de fin</span><input class="ed-input" x-model="texts.thank_you" @input="textsChanged()"></label>
+                    <label class="ed-field"><span>Mentions légales</span><textarea class="ed-input" rows="4" x-model="texts.legal_mentions" @input="textsChanged()"></textarea></label>
+                    <label class="ed-switch"><input type="checkbox" x-model="isDefault" @change="dirty = true"> <span>Modèle par défaut</span></label>
+                    <p class="ed-hint">Cliquez sur un bloc de la page pour le régler. Les zones « En-tête » et « Bas de page » s'agrandissent avec la poignée sous chacune.</p>
+                    <a class="ed-link" href="{% url 'templates_app:template-edit' template.id %}?code=1">Modifier le code HTML / CSS (avancé)</a>
+                </div>
+            </template>
+        </aside>
+    </div>
+</div>
+
+<script>
+function canvasEditor() {
+    const cfg = JSON.parse(document.getElementById('canvas-editor-config').textContent);
+    const SNAP = 4, GUIDE = 6;
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    const esc = (t) => String(t || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    return {
+        name: cfg.name, isDefault: cfg.isDefault, accent: cfg.accent, font: cfg.font, fonts: cfg.fonts,
+        texts: cfg.texts, palette: cfg.palette, previews: cfg.previews, canvas: clone(cfg.canvas),
+        pageWidth: cfg.pageWidth, documentType: 'invoice', selectedId: null, scale: 1, guide: null,
+        history: [], future: [], dirty: false, saving: false, error: '', dragNew: null, dropHint: null, drag: null,
+        icons: { logo: 'image', title: 'heading-1', issuer: 'building-2', client: 'user', meta: 'calendar', total_due: 'badge-euro',
+                 subject: 'text-quote', totals: 'sigma', payment: 'landmark', legal: 'scale', text: 'type', divider: 'minus' },
+
+        init() {
+            this.fit();
+            // Une zone s'agrandit d'elle-même si un bloc dépasse (adresse longue, texte…).
+            this.$nextTick(() => this.fitBands());
+            window.addEventListener('resize', () => this.fit());
+            window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
+            this.$watch('selectedId', () => this.icons_());
+            this.icons_();
+        },
+        icons_() { this.$nextTick(() => window.lucide && lucide.createIcons()); },
+        fit() {
+            const width = this.$refs.stage ? this.$refs.stage.clientWidth - 48 : this.pageWidth;
+            this.scale = Math.min(1, Math.max(0.45, width / this.pageWidth));
+        },
+        refit() { this.$nextTick(() => requestAnimationFrame(() => this.fitBands())); },
+        bottomOf(band) {
+            let bottom = 24;
+            this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block`).forEach((el) => { bottom = Math.max(bottom, el.offsetTop + el.offsetHeight + 16); });
+            return bottom;
+        },
+        fitBands() {
+            if (!this.$refs.page) return;
+            for (const band of ['header', 'footer']) {
+                let needed = 60;
+                this.$refs.page.querySelectorAll(`[data-band=${band}] .ed-block`).forEach((el) => {
+                    needed = Math.max(needed, el.offsetTop + el.offsetHeight + 16);
+                });
+                if (needed > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, Math.ceil(needed / SNAP) * SNAP);
+            }
+        },
+        pageHeight() { return this.canvas.heights.header + this.canvas.heights.footer + 260; },
+        pageStyle() {
+            const font = this.font && cfg.fontStacks[this.font] ? `font-family:${cfg.fontStacks[this.font]};` : '';
+            return `transform:scale(${this.scale});--accent:${this.accent};--logo-h:52px;${font}`;
+        },
+        labelOf(type) { return (this.palette.find((p) => p.type === type) || {}).label || type; },
+        blocksIn(band) { return this.canvas.blocks.filter((b) => b.band === band); },
+        selected() { return this.canvas.blocks.find((b) => b.id === this.selectedId) || null; },
+        select(id) { this.selectedId = id; },
+        blockClasses(b) {
+            return [`cv-b-${b.type}`, `al-${b.align}`, `sz-${b.size}`, b.accent ? 'is-accent' : '', b.id === this.selectedId ? 'is-selected' : ''].join(' ');
+        },
+        blockHtml(b) {
+            if (b.type === 'text') return `<p class="cv-text">${esc(b.text) || '<span class="ed-placeholder">Votre texte…</span>'}</p>`;
+            const html = this.previews[b.type] || '';
+            return html.trim() ? html : '<span class="ed-placeholder">(vide sur ce document)</span>';
+        },
+
+        // --- Historique ---
+        snapshot() { this.history.push(clone(this.canvas)); if (this.history.length > 60) this.history.shift(); this.future = []; this.dirty = true; },
+        commit() { this.dirty = true; },
+        undo() { if (!this.history.length) return; this.future.push(clone(this.canvas)); this.canvas = this.history.pop(); this.dirty = true; this.icons_(); this.refit(); },
+        redo() { if (!this.future.length) return; this.history.push(clone(this.canvas)); this.canvas = this.future.pop(); this.dirty = true; this.icons_(); },
+
+        // --- Blocs ---
+        newBlock(type, band, x, y) {
+            const spec = this.palette.find((p) => p.type === type);
+            const w = Math.min(spec.w, this.pageWidth - x);
+            const block = { id: 'b' + Math.random().toString(16).slice(2, 10), type, band, x, y, w, align: 'left', size: 'm', accent: false };
+            if (type === 'text') block.text = 'Votre texte';
+            return block;
+        },
+        addBlock(type) {
+            const spec = this.palette.find((p) => p.type === type);
+            const band = spec.band;
+            const bottom = Math.ceil(this.bottomOf(band) / SNAP) * SNAP;  // sous le dernier bloc, d'après sa vraie hauteur
+            this.snapshot();
+            if (bottom + 60 > this.canvas.heights[band]) this.canvas.heights[band] = Math.min(900, bottom + 90);
+            const block = this.newBlock(type, band, cfg.padding, bottom);
+            this.canvas.blocks.push(block);
+            this.selectedId = block.id;
+            this.icons_();
+            this.refit();
+        },
+        dropNew(event, band) {
+            this.dropHint = null;
+            const type = this.dragNew || event.dataTransfer.getData('text/plain');
+            if (!type || !this.palette.find((p) => p.type === type)) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = Math.max(0, Math.round((event.clientX - rect.left) / this.scale / SNAP) * SNAP - 20);
+            const y = Math.max(0, Math.round((event.clientY - rect.top) / this.scale / SNAP) * SNAP - 12);
+            this.snapshot();
+            const block = this.newBlock(type, band, Math.min(x, this.pageWidth - 60), Math.min(y, this.canvas.heights[band] - 20));
+            this.canvas.blocks.push(block);
+            this.selectedId = block.id;
+            this.dragNew = null;
+            this.refit();
+        },
+        update(patch, record = true) {
+            const b = this.selected();
+            if (!b) return;
+            if (record) this.snapshot(); else this.dirty = true;
+            Object.assign(b, patch);
+            this.clamp(b);
+            this.refit();
+        },
+        clamp(b) {
+            b.w = Math.max(40, Math.min(this.pageWidth, Math.round(b.w)));
+            b.x = Math.max(0, Math.min(this.pageWidth - b.w, Math.round(b.x)));
+            b.y = Math.max(0, Math.min(this.canvas.heights[b.band] - 10, Math.round(b.y)));
+        },
+        duplicate() {
+            const b = this.selected();
+            if (!b) return;
+            this.snapshot();
+            const copy = Object.assign(clone(b), { id: 'b' + Math.random().toString(16).slice(2, 10), y: b.y + 24 });
+            this.clamp(copy);
+            this.canvas.blocks.push(copy);
+            this.selectedId = copy.id;
+            this.refit();
+        },
+        remove() {
+            if (!this.selectedId) return;
+            this.snapshot();
+            this.canvas.blocks = this.canvas.blocks.filter((b) => b.id !== this.selectedId);
+            this.selectedId = null;
+        },
+
+        // --- Glisser / redimensionner ---
+        bandAt(clientY) {
+            for (const el of this.$refs.page.querySelectorAll('[data-band]')) {
+                const r = el.getBoundingClientRect();
+                if (clientY >= r.top && clientY <= r.bottom) return { band: el.dataset.band, rect: r };
+            }
+            return null;
+        },
+        snapX(b) {
+            const candidates = [[cfg.padding, b.x], [this.pageWidth - cfg.padding - b.w, b.x], [(this.pageWidth - b.w) / 2, b.x]];
+            const lines = [cfg.padding, this.pageWidth - cfg.padding, this.pageWidth / 2];
+            for (let i = 0; i < candidates.length; i += 1) {
+                if (Math.abs(candidates[i][0] - b.x) <= GUIDE) { b.x = Math.round(candidates[i][0]); this.guide = lines[i] * 1; return; }
+            }
+            this.guide = null;
+        },
+        startMove(event, b) {
+            if (event.button !== 0) return;
+            this.select(b.id);
+            const start = { x: event.clientX, y: event.clientY, bx: b.x, by: b.y, band: b.band, moved: false };
+            const before = clone(this.canvas);
+            const move = (e) => {
+                const dx = (e.clientX - start.x) / this.scale, dy = (e.clientY - start.y) / this.scale;
+                if (!start.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
+                start.moved = true;
+                b.x = Math.round((start.bx + dx) / SNAP) * SNAP;
+                const over = this.bandAt(e.clientY);
+                if (over && over.band !== b.band) {
+                    b.band = over.band;
+                    b.y = Math.round((e.clientY - over.rect.top) / this.scale / SNAP) * SNAP;
+                } else if (b.band === start.band) {
+                    b.y = Math.round((start.by + dy) / SNAP) * SNAP;
+                } else if (over) {
+                    b.y = Math.round((e.clientY - over.rect.top) / this.scale / SNAP) * SNAP;
+                }
+                this.clamp(b);
+                this.snapX(b);
+            };
+            const up = () => {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                this.guide = null;
+                if (start.moved) { this.history.push(before); this.future = []; this.dirty = true; this.refit(); }
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        },
+        startResize(event, b) {
+            this.select(b.id);
+            const start = { x: event.clientX, w: b.w };
+            const before = clone(this.canvas);
+            const move = (e) => { b.w = Math.round((start.w + (e.clientX - start.x) / this.scale) / SNAP) * SNAP; this.clamp(b); };
+            const up = () => {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                this.history.push(before); this.future = []; this.dirty = true;
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        },
+        startBandResize(event, band) {
+            const start = { y: event.clientY, h: this.canvas.heights[band] };
+            const before = clone(this.canvas);
+            const lowest = this.blocksIn(band).reduce((max, b) => Math.max(max, b.y + 20), 60);
+            const move = (e) => {
+                this.canvas.heights[band] = Math.max(lowest, Math.min(900, Math.round((start.h + (e.clientY - start.y) / this.scale) / SNAP) * SNAP));
+            };
+            const up = () => {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                this.history.push(before); this.future = []; this.dirty = true;
+            };
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        },
+
+        // --- Clavier ---
+        onKey(e) {
+            const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); this.redo(); return; }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); this.save(); return; }
+            const b = this.selected();
+            if (!b || typing) return;
+            const step = e.shiftKey ? 10 : 1;
+            const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+            if (moves[e.key]) { e.preventDefault(); this.update({ x: b.x + moves[e.key][0], y: b.y + moves[e.key][1] }); }
+            else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); this.remove(); }
+            else if (e.key === 'Escape') { this.select(null); }
+        },
+
+        // --- Aperçus et enregistrement ---
+        csrf() { const el = document.querySelector('[name=csrfmiddlewaretoken]'); return el ? el.value : ''; },
+        async refreshPreviews() {
+            const response = await fetch('{% url "templates_app:template-canvas-previews" template.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': this.csrf(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texts: this.texts, document_type: this.documentType }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (data.ok) { this.previews = data.previews; this.refit(); }
+        },
+        textsChanged() {
+            this.dirty = true;
+            clearTimeout(this._textTimer);
+            this._textTimer = setTimeout(() => this.refreshPreviews(), 500);
+        },
+        setDocType(type) { this.documentType = type; this.refreshPreviews(); },
+        async save(thenPreview = false) {
+            this.saving = true; this.error = '';
+            const response = await fetch('{% url "templates_app:template-canvas-save" template.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': this.csrf(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: this.name, canvas: this.canvas, accent: this.accent, font: this.font, texts: this.texts, is_default: this.isDefault }),
+            });
+            const data = await response.json().catch(() => ({}));
+            this.saving = false;
+            if (!response.ok || !data.ok) { this.error = data.error || data.message || 'Enregistrement impossible.'; return; }
+            this.dirty = false;
+            if (thenPreview) window.open(`{% url 'templates_app:template-preview-frame' template.id %}?type=${this.documentType}`, '_blank', 'noopener');
+        },
+    };
+}
+</script>
+{% endblock %}

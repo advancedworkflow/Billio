@@ -52,6 +52,7 @@ def _serialize_templates_for_editor(templates):
             'id': str(template.id),
             'source': 'personal',
             'name': template.name,
+            'preview_url': reverse('templates_app:template-preview-frame', args=[template.id]),
             'html_structure': template.html_structure or '',
             'css_styles': template.css_styles or '',
             'variable_schema': layout.get('variable_schema') or layout.get('schema') or {'fields': []},
@@ -70,6 +71,7 @@ def _serialize_marketplace_for_invoice_carousel(qs):
             'id': f'm-{mt.id}',
             'source': 'marketplace',
             'name': mt.title,
+            'preview_url': reverse('templates_app:marketplace-preview-frame', args=[mt.id]),
             'html_structure': mt.html_structure or '',
             'css_styles': mt.css_styles or '',
             'variable_schema': layout.get('variable_schema') or layout.get('schema') or {'fields': []},
@@ -97,7 +99,8 @@ def build_invoice_editor_templates_library(organization):
     personal_qs = [t for t in personal_qs if (t.html_structure or '').strip() not in ('', placeholder_html)]
     personal = _serialize_templates_for_editor(personal_qs)
     from apps.templates_app.pro_templates import PRO_TEMPLATES
-    pro_order = {spec['slug']: index for index, spec in enumerate(PRO_TEMPLATES)}
+    from apps.templates_app.canvas import CANVAS_TEMPLATES
+    pro_order = {spec['slug']: index for index, spec in enumerate(PRO_TEMPLATES + CANVAS_TEMPLATES)}
     mp_qs = sorted(
         MarketplaceTemplate.objects.filter(is_active=True, is_approved=True).order_by('-created_at')[:30],
         key=lambda mt: pro_order.get(mt.slug, len(pro_order)),  # modèles « pro » en tête, dans l'ordre défini

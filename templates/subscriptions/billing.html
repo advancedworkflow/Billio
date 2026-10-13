@@ -173,15 +173,4 @@
     </section>
 </div>
 
-<script>
-    // Confirmation Billio avant les changements de forfait et la résiliation.
-    document.querySelectorAll('form[data-confirm]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            if (form.dataset.confirmed) return;
-            event.preventDefault();
-            const ok = await billioConfirm({ title: form.dataset.confirm, message: form.dataset.confirmMessage, confirmLabel: 'Confirmer', icon: 'gem' });
-            if (ok) { form.dataset.confirmed = '1'; form.submit(); }
-        });
-    });
-</script>
 {% endblock %}

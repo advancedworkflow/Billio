@@ -159,7 +159,8 @@ def template_new(request):
     template = InvoiceTemplate.objects.create(
         organization=org, name=name, html_structure=html or '', css_styles=css or '',
         layout_config={'variable_schema': _schema(source) or {'fields': []},
-                       'source': getattr(source, 'slug', '') or ''},
+                       'source': getattr(source, 'slug', '') or '',
+                       **({'canvas': source.layout_config['canvas']} if isinstance(source.layout_config, dict) and source.layout_config.get('canvas') else {})},
         style_config={'variables_defaults': _defaults(source),
                       **({'font_override': source.style_config.get('font_override')} if isinstance(source.style_config, dict) and source.style_config.get('font_override') else {})},
         is_active=True, is_default=not InvoiceTemplate.objects.filter(organization=org, is_default=True).exists(),
@@ -174,6 +175,8 @@ def template_new(request):
 @login_required
 def template_editor(request, template_id):
     template = get_object_or_404(_user_templates(request.user), id=template_id)
+    if isinstance(template.layout_config, dict) and template.layout_config.get('canvas') and request.GET.get('code') != '1':
+        return redirect('templates_app:template-canvas', template_id=template.id)
     layouts = [
         {'id': m.id, 'title': m.title, 'description': m.description or '', 'html': m.html_structure or '', 'css': m.css_styles or ''}
         for m in MarketplaceTemplate.objects.filter(is_active=True, is_approved=True, slug__startswith='pro-').order_by('id')

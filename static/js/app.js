@@ -613,3 +613,12 @@ window.billioConfirm = function (options) {
 window.billioAlert = function (message, title) {
     return window.billioConfirm({ title: title || 'Information', message, confirmLabel: 'OK', icon: 'info', alert: true });
 };
+
+/* Formulaires <form data-confirm="Titre" data-confirm-message="…"> : confirmation Billio avant envoi. */
+document.addEventListener('submit', async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || !form.dataset.confirm || form.dataset.confirmed) return;
+    event.preventDefault();
+    const ok = await window.billioConfirm({ title: form.dataset.confirm, message: form.dataset.confirmMessage || '', confirmLabel: form.dataset.confirmLabel || 'Confirmer', tone: form.dataset.confirmTone || 'primary' });
+    if (ok) { form.dataset.confirmed = '1'; form.requestSubmit ? form.requestSubmit() : form.submit(); }
+}, true);

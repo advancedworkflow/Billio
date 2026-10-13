@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=1.8">
+<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=1.9">
 <script src="{% static 'js/invoice-editor.js' %}?v=2.0"></script>
 {% endblock %}
 
@@ -50,16 +50,21 @@
                 <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
             </button>
             <div class="ie-pop ie-templates" x-show="templatesOpen" x-cloak @click.outside="templatesOpen = false" x-transition.opacity>
-                <p class="ie-pop-title">Modèle de facture</p>
-                <div class="ie-template-list">
-                    <template x-for="t in templatesLibrary" :key="t.id">
-                        <button type="button" class="ie-template" :class="String(selectedTemplate) === String(t.id) ? 'is-active' : ''" @click="selectTemplate(t.id); templatesOpen = false">
-                            <span class="ie-template-mark" x-text="initials(t.name)"></span>
-                            <span class="ie-truncate" x-text="t.name"></span>
-                            <span class="ie-template-src" x-text="t.source === 'marketplace' ? 'Galerie' : 'Mes modèles'"></span>
-                        </button>
-                    </template>
-                </div>
+                <p class="ie-pop-title">Choisir un modèle</p>
+                <template x-if="templatesOpen">
+                    <div class="ie-template-grid">
+                        <template x-for="t in templatesLibrary" :key="t.id">
+                            <button type="button" class="ie-tpl-card" :class="String(selectedTemplate) === String(t.id) ? 'is-active' : ''" @click="selectTemplate(t.id); templatesOpen = false" :aria-label="'Modèle ' + t.name">
+                                <span class="ie-tpl-thumb" x-init="$nextTick(() => $el.style.setProperty('--tpl-scale', $el.clientWidth / 794))">
+                                    <template x-if="t.preview_url"><iframe :src="t.preview_url" loading="lazy" tabindex="-1" aria-hidden="true"></iframe></template>
+                                    <span class="ie-tpl-check" x-show="String(selectedTemplate) === String(t.id)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+                                </span>
+                                <span class="ie-tpl-name ie-truncate" x-text="t.name"></span>
+                                <span class="ie-template-src" x-text="t.source === 'marketplace' ? 'Galerie' : 'Mes modèles'"></span>
+                            </button>
+                        </template>
+                    </div>
+                </template>
                 <a href="{% url 'templates_app:template-list' %}" class="ie-pop-link"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Gérer les modèles</a>
             </div>
         </div>

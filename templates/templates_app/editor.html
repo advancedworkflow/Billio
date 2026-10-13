@@ -21,6 +21,7 @@
         <input class="te-name" x-model="name" @input="touch()" maxlength="100" aria-label="Nom du modèle">
         <span class="te-status" :class="error && 'is-error'" x-text="status"></span>
         <div class="te-top-spacer"></div>
+        <form method="post" action="{% url 'templates_app:template-canvas-convert' template.id %}" data-confirm="Passer en mise en page libre ?" data-confirm-message="La disposition repart du modèle « Classique » ; vous la réarrangez ensuite à la souris. Couleurs et textes sont conservés.">{% csrf_token %}<button type="submit" class="te-btn"><i data-lucide="move" class="w-4 h-4"></i> Mise en page libre</button></form>
         <label class="te-default"><input type="checkbox" x-model="isDefault" @change="touch()"> Modèle par défaut</label>
         <button type="button" class="te-btn te-btn--primary" @click="save()" :disabled="saving"><i data-lucide="check" class="w-4 h-4"></i> Enregistrer</button>
     </header>

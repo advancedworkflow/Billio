@@ -3,7 +3,7 @@ URLs for templates_app.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import editor_views, views
+from . import canvas_views, editor_views, views
 
 app_name = 'templates_app'
 
@@ -15,6 +15,11 @@ urlpatterns = [
     path('list/', editor_views.template_list, name='template-list'),
     path('create/', editor_views.template_new, name='template-create'),
     path('<int:template_id>/edit/', editor_views.template_editor, name='template-edit'),
+    path('blank/', canvas_views.canvas_blank, name='template-blank'),
+    path('<int:template_id>/canvas/', canvas_views.canvas_editor, name='template-canvas'),
+    path('<int:template_id>/canvas/previews/', canvas_views.canvas_previews, name='template-canvas-previews'),
+    path('<int:template_id>/canvas/save/', canvas_views.canvas_save, name='template-canvas-save'),
+    path('<int:template_id>/canvas/convert/', canvas_views.canvas_convert, name='template-canvas-convert'),
     path('<int:template_id>/preview/', editor_views.template_preview_frame, name='template-preview-frame'),
     path('<int:template_id>/editor/preview/', editor_views.template_editor_preview, name='template-editor-preview'),
     path('<int:template_id>/editor/save/', editor_views.template_editor_save, name='template-editor-save'),
