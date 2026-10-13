@@ -70,7 +70,7 @@ def sample_context(organization=None, document_type='invoice'):
         'document_number': 'DEV-2026-0012' if is_quote else 'FAC-2026-0042',
         'issue_date': today.strftime('%d/%m/%Y'),
         'due_date': (today + timedelta(days=30)).strftime('%d/%m/%Y'),
-        'currency': 'EUR',
+        'currency': getattr(org, 'default_currency', '') or 'USD',
         'subject': 'Refonte du site internet' if is_quote else '',
         'delivery_terms': 'Livraison sous 4 semaines après acceptation.' if is_quote else '',
         'notes': '',
@@ -102,6 +102,8 @@ def sample_context(organization=None, document_type='invoice'):
 def render_preview(html, css, defaults=None, organization=None, document_type='invoice', font=None):
     """Document HTML complet (pour iframe srcdoc ou réponse directe)."""
     check_template_source(html)
+    from apps.organizations.currencies import activate
+    activate(organization)
     from .models import apply_billing_texts
     context = apply_billing_texts(dict(defaults or {}), organization)
     context.update(sample_context(organization, document_type))

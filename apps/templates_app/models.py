@@ -94,6 +94,8 @@ class InvoiceTemplate(models.Model):
             str: HTML rendu avec les données du document
         """
         # Préparer les données de contexte (données document + variables personnalisables)
+        from apps.organizations.currencies import activate
+        activate(document.organization)
         context_data = self._prepare_context_data(document)
 
         # Créer le template Django

@@ -35,7 +35,7 @@ class CanvasEngineTests(TestCase):
             fields = canvas.template_fields(spec)
             page = render_preview(fields['html_structure'], fields['css_styles'], fields['style_config']['variables_defaults'], None, 'quote')
             self.assertIn('Atelier Lumière SARL', page, spec['slug'])
-            self.assertIn('4 248,00', page.replace('\xa0', ' ').replace(' ', ' '), spec['slug'])
+            self.assertIn('$4,248.00', page, spec['slug'])  # sans organisation : exemple en dollars
         self.assertEqual(MarketplaceTemplate.objects.filter(slug__startswith='libre-').count(), len(canvas.CANVAS_TEMPLATES))
 
 

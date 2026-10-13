@@ -11,7 +11,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=1.9">
-<script src="{% static 'js/invoice-editor.js' %}?v=2.0"></script>
+<script src="{% static 'js/invoice-editor.js' %}?v=2.1"></script>
 {% endblock %}
 
 {% block content %}
@@ -231,10 +231,7 @@
                         </div>
                         <label class="ie-field"><span>Devise</span>
                             <select x-model="invoiceData.currency" @change="touch()">
-                                <option value="EUR">Euro (€)</option>
-                                <option value="USD">Dollar US ($)</option>
-                                <option value="GBP">Livre sterling (£)</option>
-                                <option value="CAD">Dollar canadien ($)</option>
+                                {% for code, label in currency_choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
                             </select>
                         </label>
                         <label class="ie-field"><span>Description <em>(interne)</em></span><textarea rows="2" x-model="invoiceData.description" @input="touch()"></textarea></label>
@@ -273,10 +270,7 @@
                         </div>
                         <label class="ie-field"><span>Devise</span>
                             <select x-model="invoiceData.currency" @change="touch()">
-                                <option value="EUR">Euro (€)</option>
-                                <option value="USD">Dollar US ($)</option>
-                                <option value="GBP">Livre sterling (£)</option>
-                                <option value="CAD">Dollar canadien ($)</option>
+                                {% for code, label in currency_choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
                             </select>
                         </label>
                     </div>
@@ -560,6 +554,7 @@
 
 {{ invoice_editor_bootstrap|json_script:"invoice-editor-bootstrap" }}
 {{ templates_data_obj|json_script:"invoice-editor-templates" }}
+{{ currency_formats|default:None|json_script:"invoice-editor-currencies" }}
 {{ clients_data|json_script:"invoice-editor-clients" }}
 {{ organization_data|json_script:"invoice-editor-organization" }}
 {{ products_data|json_script:"invoice-editor-products" }}

@@ -128,21 +128,14 @@ def dashboard_home(request):
             pass
         return fallback_dt.year, fallback_dt.month
 
+    from apps.organizations.currencies import DEFAULT_CURRENCY, format_money
+    _membership = request.user.organization_memberships.select_related('organization').first()
+    _org = request.user.owned_organizations.first() or (_membership.organization if _membership else None)
+    dashboard_currency = getattr(_org, 'default_currency', '') or DEFAULT_CURRENCY
+
     def format_eur(value) -> str:
-        """
-        Format simple FR : "1 205 467,06 €".
-        (Pas de dépendance Babel pour rester léger.)
-        """
-        try:
-            dec = Decimal(value or 0)
-        except Exception:
-            dec = Decimal("0")
-        dec = dec.quantize(Decimal("0.01"))
-        sign = "-" if dec < 0 else ""
-        dec = abs(dec)
-        s = f"{dec:,.2f}"  # 1,205,467.06
-        s = s.replace(",", " ").replace(".", ",")
-        return f"{sign}{s} €"
+        """Montant dans la devise par défaut de l'organisation : « $1,205,467.06 », « 1 205 467,06 € »."""
+        return format_money(value or 0, dashboard_currency)
 
     def build_trend(current_value: Decimal, previous_value: Decimal) -> dict:
         """
@@ -526,18 +519,14 @@ def analytics_home(request):
     from apps.invoices.models import Invoice
 
     # Helpers (kept local to avoid changing existing dashboard logic).
+    from apps.organizations.currencies import DEFAULT_CURRENCY, format_money
+    _membership = request.user.organization_memberships.select_related('organization').first()
+    _org = request.user.owned_organizations.first() or (_membership.organization if _membership else None)
+    dashboard_currency = getattr(_org, 'default_currency', '') or DEFAULT_CURRENCY
+
     def format_eur(value) -> str:
-        """Format simple FR : "1 205 467,06 €"."""
-        try:
-            dec = Decimal(value or 0)
-        except Exception:
-            dec = Decimal("0")
-        dec = dec.quantize(Decimal("0.01"))
-        sign = "-" if dec < 0 else ""
-        dec = abs(dec)
-        s = f"{dec:,.2f}"  # 1,205,467.06
-        s = s.replace(",", " ").replace(".", ",")
-        return f"{sign}{s} €"
+        """Montant dans la devise par défaut de l'organisation : « $1,205,467.06 », « 1 205 467,06 € »."""
+        return format_money(value or 0, dashboard_currency)
 
     def user_accessible_org_ids(user) -> list[int]:
         org_ids = list(user.owned_organizations.values_list("id", flat=True))
@@ -1700,12 +1689,12 @@ def global_search(request):
     for i in Invoice.objects.filter(organization_id__in=org_ids).filter(
             Q(invoice_number__icontains=q) | Q(client__name__icontains=q) | Q(title__icontains=q)).select_related('client').order_by('-created_at')[:5]:
         results.append({'type': 'Facture', 'icon': 'receipt-text', 'label': f"{i.invoice_number} · {i.client.name if i.client_id else ''}",
-                        'sub': f"{money(i.total_amount or 0)} · {i.get_status_display()}",
+                        'sub': f"{format_money(i.total_amount or 0, i.currency)} · {i.get_status_display()}",
                         'url': reverse('invoices:invoice-preview', args=[i.id])})
     for d in Quote.objects.filter(organization_id__in=org_ids).filter(
             Q(quote_number__icontains=q) | Q(client__name__icontains=q) | Q(title__icontains=q)).select_related('client').order_by('-created_at')[:5]:
         results.append({'type': 'Devis', 'icon': 'file-text', 'label': f"{d.quote_number} · {d.client.name if d.client_id else ''}",
-                        'sub': f"{money(d.total_amount or 0)} · {d.get_status_display()}",
+                        'sub': f"{format_money(d.total_amount or 0, d.currency)} · {d.get_status_display()}",
                         'url': reverse('invoices:quote-preview', args=[d.id])})
     for p in Project.objects.filter(organization_id__in=org_ids).filter(
             Q(name__icontains=q) | Q(client__name__icontains=q) | Q(reference__icontains=q)).select_related('client')[:5]:

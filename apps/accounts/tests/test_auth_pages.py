@@ -8,7 +8,7 @@ from apps.accounts.models import User
 class LoginTests(TestCase):
     def setUp(self):
         User.objects.create_user(username='camille', email='camille@test.fr', password='Bon-Mot-2026')
-        self.http = HttpClient(HTTP_HOST='127.0.0.1')
+        self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')  # textes vérifiés en français
 
     def login(self, email, password, next_url=None):
         url = reverse('accounts:login') + (f'?next={next_url}' if next_url else '')
@@ -35,7 +35,7 @@ class LoginTests(TestCase):
 
 class LegalPagesTests(TestCase):
     def test_legal_pages_and_links(self):
-        http = HttpClient(HTTP_HOST='127.0.0.1')
+        http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')  # textes vérifiés en français
         for name, title in (('landing:legal-notice', 'Mentions légales'), ('landing:terms', "Conditions générales d"),
                             ('landing:privacy', 'Politique de confidentialité')):
             self.assertContains(http.get(reverse(name)), title)
@@ -49,7 +49,7 @@ class LegalPagesTests(TestCase):
 
 class SignupTests(TestCase):
     def setUp(self):
-        self.http = HttpClient(HTTP_HOST='127.0.0.1')
+        self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')  # textes vérifiés en français
 
     def signup(self, **overrides):
         data = {'name': 'Julie Moreau', 'email': 'Julie@Moreau-Photo.fr', 'password': 'Photo-Lumiere-2026', 'trade': 'audiovisuel'}

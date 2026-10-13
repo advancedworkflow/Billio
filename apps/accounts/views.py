@@ -148,6 +148,9 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
+            from apps.translations.middleware import request_language
+            user.language = request_language(request)
+            user.save(update_fields=['language'])
             # Create user profile
             UserProfile.objects.create(user=user, industry=form.cleaned_data['trade'])
             # Entreprise créée d'emblée, préparée pour le métier choisi (phases, modèles de projet, mentions).
@@ -426,7 +429,24 @@ def settings_view(request):
             target.invoice_prefix, target.quote_prefix = invoice_prefix, quote_prefix
             target.next_invoice_number, target.next_quote_number = next_invoice, next_quote
             target.default_payment_terms = payment_days
-            target.default_currency = (request.POST.get('default_currency') or 'EUR')[:3]
+            # Devise personnalisée (ex. FCFA) : ajoutée à la liste et choisie par défaut.
+            customs = [c for c in prefs.get('custom_currencies') or []
+                       if c.get('code') not in request.POST.getlist('remove_currency')]
+            custom_code = ''.join(ch for ch in (request.POST.get('custom_code') or '').upper() if ch.isalpha())[:3]
+            if len(custom_code) == 3:
+                customs = [c for c in customs if c.get('code') != custom_code] + [{
+                    'code': custom_code,
+                    'name': (request.POST.get('custom_name') or custom_code).strip()[:40],
+                    'symbol': (request.POST.get('custom_symbol') or custom_code).strip()[:6],
+                    'position': 'before' if request.POST.get('custom_position') == 'before' else 'after',
+                    'decimals': {'0': 0, '3': 3}.get(request.POST.get('custom_decimals'), 2),
+                    'style': 'en' if request.POST.get('custom_style') == 'en' else 'fr',
+                }]
+            prefs['custom_currencies'] = customs
+            target.billing_preferences = prefs
+            chosen = (custom_code if len(custom_code) == 3 else request.POST.get('default_currency') or 'USD')[:3].upper()
+            from apps.organizations.currencies import choices as currency_choices
+            target.default_currency = chosen if chosen in {code for code, _ in currency_choices(target)} else 'USD'
             target.billing_preferences = prefs
             target.save(update_fields=['invoice_prefix', 'quote_prefix', 'next_invoice_number', 'next_quote_number',
                                        'default_payment_terms', 'default_currency', 'billing_preferences', 'updated_at'])
@@ -498,7 +518,8 @@ def settings_view(request):
         'payment_day_choices': [(0, 'À réception'), (15, '15 jours'), (30, '30 jours'), (45, '45 jours'), (60, '60 jours')],
         'current_payment_days': int((entreprise_organization.billing_preferences or {}).get('payment_days')
                                     or entreprise_organization.default_payment_terms) if entreprise_organization else 30,
-        'currency_choices': ['EUR', 'USD', 'GBP', 'CHF', 'CAD', 'XOF', 'MAD'],
+        'currency_choices': __import__('apps.organizations.currencies', fromlist=['choices']).choices(entreprise_organization),
+        'custom_currencies': ((entreprise_organization.billing_preferences or {}).get('custom_currencies') or []) if entreprise_organization else [],
         'billing_texts': entreprise_organization.billing_texts() if entreprise_organization else {},
     }
 

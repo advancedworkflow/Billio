@@ -6,7 +6,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=1.8">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=1.9">
 {% endblock %}
 
 {% block content %}
@@ -195,8 +195,25 @@
                         <select name="payment_days">{% for d in payment_day_choices %}<option value="{{ d.0 }}" {% if d.0 == current_payment_days %}selected{% endif %}>{{ d.1 }}</option>{% endfor %}</select></label>
                     <label class="st-field"><span>Pénalités de retard (% / an)</span><input name="penalty_rate" value="{{ prefs.penalty_rate|default:'' }}" placeholder="Ex. 12"></label>
                     <label class="st-field"><span>Devise</span>
-                        <select name="default_currency">{% for c in currency_choices %}<option value="{{ c }}" {% if c == org.default_currency %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+                        <select name="default_currency">{% for code, label in currency_choices %}<option value="{{ code }}" {% if code == org.default_currency %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
                 </div>
+                <details class="st-currency" {% if custom_currencies %}open{% endif %}>
+                    <summary>Votre devise n'est pas dans la liste ? Ajoutez une devise personnalisée</summary>
+                    {% if custom_currencies %}
+                    <ul class="st-currency-list">
+                        {% for c in custom_currencies %}<li><strong>{{ c.code }}</strong> · {{ c.name }} ({{ c.symbol }}) <label><input type="checkbox" name="remove_currency" value="{{ c.code }}"> Retirer</label></li>{% endfor %}
+                    </ul>
+                    {% endif %}
+                    <div class="st-grid-3">
+                        <label class="st-field"><span>Code (3 lettres)</span><input name="custom_code" maxlength="3" placeholder="Ex. XOF" style="text-transform:uppercase"></label>
+                        <label class="st-field"><span>Nom</span><input name="custom_name" maxlength="40" placeholder="Ex. Franc CFA"></label>
+                        <label class="st-field"><span>Symbole</span><input name="custom_symbol" maxlength="6" placeholder="Ex. FCFA"></label>
+                        <label class="st-field"><span>Position du symbole</span><select name="custom_position"><option value="after">Après : 1 250 FCFA</option><option value="before">Avant : $1,250</option></select></label>
+                        <label class="st-field"><span>Décimales</span><select name="custom_decimals"><option value="2">2 (1 250,00)</option><option value="0">0 (1 250)</option><option value="3">3 (1 250,000)</option></select></label>
+                        <label class="st-field"><span>Séparateurs</span><select name="custom_style"><option value="fr">1 250,50</option><option value="en">1,250.50</option></select></label>
+                    </div>
+                    <p class="st-help">Enregistrer ajoute la devise et la choisit pour vos nouvelles factures et nouveaux devis.</p>
+                </details>
                 <label class="st-field"><span>Escompte pour paiement anticipé</span><input name="early_discount" value="{{ prefs.early_discount|default:'' }}" placeholder="Pas d'escompte pour paiement anticipé."></label>
                 <label class="st-toggle"><input type="checkbox" name="vat_exempt" {% if prefs.vat_exempt %}checked{% endif %}>
                     <span><strong>Franchise en base de TVA</strong><small>Nouvelles lignes à 0 % et mention « TVA non applicable, art. 293 B du CGI » sur vos factures.</small></span></label>

@@ -397,9 +397,19 @@ function invoiceEditor() {
       this.taxAmount = this.invoiceData.items.reduce((s, i) => s + this.lineTotal(i) * (Number(i.tax_rate) || 0) / 100, 0);
       this.total = this.subtotal + this.taxAmount - (Number(this.invoiceData.discount_amount) || 0);
     },
-    currencySymbol() { return { EUR: '€', USD: '$', GBP: '£', CAD: '$ CA' }[this.invoiceData.currency] || this.invoiceData.currency; },
+    currencyFormats: readJson('invoice-editor-currencies', null) || {},
+    currencyInfo() { return this.currencyFormats[this.invoiceData.currency] || { symbol: this.invoiceData.currency || '$', position: 'after', decimals: 2, style: 'fr' }; },
+    currencySymbol() { return this.currencyInfo().symbol; },
     formatCurrency(amount) {
-      try { return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: this.invoiceData.currency || 'EUR' }).format(amount || 0); } catch (e) { return `${(amount || 0).toFixed(2)} ${this.invoiceData.currency}`; }
+      // Même format que les documents (organizations.currencies) : « $1,234.56 », « 1 234,56 € », « 1 250 000 FCFA ».
+      const info = this.currencyInfo();
+      const value = Number(amount || 0);
+      const parts = Math.abs(value).toFixed(info.decimals).split('.');
+      const sep = info.style === 'en' ? [',', '.'] : ['\u202f', ','];
+      const number = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, sep[0]) + (parts[1] ? sep[1] + parts[1] : '');
+      const sym = info.symbol;
+      const text = info.position === 'before' ? (sym.length <= 1 || sym.endsWith('$') ? sym + number : `${sym} ${number}`) : `${number}\u202f${sym}`;
+      return value < 0 ? `-${text}` : text;
     },
 
     // --- notes ---

@@ -12,7 +12,7 @@ from apps.accounts.models import User
 class PasswordResetTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='julie', email='julie@test.fr', password='Ancien-Mot-2026', first_name='Julie')
-        self.http = HttpClient(HTTP_HOST='127.0.0.1')
+        self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')  # textes vérifiés en français
 
     def test_login_page_links_to_reset(self):
         self.assertContains(self.http.get(reverse('accounts:login')), reverse('accounts:password-reset'))

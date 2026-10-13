@@ -12,9 +12,11 @@ from functools import lru_cache
 from pathlib import Path
 
 CATALOG_DIR = Path(__file__).resolve().parent / 'catalog'
-LANGUAGES = [('fr', 'Français'), ('en', 'English'), ('de', 'Deutsch'), ('es', 'Español')]
+LANGUAGES = [('en', 'English'), ('fr', 'Français'), ('de', 'Deutsch'), ('es', 'Español')]
 LANGUAGE_CODES = [code for code, _ in LANGUAGES]
-DEFAULT_LANGUAGE = 'fr'
+DEFAULT_LANGUAGE = 'fr'  # langue source des gabarits (aucune traduction à appliquer)
+# Langue proposée aux visiteurs sans choix ni langue de navigateur prise en charge : marché américain d'abord.
+FALLBACK_LANGUAGE = 'en'
 COOKIE_NAME = 'billio_lang'
 
 _WS = re.compile(r'\s+')

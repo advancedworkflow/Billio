@@ -52,12 +52,13 @@ def _group(number_text):
 
 
 @register.filter
-def money(value, currency='EUR'):
+def money(value, currency='USD'):
+    """Montant dans sa devise (symbole, position, décimales et format : voir organizations.currencies)."""
+    from apps.organizations.currencies import format_money
     amount = _to_decimal(value)
     if amount is None:
         return value
-    symbol = CURRENCY_SYMBOLS.get(str(currency or 'EUR').upper(), str(currency or ''))
-    return f'{_group(f"{amount:.2f}")} {symbol}'.strip()
+    return format_money(amount, currency or 'USD')
 
 
 @register.filter

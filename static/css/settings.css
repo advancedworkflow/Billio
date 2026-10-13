@@ -199,3 +199,10 @@
 .st-stripe-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .st-stripe-text span { color: var(--billio-text-muted, #52525b); font-size: 13px; }
 @media (max-width: 560px) { .st-stripe { flex-wrap: wrap; } }
+
+/* Devise personnalisée */
+.st-currency { margin: 4px 0 14px; padding: 12px 14px; border: 1px dashed var(--billio-border-strong, #d4d4d8); border-radius: 12px; }
+.st-currency > summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--billio-primary, #6d28d9); }
+.st-currency[open] > summary { margin-bottom: 12px; }
+.st-currency-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.st-currency-list label { margin-left: 10px; color: var(--billio-text-muted, #52525b); font-size: 12.5px; }

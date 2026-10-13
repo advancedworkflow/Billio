@@ -151,7 +151,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'fr-fr'
 # Langues de l'interface (choix par cookie, voir apps/translations).
-LANGUAGES = [('fr', 'Français'), ('en', 'English'), ('de', 'Deutsch'), ('es', 'Español')]
+LANGUAGES = [('en', 'English'), ('fr', 'Français'), ('de', 'Deutsch'), ('es', 'Español')]
 
 TIME_ZONE = 'Europe/Paris'
 

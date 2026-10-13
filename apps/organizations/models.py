@@ -53,7 +53,7 @@ class Organization(models.Model):
     secondary_color = models.CharField(max_length=7, default='#ffffff')  # Hex color
 
     # Settings
-    default_currency = models.CharField(max_length=3, default='EUR')
+    default_currency = models.CharField(max_length=3, default='USD')  # marché américain d'abord ; voir organizations.currencies
     default_language = models.CharField(max_length=10, default='fr')
     timezone = models.CharField(max_length=50, default='Europe/Paris')
 

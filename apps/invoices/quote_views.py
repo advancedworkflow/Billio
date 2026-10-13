@@ -175,7 +175,10 @@ def _quote_editor_context(request, quote, *, page_title, preselected_client_id='
         organization=organization, is_active=True
     ).values('id', 'name', 'description', 'unit_price', 'unit', 'tax_rate', 'reference')) if organization else []
 
+    from apps.organizations.currencies import editor_context
+    bootstrap = build_quote_editor_bootstrap(quote, preselected_client_id=preselected_client_id, page_title=page_title)
     return {
+        **editor_context(organization, bootstrap, new=quote is None),
         'quote': quote,
         'organization': organization,
         'templates_data_obj': build_invoice_editor_templates_library(organization) if organization else [],
@@ -187,9 +190,7 @@ def _quote_editor_context(request, quote, *, page_title, preselected_client_id='
         'preselected_client_id': preselected_client_id,
         # Même éditeur que la facture (templates/invoices/create.html), en mode « devis ».
         'editor_mode': 'quote',
-        'invoice_editor_bootstrap': build_quote_editor_bootstrap(
-            quote, preselected_client_id=preselected_client_id, page_title=page_title,
-        ),
+        'invoice_editor_bootstrap': bootstrap,
     }
 
 

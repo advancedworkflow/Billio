@@ -756,6 +756,8 @@ def invoice_create(request):
             page_title='Créer une facture',
         ),
     }
+    from apps.organizations.currencies import editor_context
+    context.update(editor_context(organization, context['invoice_editor_bootstrap'], new=True))
 
     return render(request, 'invoices/create.html', context)
 
@@ -1178,6 +1180,8 @@ def invoice_edit(request, invoice_id):
             page_title=page_title,
         ),
     }
+    from apps.organizations.currencies import editor_context
+    context.update(editor_context(invoice.organization, context['invoice_editor_bootstrap'], new=False))
 
     return render(request, 'invoices/create.html', context)
 

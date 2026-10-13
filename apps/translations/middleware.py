@@ -11,7 +11,7 @@ import re
 
 from django.utils import translation
 
-from .catalog import COOKIE_NAME, DEFAULT_LANGUAGE, LANGUAGE_CODES, catalog_version, get_catalog
+from .catalog import COOKIE_NAME, DEFAULT_LANGUAGE, FALLBACK_LANGUAGE, LANGUAGE_CODES, catalog_version, get_catalog
 
 # Aperçus de modèles de facture / document : c'est du contenu, pas de l'interface.
 SKIP_PATHS = re.compile(r'^/(admin|static|media)/|/api/|^/templates/.*preview|/pdf/?$')
@@ -23,10 +23,6 @@ _ATTR = re.compile(r'''(\s(?:placeholder|title|aria-label|alt|data-tip|data-kbd|
 _VALUE_ATTR = re.compile(r'''(\svalue)=(["'])(.*?)\2''', re.S)
 _NO_TRANSLATE = re.compile(r'''\stranslate=["']no["']|\sdata-no-translate\b''')
 
-
-# Pages ouvertes par les clients (espace client, paiement, devis, formulaires) : sans choix explicite,
-# elles suivent la langue du navigateur du visiteur. L'application garde le français par défaut.
-PUBLIC_PATHS = re.compile(r'^/(dashboard/public|invoices/public)/')
 
 
 def _browser_language(request):
@@ -41,7 +37,7 @@ def _browser_language(request):
 def request_language(request):
     """
     Utilisateur connecté : la langue enregistrée sur son compte (Paramètres › Langue), sur tous ses appareils.
-    Sinon : le cookie du sélecteur, puis la langue du navigateur sur les pages clientes, puis le français.
+    Sinon : le cookie du sélecteur, puis la langue du navigateur, puis l'anglais (marché américain d'abord).
     """
     user = getattr(request, 'user', None)
     if user is not None and user.is_authenticated and getattr(user, 'language', '') in LANGUAGE_CODES:
@@ -49,9 +45,7 @@ def request_language(request):
     lang = (request.COOKIES.get(COOKIE_NAME) or '').lower()[:2]
     if lang in LANGUAGE_CODES:
         return lang
-    if PUBLIC_PATHS.match(request.path):
-        return _browser_language(request) or DEFAULT_LANGUAGE
-    return DEFAULT_LANGUAGE
+    return _browser_language(request) or FALLBACK_LANGUAGE
 
 
 class LanguageMiddleware:
