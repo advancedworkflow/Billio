@@ -171,3 +171,9 @@ temp/
 *.sqlite3
 server_logs.txt
 *.log
+
+# Notes de travail en Markdown : seuls ces trois documents sont versionnés
+*.md
+!README.md
+!DEPLOIEMENT.md
+!CLAUDE.md

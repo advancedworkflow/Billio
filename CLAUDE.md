@@ -25,7 +25,7 @@ python manage.py runserver 127.0.0.1:8000
 ```
 
 - The dev DB is SQLite (`db.sqlite3`). `config/settings/base.py` defaults to Postgres, but `config/settings/dev.py` overrides `DATABASES` to SQLite — don't expect a local Postgres to be involved unless you're intentionally testing prod-like settings.
-- `dev.py` disables `SECURE_SSL_REDIRECT`. **Always browse via `http://`, never `https://`**, on localhost — the Django dev server can't terminate SSL and will error. If you ever hit `ERR_SSL_PROTOCOL_ERROR`, see `HTTP_ONLY_README.md`, or restart with `python manage.py runserver --noreload --insecure 127.0.0.1:8000`.
+- `dev.py` disables `SECURE_SSL_REDIRECT`. **Always browse via `http://`, never `https://`**, on localhost — the Django dev server can't terminate SSL and will error. If you ever hit `ERR_SSL_PROTOCOL_ERROR`, restart with `python manage.py runserver --noreload --insecure 127.0.0.1:8000`.
 - If a `runserver` process has been running for a while and static file (CSS/JS) edits stop showing up even after a hard browser refresh, restart the process — don't assume the edit didn't save. Template edits reload live; this staleness has only been observed with static assets.
 - `README.md` references helper scripts (`start_simple.py`, `start_dev.py`, `check_setup.py`) that do not exist in this repo — use `manage.py` directly.
 - `APPEND_SLASH = False` in `dev.py`, so don't rely on Django auto-redirecting `/foo` to `/foo/`.
