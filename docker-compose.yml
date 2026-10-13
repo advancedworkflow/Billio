@@ -11,7 +11,11 @@
 services:
   web:
     image: ${BILLIO_IMAGE:-billio:latest}
-    build: .
+    build:
+      context: .
+      args:
+        # Version du code (commit) affichée dans Sentry : RELEASE=$(git rev-parse --short HEAD) docker compose build
+        RELEASE: ${RELEASE:-}
     restart: unless-stopped
     env_file: .env.production
     environment:
