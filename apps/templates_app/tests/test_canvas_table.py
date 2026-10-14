@@ -122,3 +122,19 @@ class SvgSanitizeTests(SimpleTestCase):
         self.assertIn('fill="url(#g)"', clean)
         with self.assertRaises(AssetError):
             sanitize_svg(b'<!DOCTYPE svg [<!ENTITY a "x">]><svg/>')
+
+
+class TableAdvancedFormattingTests(SimpleTestCase):
+    def test_column_and_table_formatting(self):
+        layout = canvas.clean({'blocks': [], 'table': {
+            'columns': [{'key': 'designation', 'color': 'accent', 'bg': 'secondary', 'italic': True},
+                        {'key': 'total_ht', 'color': 'url(x)', 'bg': '#ff0000'}],
+            'outer': 'box', 'line_style': 'dashed', 'valign': 'middle', 'head_size': 'l', 'body_color': 'muted', 'pad_x': 18}})
+        cols = layout['table']['columns']
+        self.assertEqual((cols[1]['color'], cols[1]['bg']), ('', '#ff0000'))
+        html_source, css = canvas.build(layout)
+        page = render_preview(html_source, css, {}, None)
+        self.assertIn('style="color:var(--accent);background:var(--c2);font-style:italic"', page)
+        for flag in ('tb-box', 'tb-ls-dashed', 'tb-mid', 'tb-hs-l', 'tb-tc', 'tb-px'):
+            self.assertIn(flag, page)
+        self.assertIn('--px:18px', page)

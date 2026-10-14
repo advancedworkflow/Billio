@@ -7,7 +7,7 @@
 {% block extra_head %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?{{ font_families|safe }}&display=swap">
 <style>{{ canvas_css|safe }}</style>
-<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'css/canvas-editor.css' %}?v=2.1">
 {% endblock %}
 
 {% block content %}
@@ -36,6 +36,140 @@
     </div>
     <p class="ed-error" x-show="error" x-text="error" role="alert"></p>
     <p class="ed-warning" x-show="warning" x-text="warning" role="status"></p>
+
+
+    <!-- Menu clic droit -->
+    <div class="ed-ctx" x-show="ctx" x-cloak :style="ctx ? `left:${ctx.x}px;top:${ctx.y}px` : ''" @click.outside="ctx = null" @contextmenu.prevent role="menu">
+        <template x-if="ctx && ctx.kind === 'table'">
+            <div>
+                <template x-if="ctx.col !== null && canvas.table.columns[ctx.col]">
+                    <div>
+                        <p class="ed-ctx-title" x-text="`Colonne « ${canvas.table.columns[ctx.col].label || varLabel(canvas.table.columns[ctx.col].key)} »`"></p>
+                        <button type="button" class="ed-ctx-item" @click="renameColumn(ctx.col)"><i data-lucide="pencil" class="w-4 h-4"></i> Renommer…</button>
+                        <div class="ed-ctx-row" role="group" aria-label="Alignement">
+                            <span>Aligner</span>
+                            <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
+                                <button type="button" class="ed-ctx-ico" :class="canvas.table.columns[ctx.col].align === a[0] && 'is-on'" @click="colSet(ctx.col, {align: a[0]})"><i :data-lucide="a[1]" class="w-4 h-4"></i></button>
+                            </template>
+                        </div>
+                        <div class="ed-ctx-row" role="group" aria-label="Style">
+                            <span>Style</span>
+                            <button type="button" class="ed-ctx-ico" :class="canvas.table.columns[ctx.col].strong && 'is-on'" @click="colSet(ctx.col, {strong: !canvas.table.columns[ctx.col].strong})" title="Gras"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                            <button type="button" class="ed-ctx-ico" :class="canvas.table.columns[ctx.col].italic && 'is-on'" @click="colSet(ctx.col, {italic: !canvas.table.columns[ctx.col].italic})" title="Italique"><i data-lucide="italic" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="ed-ctx-row">
+                            <span>Texte</span>
+                            <template x-for="tk in colorTokens" :key="'c' + tk">
+                                <button type="button" class="ed-ctx-sw" :class="[(canvas.table.columns[ctx.col].color || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="colSet(ctx.col, {color: tk})"></button>
+                            </template>
+                        </div>
+                        <div class="ed-ctx-row">
+                            <span>Fond</span>
+                            <template x-for="tk in colorTokens" :key="'b' + tk">
+                                <button type="button" class="ed-ctx-sw" :class="[(canvas.table.columns[ctx.col].bg || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="colSet(ctx.col, {bg: tk})"></button>
+                            </template>
+                        </div>
+                        <button type="button" class="ed-ctx-item" @click="colSet(ctx.col, {width: 0})" x-show="canvas.table.columns[ctx.col].width"><i data-lucide="move-horizontal" class="w-4 h-4"></i> Largeur automatique</button>
+                        <div class="ed-ctx-row">
+                            <span>Déplacer</span>
+                            <button type="button" class="ed-ctx-ico" @click="moveColumn(ctx.col, -1); ctx.col = Math.max(0, ctx.col - 1)" :disabled="ctx.col === 0"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                            <button type="button" class="ed-ctx-ico" @click="moveColumn(ctx.col, 1); ctx.col = Math.min(canvas.table.columns.length - 1, ctx.col + 1)" :disabled="ctx.col === canvas.table.columns.length - 1"><i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="ed-ctx-sub" x-show="canvas.table.columns.length < 10">
+                            <button type="button" class="ed-ctx-item"><i data-lucide="between-vertical-start" class="w-4 h-4"></i> Insérer une colonne <i data-lucide="chevron-right" class="w-3.5 h-3.5 ed-ctx-more"></i></button>
+                            <div class="ed-ctx-menu">
+                                <p class="ed-ctx-title">À droite de celle-ci</p>
+                                <template x-for="v in tableVars.filter((v) => !canvas.table.columns.some((c) => c.key === v.key))" :key="v.key">
+                                    <button type="button" class="ed-ctx-item" @click="addColumn(v.key, ctx.col + 1); ctx = null" x-text="v.label"></button>
+                                </template>
+                                <button type="button" class="ed-ctx-item ed-ctx-strong" @click="addColumn('perso', ctx.col + 1); ctx = null">Colonne personnalisée</button>
+                            </div>
+                        </div>
+                        <button type="button" class="ed-ctx-item ed-ctx-danger" @click="removeColumn(ctx.col); ctx = null" :disabled="canvas.table.columns.length === 1"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer la colonne</button>
+                        <hr>
+                    </div>
+                </template>
+                <p class="ed-ctx-title">Tableau</p>
+                <div class="ed-ctx-sub">
+                    <button type="button" class="ed-ctx-item"><i data-lucide="palette" class="w-4 h-4"></i> Style prêt à l'emploi <i data-lucide="chevron-right" class="w-3.5 h-3.5 ed-ctx-more"></i></button>
+                    <div class="ed-ctx-menu">
+                        <template x-for="pr in tablePresets" :key="pr.key">
+                            <button type="button" class="ed-ctx-item" :class="presetActive(pr) && 'is-on'" @click="applyTablePreset(pr); ctx = null">
+                                <span class="ed-tmini" :style="presetStyle(pr)"><i></i><i></i><i></i><i></i></span><span x-text="pr.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                <div class="ed-ctx-row">
+                    <span>Titres</span>
+                    <template x-for="tk in colorTokens" :key="'h' + tk">
+                        <button type="button" class="ed-ctx-sw" :class="[(canvas.table.th_bg || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="tableSet({th_bg: tk, th_fg: ['', 'white', 'secondary'].includes(tk) ? canvas.table.th_fg : 'white'})"></button>
+                    </template>
+                </div>
+                <div class="ed-ctx-row" role="group" aria-label="Bordures">
+                    <span>Bordures</span>
+                    <template x-for="d in [['rows','rows-3','Entre les lignes'],['grid','grid-3x3','Grille'],['none','square-dashed','Aucune']]" :key="d[0]">
+                        <button type="button" class="ed-ctx-ico" :class="canvas.table.borders === d[0] && 'is-on'" @click="tableSet({borders: d[0]})" :title="d[2]"><i :data-lucide="d[1]" class="w-4 h-4"></i></button>
+                    </template>
+                    <button type="button" class="ed-ctx-ico" :class="canvas.table.outer === 'box' && 'is-on'" @click="tableSet({outer: canvas.table.outer === 'box' ? 'none' : 'box'})" title="Cadre extérieur"><i data-lucide="square" class="w-4 h-4"></i></button>
+                </div>
+                <div class="ed-ctx-row" role="group" aria-label="Espacement">
+                    <span>Espacement</span>
+                    <template x-for="d in [['compact','Serré'],['normal','Normal'],['airy','Aéré']]" :key="d[0]">
+                        <button type="button" class="ed-ctx-chip" :class="canvas.table.density === d[0] && 'is-on'" @click="tableSet({density: d[0]})" x-text="d[1]"></button>
+                    </template>
+                </div>
+                <button type="button" class="ed-ctx-item" @click="tableSet({stripes: !canvas.table.stripes})"><i :data-lucide="canvas.table.stripes ? 'check-square' : 'square'" class="w-4 h-4"></i> Lignes alternées</button>
+                <button type="button" class="ed-ctx-item" @click="tableSet({uppercase: !canvas.table.uppercase})"><i :data-lucide="canvas.table.uppercase ? 'check-square' : 'square'" class="w-4 h-4"></i> Titres en majuscules</button>
+                <button type="button" class="ed-ctx-item" @click="setMode(true); select('table'); ctx = null"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i> Tous les réglages…</button>
+                <button type="button" class="ed-ctx-item ed-ctx-danger" @click="setItems(false); select(null); ctx = null"><i data-lucide="trash-2" class="w-4 h-4"></i> Retirer le tableau</button>
+            </div>
+        </template>
+        <template x-if="ctx && ctx.kind === 'block' && selected()">
+            <div>
+                <p class="ed-ctx-title" x-text="labelOf(selected())"></p>
+                <template x-if="!isDecor(selected()) && selected().type !== 'image'">
+                    <div>
+                        <div class="ed-ctx-row" role="group" aria-label="Alignement">
+                            <span>Aligner</span>
+                            <template x-for="a in [['left','align-left'],['center','align-center'],['right','align-right']]" :key="a[0]">
+                                <button type="button" class="ed-ctx-ico" :class="selected().align === a[0] && 'is-on'" @click="update({align: a[0]})"><i :data-lucide="a[1]" class="w-4 h-4"></i></button>
+                            </template>
+                        </div>
+                        <div class="ed-ctx-row">
+                            <span>Texte</span>
+                            <template x-for="tk in colorTokens" :key="'t' + tk">
+                                <button type="button" class="ed-ctx-sw" :class="[(selected().color || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="update({color: tk})"></button>
+                            </template>
+                        </div>
+                        <div class="ed-ctx-row">
+                            <span>Fond</span>
+                            <template x-for="tk in colorTokens" :key="'f' + tk">
+                                <button type="button" class="ed-ctx-sw" :class="[(selected().bg || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="update({bg: tk, pad: tk && !selected().pad ? 12 : selected().pad})"></button>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="selected().type === 'shape'">
+                    <div class="ed-ctx-row">
+                        <span>Couleur</span>
+                        <template x-for="tk in colorTokens.filter((t) => t)" :key="'s' + tk">
+                            <button type="button" class="ed-ctx-sw" :class="selected().fill === tk && 'is-on'" :style="`background:${previewColor(tk)}`" :title="colorNames[tk]" @click="update({fill: tk})"></button>
+                        </template>
+                    </div>
+                </template>
+                <template x-if="isDecor(selected())">
+                    <div class="ed-ctx-row">
+                        <span>Ordre</span>
+                        <button type="button" class="ed-ctx-ico" @click="arrange(1)" title="Devant les autres décors"><i data-lucide="bring-to-front" class="w-4 h-4"></i></button>
+                        <button type="button" class="ed-ctx-ico" @click="arrange(-1)" title="Derrière les autres décors"><i data-lucide="send-to-back" class="w-4 h-4"></i></button>
+                    </div>
+                </template>
+                <button type="button" class="ed-ctx-item" @click="duplicate(); ctx = null"><i data-lucide="copy" class="w-4 h-4"></i> Dupliquer <kbd>Ctrl D</kbd></button>
+                <button type="button" class="ed-ctx-item ed-ctx-danger" @click="remove(); ctx = null"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer <kbd>Suppr</kbd></button>
+            </div>
+        </template>
+    </div>
 
     <div class="ed-main">
         <!-- Bibliothèque : blocs, formes, images -->
@@ -109,7 +243,7 @@
                     <!-- Décors de page (accrochés en haut ou en bas de la feuille) -->
                     <template x-for="b in pageLayer()" :key="b.id">
                         <div class="ed-block ed-deco cv-deco" :class="blockClasses(b)" :style="decorStyle(b)" tabindex="0" role="button"
-                             :aria-label="labelOf(b) + ' — déplacer avec les flèches'" @pointerdown="startMove($event, b)" @focus="select(b.id)">
+                             :aria-label="labelOf(b) + ' — déplacer avec les flèches'" @pointerdown="startMove($event, b)" @focus="select(b.id)" @contextmenu.prevent="openBlockMenu($event, b)">
                             <div class="ed-block-content" x-html="blockHtml(b)"></div>
                             <span class="ed-block-tag" x-text="labelOf(b) + (b.anchor === 'bottom' ? ' · bas de page' : ' · haut de page')"></span>
                             <span class="ed-resize" @pointerdown.stop="startResize($event, b)" aria-hidden="true"></span>
@@ -123,7 +257,7 @@
                             <template x-for="b in blocksIn(band)" :key="b.id">
                                 <div class="ed-block cv-b" :class="blockClasses(b)" :style="`left:${b.x}px;top:${b.y}px;width:${b.w}px` + (isDecor(b) ? `;height:${b.h}px` : '')"
                                      tabindex="0" role="button" :aria-label="labelOf(b) + ' — déplacer avec les flèches'"
-                                     @pointerdown="startMove($event, b)" @focus="select(b.id)" @dblclick="b.type === 'text' && focusText()">
+                                     @pointerdown="startMove($event, b)" @focus="select(b.id)" @dblclick="b.type === 'text' && focusText()" @contextmenu.prevent="openBlockMenu($event, b)">
                                     <div class="ed-block-content" x-html="blockHtml(b)"></div>
                                     <span class="ed-block-tag" x-text="labelOf(b)"></span>
                                     <span class="ed-resize" @pointerdown.stop="startResize($event, b)" aria-hidden="true"></span>
@@ -135,7 +269,7 @@
                     </template>
                     <div class="ed-items cv-body" x-ref="items" :style="`order:1;padding:0 ${canvas.table.inset}px`" x-show="canvas.items !== false" :class="selectedId === 'table' && 'is-selected'"
                          @pointerdown.self="select('table')">
-                        <div class="ed-items-preview" x-html="previews.items" @click="onTableClick($event)"></div>
+                        <div class="ed-items-preview" x-html="previews.items" @click="onTableClick($event)" @contextmenu.prevent="openTableMenu($event)"></div>
                         <template x-if="selectedId === 'table'">
                             <div>
                                 <template x-for="edge in colEdges" :key="edge.i">
@@ -319,7 +453,7 @@
                     {% include "templates_app/_swatches.html" with prop="th_bg" label="Fond des titres" auto=1 %}
                     {% include "templates_app/_swatches.html" with prop="th_fg" label="Texte des titres" auto=1 %}
 
-                    <p class="ed-sub">Colonnes <small>— cliquez une colonne sur la page, glissez son bord pour la largeur</small></p>
+                    <p class="ed-sub">Colonnes <small>— clic : régler, clic droit : menu, bord : largeur</small></p>
                     <div class="ed-cols" x-ref="cols">
                         <template x-for="(col, i) in canvas.table.columns" :key="i + col.key">
                             <div class="ed-col" :class="activeCol === i && 'is-open'" :data-col-card="i">
@@ -352,9 +486,24 @@
                                                 </button>
                                             </template>
                                         </div>
+                                        <div class="ed-segs" role="group" aria-label="Style">
+                                            <button type="button" class="ed-seg" :class="col.strong && 'is-on'" @click="colSet(i, {strong: !col.strong})"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                                            <button type="button" class="ed-seg" :class="col.italic && 'is-on'" @click="colSet(i, {italic: !col.italic})"><i data-lucide="italic" class="w-4 h-4"></i></button>
+                                        </div>
+                                        <div class="ed-field"><span>Couleur du texte</span>
+                                            <div class="ed-swatches">
+                                                <template x-for="tk in colorTokens" :key="'cc' + tk">
+                                                    <button type="button" class="ed-swatch" :class="[(col.color || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="colSet(i, {color: tk})"></button>
+                                                </template>
+                                            </div></div>
+                                        <div class="ed-field"><span>Fond de la colonne</span>
+                                            <div class="ed-swatches">
+                                                <template x-for="tk in colorTokens" :key="'cb' + tk">
+                                                    <button type="button" class="ed-swatch" :class="[(col.bg || '') === tk && 'is-on', !tk && 'is-auto']" :style="tk ? `background:${previewColor(tk)}` : ''" :title="colorNames[tk]" @click="colSet(i, {bg: tk})"></button>
+                                                </template>
+                                            </div></div>
                                         <div class="ed-grid2">
                                             <label class="ed-field"><span>Largeur (%)</span><input class="ed-input" type="number" min="0" max="70" :value="col.width || ''" @change="col.width = Math.max(0, Math.min(70, +$event.target.value || 0)); tableChanged(true)" placeholder="Auto"></label>
-                                            <label class="ed-switch"><input type="checkbox" x-model="col.strong" @change="tableChanged(true)"> <span>En gras</span></label>
                                         </div>
                                     </div>
                                 </template>
@@ -385,6 +534,12 @@
                         <template x-if="canvas.table.stripes">
                             <div>{% include "templates_app/_swatches.html" with prop="stripe_color" label="Couleur des lignes alternées" auto=1 %}</div>
                         </template>
+                        <div class="ed-segs" role="group" aria-label="Style des lignes">
+                            <template x-for="d in [['solid','Pleines'],['dashed','Tirets'],['dotted','Pointillés']]" :key="d[0]">
+                                <button type="button" class="ed-seg" :class="canvas.table.line_style === d[0] && 'is-on'" @click="tableSet({line_style: d[0]})" x-text="d[1]"></button>
+                            </template>
+                        </div>
+                        <label class="ed-switch"><input type="checkbox" :checked="canvas.table.outer === 'box'" @change="tableSet({outer: $event.target.checked ? 'box' : 'none'})"> <span>Cadre autour du tableau</span></label>
                         <label class="ed-field"><span>Arrondi des titres <em x-text="`${canvas.table.radius} px`"></em></span>
                             <input type="range" min="0" max="24" :value="canvas.table.radius" @input="canvas.table.radius = +$event.target.value; tableChanged()" @change="snapshot()"></label>
 
@@ -399,6 +554,20 @@
                                 <button type="button" class="ed-seg" :class="canvas.table.size === z[0] && 'is-on'" @click="canvas.table.size = z[0]; tableChanged(true)" x-text="z[1]"></button>
                             </template>
                         </div>
+                        <div class="ed-field"><span>Taille des titres</span>
+                            <div class="ed-segs" role="group">
+                                <template x-for="z in [['s','Petite'],['m','Normale'],['l','Grande']]" :key="z[0]">
+                                    <button type="button" class="ed-seg" :class="canvas.table.head_size === z[0] && 'is-on'" @click="tableSet({head_size: z[0]})" x-text="z[1]"></button>
+                                </template>
+                            </div></div>
+                        <div class="ed-field"><span>Alignement vertical</span>
+                            <div class="ed-segs" role="group">
+                                <button type="button" class="ed-seg" :class="canvas.table.valign === 'top' && 'is-on'" @click="tableSet({valign: 'top'})"><i data-lucide="align-vertical-justify-start" class="w-4 h-4"></i> Haut</button>
+                                <button type="button" class="ed-seg" :class="canvas.table.valign === 'middle' && 'is-on'" @click="tableSet({valign: 'middle'})"><i data-lucide="align-vertical-justify-center" class="w-4 h-4"></i> Milieu</button>
+                            </div></div>
+                        {% include "templates_app/_swatches.html" with prop="body_color" label="Couleur du texte des lignes" auto=1 %}
+                        <label class="ed-field"><span>Marge dans les cellules <em x-text="`${canvas.table.pad_x} px`"></em></span>
+                            <input type="range" min="2" max="24" :value="canvas.table.pad_x" @input="canvas.table.pad_x = +$event.target.value; tableChanged()" @change="snapshot()"></label>
                         <label class="ed-field"><span>Police</span>
                             <select class="ed-input" x-model="canvas.table.font" @change="tableChanged(true)">
                                 <option value="">Police du modèle</option>
@@ -472,5 +641,5 @@ window.CANVAS_EDITOR_URLS = {
     assetDelete: '{% url "templates_app:template-asset-delete" 0 %}',
 };
 </script>
-<script src="{% static 'js/canvas-editor.js' %}?v=2.0"></script>
+<script src="{% static 'js/canvas-editor.js' %}?v=2.1"></script>
 {% endblock %}

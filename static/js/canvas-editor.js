@@ -25,7 +25,7 @@ function canvasEditor() {
         history: [], future: [], dirty: false, saving: false, error: '', warning: '', dragNew: null, dropHint: null,
         advanced: storedMode === 'advanced', libTab: 'blocks', shapeTarget: 'header',
         shapes: cfg.shapes, tableVars: cfg.tableVariables || [], tablePresets: cfg.tablePresets || [], docVars: cfg.docVariables || [],
-        assets: cfg.assets || [], uploading: false, uploadError: '', activeCol: null, colEdges: [], itemsHeight: 260,
+        assets: cfg.assets || [], uploading: false, uploadError: '', activeCol: null, colEdges: [], itemsHeight: 260, ctx: null,
         icons: { logo: 'image', title: 'heading-1', issuer: 'building-2', client: 'user', meta: 'calendar', total_due: 'badge-euro',
                  subject: 'text-quote', totals: 'sigma', payment: 'landmark', legal: 'scale', text: 'type', divider: 'minus' },
         colorTokens: ['', 'accent', 'secondary', 'ink', 'white', 'black', 'muted'],
@@ -43,6 +43,8 @@ function canvasEditor() {
         ],
 
         init() {
+            window.addEventListener('scroll', () => { this.ctx = null; }, true);
+            window.addEventListener('resize', () => { this.ctx = null; });
             if (!this.canvas.colors.page) this.canvas.colors.page = '#ffffff';
             this.fit();
             this.$nextTick(() => { this.fitBands(); this.measureCols(); });
@@ -286,13 +288,16 @@ function canvasEditor() {
             return `--th:${th};--line:${line};--zebra:${zebra};--bd:${border};--r:${s.radius ? 4 : 0}px;--grid:${s.borders === 'grid' ? 1 : 0}`;
         },
         applyTablePreset(p) { this.snapshot(); Object.assign(this.canvas.table, clone(p.set)); this.tableChanged(); },
-        addColumn(key) {
+        addColumn(key, at = null) {
             if (!key || this.canvas.table.columns.length >= 10) return;
             this.snapshot();
-            const col = { key, label: key === 'perso' ? 'Colonne' : this.varLabel(key), align: 'auto', width: 0, strong: false };
+            const col = { key, label: key === 'perso' ? 'Colonne' : this.varLabel(key), align: 'auto', width: 0, strong: false, color: '', bg: '', italic: false };
             if (key === 'perso') col.text = '';
-            this.canvas.table.columns.push(col);
-            this.activeCol = this.canvas.table.columns.length - 1;
+            const cols = this.canvas.table.columns;
+            const index = at === null ? cols.length : Math.max(0, Math.min(cols.length, at));
+            cols.splice(index, 0, col);
+            this.select('table');
+            this.activeCol = index;
             this.tableChanged();
             this.icons_();
         },
@@ -320,6 +325,46 @@ function canvasEditor() {
             this.tableChanged();
             this.$nextTick(() => { if (input) { input.focus(); input.setSelectionRange(at + token.length, at + token.length); } });
         },
+        // --- Menu clic droit ---
+        menuAt(event) {
+            // Reste dans la fenêtre (le menu fait ~260 × 420 px).
+            return { x: Math.min(event.clientX, window.innerWidth - 270), y: Math.min(event.clientY, window.innerHeight - 440) };
+        },
+        openTableMenu(event) {
+            const cell = event.target.closest('th, td');
+            const col = cell && cell.colSpan === 1 ? cell.cellIndex : null;
+            this.select('table');
+            this.activeCol = col;
+            this.ctx = Object.assign({ kind: 'table', col }, this.menuAt(event));
+            this.icons_();
+        },
+        openBlockMenu(event, b) {
+            this.select(b.id);
+            this.ctx = Object.assign({ kind: 'block' }, this.menuAt(event));
+            this.icons_();
+        },
+        colSet(i, patch) {
+            const col = this.canvas.table.columns[i];
+            if (!col) return;
+            Object.assign(col, patch);
+            this.tableChanged(true);
+            this.icons_();
+        },
+        tableSet(patch) {
+            Object.assign(this.canvas.table, patch);
+            this.tableChanged(true);
+            this.icons_();
+        },
+        renameColumn(i) {
+            this.ctx = null;
+            this.select('table');
+            this.activeCol = i;
+            this.$nextTick(() => {
+                const input = this.$root.querySelector(`[data-col-card="${i}"] .ed-col-label`);
+                if (input) { input.scrollIntoView({ block: 'nearest' }); input.focus(); input.select(); }
+            });
+        },
+
         onTableClick(event) {
             const cell = event.target.closest('th, td');
             this.select('table');
@@ -600,6 +645,7 @@ function canvasEditor() {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); this.redo(); return; }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); this.save(); return; }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && !typing && this.selected()) { e.preventDefault(); this.duplicate(); return; }
+            if (e.key === 'Escape' && this.ctx) { this.ctx = null; return; }
             if (e.key === 'Escape' && !typing) { this.select(null); return; }
             const b = this.selected();
             if (!b || typing) return;

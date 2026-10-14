@@ -47,6 +47,9 @@ HEADERS = ('line', 'soft', 'accent', 'none')
 BORDERS = ('rows', 'grid', 'none')
 DENSITIES = ('compact', 'normal', 'airy')
 SIZES = ('s', 'm', 'l')
+OUTERS = ('none', 'box')
+LINE_STYLES = ('solid', 'dashed', 'dotted')
+VALIGNS = ('top', 'middle')
 MAX_COLUMNS = 10
 
 DEFAULT_TABLE = {
@@ -62,6 +65,7 @@ DEFAULT_TABLE = {
     # Réglages avancés (vides = style de l'en-tête choisi ci-dessus)
     'th_bg': '', 'th_fg': '', 'border_color': '', 'border_width': 1, 'stripe_color': '',
     'radius': 0, 'inset': 52, 'font': '',
+    'outer': 'none', 'line_style': 'solid', 'valign': 'top', 'head_size': 'm', 'body_color': '', 'pad_x': 10,
 }
 
 _TOKEN = re.compile(r'\{(\w+)\}')
@@ -112,12 +116,17 @@ def clean_table(raw):
             'align': _pick(col.get('align'), ALIGNS, 'auto'),
             'width': _int(col.get('width'), 0, 0, 70),
             'strong': bool(col.get('strong')),
+            # Mise en forme de la colonne : couleur du texte, fond, italique.
+            'color': color(col.get('color')),
+            'bg': color(col.get('bg')),
+            'italic': bool(col.get('italic')),
         }
         if key == CUSTOM:
             clean['text'] = str(col.get('text') or '')[:200]
         columns.append(clean)
     if not columns:
-        columns = [dict(c, align='auto', width=0, strong=bool(c.get('strong'))) for c in DEFAULT_TABLE['columns']]
+        columns = [dict(c, align='auto', width=0, strong=bool(c.get('strong')), color='', bg='', italic=False)
+                   for c in DEFAULT_TABLE['columns']]
     d = DEFAULT_TABLE
     return {
         'columns': columns,
@@ -137,6 +146,12 @@ def clean_table(raw):
         'radius': _int(raw.get('radius'), 0, 0, 24),
         'inset': _int(raw.get('inset'), d['inset'], 0, 160),
         'font': raw.get('font') if raw.get('font') in font_keys() else '',
+        'outer': _pick(raw.get('outer'), OUTERS, d['outer']),
+        'line_style': _pick(raw.get('line_style'), LINE_STYLES, d['line_style']),
+        'valign': _pick(raw.get('valign'), VALIGNS, d['valign']),
+        'head_size': _pick(raw.get('head_size'), SIZES, d['head_size']),
+        'body_color': color(raw.get('body_color')),
+        'pad_x': _int(raw.get('pad_x'), d['pad_x'], 2, 24),
     }
 
 
@@ -171,7 +186,16 @@ def build_items(table, p, css_color=None, font_stack=None):
             content = VARIABLES[key][1]
         if col['strong']:
             classes = classes + [f'{p}c-strong']
-        cells.append(f'<td class="{" ".join(classes)}">{content}</td>')
+        cell_style = []
+        if col['color']:
+            cell_style.append(f'color:{css_color(col["color"])}')
+            classes = classes + ['tc-own']
+        if col['bg']:
+            cell_style.append(f'background:{css_color(col["bg"])}')
+        if col['italic']:
+            cell_style.append('font-style:italic')
+        style_cell = f' style="{";".join(cell_style)}"' if cell_style else ''
+        cells.append(f'<td class="{" ".join(classes)}"{style_cell}>{content}</td>')
     flags = [f'{p}items', f'tb-h-{table["header"]}', f'tb-b-{table["borders"]}', f'tb-d-{table["density"]}', f'tb-s-{table["size"]}']
     style = []
     if table['stripes']:
@@ -193,6 +217,20 @@ def build_items(table, p, css_color=None, font_stack=None):
         flags.append('tb-round')
     if table['font'] and font_stack:
         style.append(f'font-family:{font_stack(table["font"])}')
+    if table['outer'] == 'box':
+        flags.append('tb-box')
+    if table['line_style'] != 'solid':
+        flags.append(f'tb-ls-{table["line_style"]}')
+    if table['valign'] == 'middle':
+        flags.append('tb-mid')
+    if table['head_size'] != 'm':
+        flags.append(f'tb-hs-{table["head_size"]}')
+    if table['body_color']:
+        style.append(f'--tc:{css_color(table["body_color"])}')
+        flags.append('tb-tc')
+    if table['pad_x'] != 10:
+        style.append(f'--px:{table["pad_x"]}px')
+        flags.append('tb-px')
     style_attr = f' style="{";".join(style)}"' if style else ''
     return (
         f'{{% if subject %}}<p class="{p}subject"><span class="{p}muted">Objet :</span> {{{{ subject }}}}</p>{{% endif %}}'
@@ -204,6 +242,15 @@ def build_items(table, p, css_color=None, font_stack=None):
 
 
 TABLE_CSS = """
+.{p}items.tb-box { border: var(--bw, 1px) solid var(--bd, #e5e7eb); }
+.{p}items.tb-ls-dashed td, .{p}items.tb-ls-dashed th { border-style: dashed !important; }
+.{p}items.tb-ls-dotted td, .{p}items.tb-ls-dotted th { border-style: dotted !important; }
+.{p}items.tb-mid td { vertical-align: middle; }
+.{p}items.tb-hs-s th { font-size: 8.5px; }
+.{p}items.tb-hs-l th { font-size: 12px; }
+.{p}items.tb-tc td:not(.tc-own), .{p}items.tb-tc td:not(.tc-own) .{p}item-name, .{p}items.tb-tc td.{p}c-strong:not(.tc-own) { color: var(--tc); }
+.{p}items td.tc-own .{p}item-name, .{p}items td.tc-own .{p}item-desc { color: inherit; }
+.{p}items.tb-px th, .{p}items.tb-px td { padding-left: var(--px); padding-right: var(--px); }
 .{p}items .ta-left { text-align: left !important; }
 .{p}items .ta-center { text-align: center !important; }
 .{p}items .ta-right { text-align: right !important; }
