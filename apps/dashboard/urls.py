@@ -4,7 +4,7 @@ URLs for dashboard app.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import automation_webhooks, booking, time_views, views
-from . import process_views, project_views
+from . import process_views, project_views, support_views
 from . import portal_views
 
 app_name = 'dashboard'
@@ -50,6 +50,10 @@ urlpatterns = [
     path('projects/<int:project_id>/time/rate/', time_views.time_rate_update, name='time-rate-update'),
     path('search/', views.global_search, name='global-search'),
     path('aide/', views.help_center, name='help'),
+    path('support/', support_views.support_list, name='support'),
+    path('support/<int:ticket_id>/', support_views.support_ticket, name='support-ticket'),
+    path('support/<int:ticket_id>/status/', support_views.support_ticket_status, name='support-ticket-status'),
+    path('support/fichier/<int:message_id>/', support_views.support_attachment, name='support-attachment'),
     path('time/status/', time_views.time_timer_status, name='time-timer-status'),
     path('time/widget/', time_views.time_widget, name='time-widget'),
     path('time/<int:entry_id>/stop/',time_views.time_timer_stop, name='time-timer-stop'),

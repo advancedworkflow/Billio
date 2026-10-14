@@ -135,6 +135,7 @@ class Notification(models.Model):
         ('proposal_accepted', _('Proposition acceptée')),
         ('proposal_rejected', _('Proposition refusée')),
         ('milestone_form_submitted', _('Formulaire de jalon soumis')),
+        ('support_reply', _('Réponse du support')),
     ]
 
     PRIORITY_CHOICES = [
@@ -1259,3 +1260,51 @@ class Appointment(models.Model):
     def __str__(self):
         return f"{self.type_name} — {self.name} ({self.start:%d/%m/%Y %H:%M})"
 
+
+
+class SupportTicket(models.Model):
+    """Demande d'aide d'un utilisateur à l'équipe Billio (page Support)."""
+
+    CATEGORY_CHOICES = [
+        ('question', _('Question')),
+        ('bug', _('Problème / bug')),
+        ('billing', _('Abonnement et facturation Billio')),
+        ('feature', _('Suggestion')),
+    ]
+    STATUS_CHOICES = [
+        ('open', _('Ouvert')),
+        ('answered', _('Répondu')),
+        ('resolved', _('Résolu')),
+    ]
+    PRIORITY_CHOICES = [('normal', _('Normale')), ('urgent', _('Urgente'))]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='support_tickets')
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name='support_tickets')
+    subject = models.CharField(max_length=160)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='question')
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='normal')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
+    page_url = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'#{self.id} {self.subject}'
+
+
+class SupportMessage(models.Model):
+    """Message d'un fil de support (utilisateur ou équipe Billio), avec une pièce jointe facultative."""
+
+    ticket = models.ForeignKey(SupportTicket, on_delete=models.CASCADE, related_name='messages')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    from_staff = models.BooleanField(default=False)
+    body = models.TextField()
+    attachment = models.FileField(upload_to='support/%Y/%m/', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']

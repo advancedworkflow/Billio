@@ -101,7 +101,7 @@
             <p>Oui, la base est sauvegardée chaque nuit. Vos factures émises restent conservées et non modifiables, comme l'exige la loi.</p></details>
     </section>
 
-    <p class="hp-empty" x-show="q && ![...$root.querySelectorAll('.hp-q')].some((el) => match(el))" x-cloak>Aucune réponse pour « <span x-text="q"></span> ». Essayez un autre mot{% if support_email %}, ou écrivez-nous{% endif %}.</p>
+    <p class="hp-empty" x-show="q && ![...$root.querySelectorAll('.hp-q')].some((el) => match(el))" x-cloak>Aucune réponse pour « <span x-text="q"></span> ». Essayez un autre mot, ou <a :href="'{% url 'dashboard:support' %}?subject=' + encodeURIComponent(q)">écrivez-nous</a>.</p>
 
     <div class="hp-bottom">
         <section class="hp-card">
@@ -115,13 +115,11 @@
                 <div><dt>Clic droit</dt><dd>Options d'un bloc ou d'une colonne du tableau</dd></div>
             </dl>
         </section>
-        {% if support_email %}
         <section class="hp-card hp-contact">
-            <h3><i data-lucide="mail" class="w-5 h-5"></i> Une question sans réponse ?</h3>
-            <p>Écrivez-nous :</p>
-            <a href="mailto:{{ support_email }}" class="hp-btn">{{ support_email }}</a>
+            <h3><i data-lucide="message-circle-question" class="w-5 h-5"></i> Une question sans réponse ?</h3>
+            <p>Ouvrez une demande : nous vous répondons dans Billio et par e-mail.</p>
+            <a href="{% url 'dashboard:support' %}" class="hp-btn">Contacter le support</a>
         </section>
-        {% endif %}
     </div>
 </div>
 {% endblock %}

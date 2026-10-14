@@ -1,0 +1,77 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+{% block title %}Support - Billio{% endblock %}
+{% block page_title %}Support{% endblock %}
+{% block page_subtitle %}{% if is_staff %}Toutes les demandes des utilisateurs{% else %}Une question, un problème ? Écrivez-nous ici{% endif %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/support.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="sp" x-data="{ open: {% if prefill_subject or not tickets %}true{% else %}false{% endif %} }">
+    {% if messages %}{% for m in messages %}<p class="sp-flash sp-flash--{{ m.tags }}">{{ m }}</p>{% endfor %}{% endif %}
+
+    {% if not is_staff %}
+    <section class="sp-card sp-new">
+        <header class="sp-new-head">
+            <div>
+                <h2>Nouvelle demande</h2>
+                <p>Avant d'écrire, la <a href="{% url 'dashboard:help' %}">page d'aide</a> répond peut-être déjà à votre question.</p>
+            </div>
+            <button type="button" class="sp-btn" x-show="!open" @click="open = true"><i data-lucide="plus" class="w-4 h-4"></i> Ouvrir un ticket</button>
+        </header>
+        <form method="post" enctype="multipart/form-data" class="sp-form" x-show="open" x-cloak>
+            {% csrf_token %}
+            <input type="hidden" name="page_url" value="{{ request.META.HTTP_REFERER|default:''|slice:':300' }}">
+            <div class="sp-grid">
+                <label class="sp-field sp-field--wide"><span>Sujet</span><input name="subject" maxlength="160" required value="{{ prefill_subject }}" placeholder="Ex. Ma facture ne s'envoie pas au client"></label>
+                <label class="sp-field"><span>Catégorie</span>
+                    <select name="category">{% for value, label in categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+                <label class="sp-field"><span>Urgence</span>
+                    <select name="priority"><option value="normal">Normale</option><option value="urgent">Urgente : je suis bloqué(e)</option></select></label>
+            </div>
+            <label class="sp-field"><span>Votre message</span>
+                <textarea name="body" rows="6" required maxlength="10000" placeholder="Décrivez ce que vous faisiez, ce qui s'est passé et ce que vous attendiez. Indiquez le numéro de facture ou le nom du projet concerné."></textarea></label>
+            <div class="sp-form-foot">
+                <label class="sp-file"><input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.csv"><i data-lucide="paperclip" class="w-4 h-4"></i> <span>Joindre une capture (5 Mo max.)</span></label>
+                <span class="sp-spacer"></span>
+                <button type="button" class="sp-btn sp-btn--ghost" @click="open = false">Annuler</button>
+                <button type="submit" class="sp-btn sp-btn--primary"><i data-lucide="send" class="w-4 h-4"></i> Envoyer</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+
+    <section class="sp-card">
+        <header class="sp-list-head">
+            <h2>{% if is_staff %}Tickets{% else %}Mes demandes{% endif %}</h2>
+            <nav class="sp-tabs" aria-label="Filtrer par statut">
+                <a href="{% url 'dashboard:support' %}" class="{% if not status %}is-on{% endif %}">Toutes</a>
+                {% for value, label in statuses %}
+                <a href="{% url 'dashboard:support' %}?status={{ value }}" class="{% if status == value %}is-on{% endif %}">{{ label }} <em>{{ counts|get_item:value }}</em></a>
+                {% endfor %}
+            </nav>
+        </header>
+        {% if tickets %}
+        <ul class="sp-list">
+            {% for t in tickets %}
+            <li>
+                <a href="{% url 'dashboard:support-ticket' t.id %}" class="sp-row">
+                    <span class="sp-status sp-status--{{ t.status }}">{{ t.get_status_display }}</span>
+                    <span class="sp-row-main">
+                        <strong>{{ t.subject }}</strong>
+                        <small>#{{ t.id }} · {{ t.get_category_display }}{% if is_staff %} · {{ t.user.email }}{% if t.organization %} ({{ t.organization.name }}){% endif %}{% endif %} · {{ t.messages.all|length }} message{{ t.messages.all|length|pluralize }}</small>
+                    </span>
+                    {% if t.priority == 'urgent' %}<span class="sp-urgent">Urgent</span>{% endif %}
+                    <time datetime="{{ t.updated_at|date:'c' }}">{{ t.updated_at|date:"d/m/Y H:i" }}</time>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="sp-empty">{% if status %}Aucune demande avec ce statut.{% else %}Aucune demande pour l'instant.{% endif %}</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

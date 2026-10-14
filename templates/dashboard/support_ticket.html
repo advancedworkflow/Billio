@@ -1,0 +1,67 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Support #{{ ticket.id }} - Billio{% endblock %}
+{% block page_title %}Support{% endblock %}
+{% block page_subtitle %}Demande #{{ ticket.id }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/support.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="sp">
+    {% if messages %}{% for m in messages %}<p class="sp-flash sp-flash--{{ m.tags }}">{{ m }}</p>{% endfor %}{% endif %}
+    <a href="{% url 'dashboard:support' %}" class="sp-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Toutes les demandes</a>
+
+    <section class="sp-card sp-ticket-head">
+        <div>
+            <h2 translate="no">{{ ticket.subject }}</h2>
+            <p class="sp-meta">
+                <span class="sp-status sp-status--{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+                {{ ticket.get_category_display }}{% if ticket.priority == 'urgent' %} · <strong class="sp-urgent">Urgent</strong>{% endif %}
+                · ouverte le {{ ticket.created_at|date:"d/m/Y à H:i" }}
+                {% if is_staff %}· <span translate="no">{{ ticket.user.get_full_name|default:ticket.user.email }} &lt;{{ ticket.user.email }}&gt;{% if ticket.organization %} — {{ ticket.organization.name }}{% endif %}</span>{% endif %}
+            </p>
+            {% if is_staff and ticket.page_url %}<p class="sp-meta">Depuis : <span translate="no">{{ ticket.page_url }}</span></p>{% endif %}
+        </div>
+        <form method="post" action="{% url 'dashboard:support-ticket-status' ticket.id %}" class="sp-status-form">
+            {% csrf_token %}
+            {% if is_staff %}
+            <select name="status" onchange="this.form.submit()" aria-label="Statut">
+                {% for value, label in statuses %}<option value="{{ value }}" {% if ticket.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            {% elif ticket.status == 'resolved' %}
+            <button type="submit" name="status" value="open" class="sp-btn">Rouvrir la demande</button>
+            {% else %}
+            <button type="submit" name="status" value="resolved" class="sp-btn"><i data-lucide="check" class="w-4 h-4"></i> Marquer comme résolue</button>
+            {% endif %}
+        </form>
+    </section>
+
+    <section class="sp-thread">
+        {% for m in thread %}
+        <article class="sp-msg {% if m.from_staff %}sp-msg--staff{% endif %}">
+            <header>
+                <strong>{% if m.from_staff %}Équipe Billio{% elif m.author %}<span translate="no">{{ m.author.get_full_name|default:m.author.email }}</span>{% else %}Utilisateur{% endif %}</strong>
+                <time datetime="{{ m.created_at|date:'c' }}">{{ m.created_at|date:"d/m/Y H:i" }}</time>
+            </header>
+            <p translate="no">{{ m.body|linebreaksbr }}</p>
+            {% if m.attachment %}<a href="{% url 'dashboard:support-attachment' m.id %}" target="_blank" rel="noopener" class="sp-attach"><i data-lucide="paperclip" class="w-4 h-4"></i> Pièce jointe</a>{% endif %}
+        </article>
+        {% endfor %}
+    </section>
+
+    <section class="sp-card">
+        <form method="post" enctype="multipart/form-data" class="sp-form">
+            {% csrf_token %}
+            <label class="sp-field"><span>{% if is_staff %}Répondre à l'utilisateur{% else %}Ajouter un message{% endif %}</span>
+                <textarea name="body" rows="4" maxlength="10000" placeholder="{% if is_staff %}Votre réponse (envoyée aussi par e-mail){% else %}Une précision, une capture ?{% endif %}"></textarea></label>
+            <div class="sp-form-foot">
+                <label class="sp-file"><input type="file" name="attachment" accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.txt,.csv"><i data-lucide="paperclip" class="w-4 h-4"></i> <span>Joindre un fichier</span></label>
+                <span class="sp-spacer"></span>
+                <button type="submit" class="sp-btn sp-btn--primary"><i data-lucide="send" class="w-4 h-4"></i> Envoyer</button>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
