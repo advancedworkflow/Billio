@@ -191,6 +191,8 @@ class Invoice(models.Model):
 
     # Additional fields
     notes = models.TextField(blank=True, null=True)
+    # Logo propre à ce document (bibliothèque d'images des modèles) ; vide = logo de l'entreprise.
+    logo_asset = models.ForeignKey('templates_app.TemplateAsset', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     footer = models.TextField(blank=True, null=True)
 
     # PDF and file storage
@@ -897,6 +899,8 @@ class Quote(models.Model):
 
     # Conditions commerciales (section 7, 9, 10 du spec)
     notes = models.TextField(blank=True, null=True)
+    # Logo propre à ce document (bibliothèque d'images des modèles) ; vide = logo de l'entreprise.
+    logo_asset = models.ForeignKey('templates_app.TemplateAsset', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     payment_terms = models.TextField(blank=True, default='')
     delivery_terms = models.TextField(blank=True, default='')
     terms_and_conditions = models.TextField(blank=True, default='')

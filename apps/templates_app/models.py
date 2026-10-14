@@ -157,7 +157,7 @@ class InvoiceTemplate(models.Model):
             'organization_registration_number': org.registration_number or '' if org else '',
             'organization_tax_id': org.tax_id or '' if org else '',
             'organization_initial': (org.name or '?')[:1].upper() if org else '',
-            'organization_logo_url': self._logo_file_uri(org),
+            'organization_logo_url': self._document_logo_uri(document, org),
             'organization_bank_name': (org.bank_name or '') if org else '',
             'organization_iban': (org.iban or '') if org else '',
             'organization_bic_swift': (org.bic_swift or '') if org else '',
@@ -216,6 +216,16 @@ class InvoiceTemplate(models.Model):
         if country and country.lower() not in street.lower():
             lines.append(country)
         return '\n'.join(lines)
+
+    @classmethod
+    def _document_logo_uri(cls, document, org):
+        """Logo choisi pour ce document (inclus dans le rendu), sinon le logo de l'entreprise."""
+        asset = getattr(document, 'logo_asset', None)
+        if asset is not None and org is not None and asset.organization_id == org.id:
+            uri = asset.data_uri()
+            if uri:
+                return uri
+        return cls._logo_file_uri(org)
 
     @staticmethod
     def _logo_file_uri(org):

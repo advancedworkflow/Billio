@@ -130,4 +130,6 @@ def editor_context(organization, bootstrap, *, new):
         data = bootstrap.get('invoice_data') or bootstrap.get('quote_data')
         if isinstance(data, dict):
             data['currency'] = organization.default_currency or DEFAULT_CURRENCY
-    return {'currency_choices': choices(organization), 'currency_formats': js_formats(organization)}
+    from apps.templates_app.canvas_assets import assets_for
+    return {'currency_choices': choices(organization), 'currency_formats': js_formats(organization),
+            'logo_assets': assets_for(organization)}

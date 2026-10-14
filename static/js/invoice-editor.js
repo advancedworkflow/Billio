@@ -34,7 +34,7 @@ function invoiceEditor() {
   } : {
     client_id: '', invoice_number: 'AUTO-001', issue_date: '', due_date: '', currency: 'EUR',
     invoice_type: 'sale', notes: '', discount_amount: 0, items: [],
-  }, boot.invoice_data || boot.quote_data || {});
+  }, { logo_asset_id: '' }, boot.invoice_data || boot.quote_data || {});
   let keySeq = 0;
   // TVA par ligne pour la facture comme pour le devis ; la remise de ligne n'existe que sur le devis.
   const ITEM_DEFAULTS = IS_QUOTE
@@ -121,7 +121,7 @@ function invoiceEditor() {
     templatesOpen: false, moreOpen: false, fullscreenPreview: false, showHelp: false,
     clientQuery: '', clientHighlight: 0, clientCreate: false,
     newClient: { name: '', email: '', phone: '', address: '', postal_code: '', city: '', country: '', company_name: '', registration_number: '', tax_id: '', error: '', submitting: false },
-    saving: false, dirty: false, logoBusy: false, logoFocus: false,
+    saving: false, dirty: false, logoBusy: false, logoFocus: false, logoAssets: readJson('invoice-editor-logos', null) || [],
     defineTpl: { open: false, name: '', isDefault: false, saving: false, error: '' },
     picker: { open: false, index: null, top: 0, left: 0, width: 300, hover: 0 },
     toast: { text: '', error: false },
@@ -469,7 +469,7 @@ function invoiceEditor() {
         document_kind: IS_QUOTE ? 'Devis' : 'Facture',
         document_type: IS_QUOTE ? 'quote' : 'invoice',
         organization_initial: (org.name || '?').trim().charAt(0).toUpperCase(),
-        organization_logo_url: org.logo_url || '',
+        organization_logo_url: this.documentLogoUrl(),
         invoice_number: mark('meta', (IS_QUOTE ? this.invoiceData.quote_number : this.invoiceData.invoice_number) || ''),
         issue_date: mark('meta', this.formatDate(this.invoiceData.issue_date)),
         due_date: mark('meta', this.formatDate(this.invoiceData[DUE_KEY])),
@@ -917,24 +917,31 @@ function invoiceEditor() {
       this.$nextTick(() => this.$refs.logoBlock && this.$refs.logoBlock.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
       setTimeout(() => { this.logoFocus = false; }, 1600);
     },
+    // Logo de CE document : celui de l'entreprise (par défaut) ou une image de la bibliothèque.
+    documentLogoUrl() {
+      const id = String(this.invoiceData.logo_asset_id || '');
+      const asset = id && this.logoAssets.find((a) => String(a.id) === id);
+      return asset ? asset.url : ((this.organization || {}).logo_url || '');
+    },
+    chooseLogo(id) {
+      this.invoiceData.logo_asset_id = id || '';
+      this.touch();
+      this.updatePreview();
+    },
     async uploadLogo(file) {
       if (!file) return;
-      if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) { this.showToast('Format accepté : PNG, JPG, WEBP ou GIF.', true); return; }
-      if (file.size > 2 * 1024 * 1024) { this.showToast('Le logo ne doit pas dépasser 2 Mo.', true); return; }
-      await this.sendLogo(Object.assign(new FormData(), {}), file);
-    },
-    async removeLogo() { await this.sendLogo(new FormData(), null); },
-    async sendLogo(body, file) {
-      if (file) body.append('logo', file); else body.append('remove', '1');
+      if (file.size > 4 * 1024 * 1024) { this.showToast('Le logo ne doit pas dépasser 4 Mo.', true); return; }
+      const body = new FormData();
+      body.append('file', file);
       this.logoBusy = true;
       try {
-        const res = await fetch(urls.logo, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
+        const res = await fetch(urls.logoUpload, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Impossible de mettre à jour le logo.');
-        this.organization = Object.assign({}, this.organization, { logo_url: data.url ? `${data.url}?v=${Date.now()}` : '' });
-        this.updatePreview();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Impossible d'importer ce logo.");
+        this.logoAssets = [data.asset, ...this.logoAssets];
+        this.chooseLogo(data.asset.id);
         this.refreshUi();
-        this.showToast(file ? 'Logo mis à jour' : 'Logo retiré');
+        this.showToast('Logo choisi pour ce document');
       } catch (err) {
         this.showToast(err.message, true);
       } finally {

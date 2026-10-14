@@ -124,6 +124,16 @@ def billing_editor_data(organization):
     }
 
 
+def apply_document_logo(document, organization, raw_id):
+    """Logo propre au document : une image de la bibliothèque de l'organisation, ou rien (logo de l'entreprise)."""
+    from apps.templates_app.models import TemplateAsset
+    try:
+        asset_id = int(raw_id or 0)
+    except (TypeError, ValueError):
+        asset_id = 0
+    document.logo_asset = TemplateAsset.objects.filter(organization=organization, id=asset_id).first() if asset_id else None
+
+
 def build_invoice_editor_bootstrap(invoice, *, preselected_client_id='', invoice_type='sale', page_title='Créer une facture'):
     """
     État initial pour l’éditeur facture (évite d’injecter du texte brut dans du JS = erreurs de syntaxe / Alpine cassé).
@@ -159,6 +169,7 @@ def build_invoice_editor_bootstrap(invoice, *, preselected_client_id='', invoice
                 'invoice_type': invoice.invoice_type or 'sale',
                 'notes': invoice.notes or '',
                 'discount_amount': float(invoice.discount_amount or 0),
+                'logo_asset_id': invoice.logo_asset_id or '',
                 'items': items,
             },
         }
@@ -819,11 +830,7 @@ def save_invoice(request, invoice_id=None):
                 if template:
                     invoice.template = template
 
-            # Logo
-            if 'logo' in request.FILES:
-                logo_file = request.FILES['logo']
-                # Ici vous pourriez vouloir sauvegarder le logo dans le modèle
-                # Pour l'instant, on passe cette étape
+            apply_document_logo(invoice, organization, data.get('logo_asset_id'))
 
             invoice.save()
 

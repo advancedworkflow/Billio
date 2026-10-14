@@ -117,6 +117,7 @@ def build_quote_editor_bootstrap(quote, *, preselected_client_id='', page_title=
                 'issue_date': quote.issue_date.isoformat() if quote.issue_date else '',
                 'expiry_date': quote.expiry_date.isoformat() if quote.expiry_date else '',
                 'currency': quote.currency or 'EUR',
+                'logo_asset_id': quote.logo_asset_id or '',
                 'discount_amount': float(quote.discount_amount or 0),
                 'notes': quote.notes or '',
                 'payment_terms': quote.payment_terms or '',
@@ -286,6 +287,8 @@ def save_quote(request, quote_id=None):
         quote.delivery_terms = data.get('delivery_terms', '')
         quote.terms_and_conditions = data.get('terms_and_conditions', '')
         quote.footer = data.get('footer', '')
+        from .views import apply_document_logo
+        apply_document_logo(quote, quote.organization, data.get('logo_asset_id'))
 
         try:
             quote.discount_amount = Decimal(str(data.get('discount_amount') or '0'))

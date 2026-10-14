@@ -10,8 +10,8 @@
 {% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=2.0">
-<script src="{% static 'js/invoice-editor.js' %}?v=2.2"></script>
+<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=2.1">
+<script src="{% static 'js/invoice-editor.js' %}?v=2.3"></script>
 {% endblock %}
 
 {% block content %}
@@ -448,30 +448,36 @@
                         <button type="button" class="ie-btn" @click="openDefineTemplate()"><i data-lucide="bookmark-plus" class="w-4 h-4"></i> Définir comme modèle</button>
                     </div>
 
-                    <!-- Logo de l'organisation (en-tête de toutes les factures et devis) -->
+                    <!-- Logo de ce document : celui de l'entreprise par défaut, un autre au choix -->
                     <div class="ie-logo" x-ref="logoBlock" :class="logoFocus ? 'is-focus' : ''">
                         <div class="ie-logo-head">
                             <span class="ie-logo-title">Logo</span>
-                            <span class="ie-muted">Utilisé sur toutes vos factures et devis</span>
+                            <a href="{% url 'accounts:user-settings' %}?tab=entreprise" class="ie-muted ie-link" target="_blank" rel="noopener">Logo de l'entreprise : Paramètres</a>
                         </div>
-                        <div class="ie-logo-body">
-                            <div class="ie-logo-preview" @click="$refs.logoInput.click()" @dragover.prevent @drop.prevent="uploadLogo($event.dataTransfer.files[0])" data-tip="Cliquer ou déposer une image">
-                                <template x-if="organization.logo_url"><img :src="organization.logo_url" alt="Logo"></template>
-                                <template x-if="!organization.logo_url"><span class="ie-logo-empty"><i data-lucide="image-plus" class="w-5 h-5"></i>Ajouter</span></template>
-                            </div>
-                            <div class="ie-logo-actions">
-                                <button type="button" class="ie-btn ie-btn--ghost" @click="$refs.logoInput.click()" :disabled="logoBusy">
-                                    <i data-lucide="upload" class="w-4 h-4"></i><span x-text="organization.logo_url ? 'Remplacer' : 'Importer'"></span>
+                        <div class="ie-logo-choices" role="radiogroup" aria-label="Logo de ce document">
+                            <button type="button" class="ie-logo-choice" role="radio" :aria-checked="(!invoiceData.logo_asset_id).toString()" :class="!invoiceData.logo_asset_id && 'is-on'" @click="chooseLogo('')">
+                                <span class="ie-logo-preview">
+                                    <template x-if="organization.logo_url"><img :src="organization.logo_url" alt=""></template>
+                                    <template x-if="!organization.logo_url"><span class="ie-logo-empty" x-text="(organization.name || '?').charAt(0).toUpperCase()"></span></template>
+                                </span>
+                                <span><strong>Logo de l'entreprise</strong><small x-text="organization.logo_url ? 'Utilisé par défaut sur vos documents' : 'Aucun logo : l\'initiale est affichée'"></small></span>
+                            </button>
+                            <template x-for="asset in logoAssets" :key="asset.id">
+                                <button type="button" class="ie-logo-choice ie-logo-choice--thumb" role="radio" :aria-checked="(String(invoiceData.logo_asset_id) === String(asset.id)).toString()"
+                                        :class="String(invoiceData.logo_asset_id) === String(asset.id) && 'is-on'" @click="chooseLogo(asset.id)" :title="asset.name">
+                                    <span class="ie-logo-preview"><img :src="asset.url" alt=""></span>
                                 </button>
-                                <button type="button" class="ie-btn ie-btn--ghost ie-danger" x-show="organization.logo_url" @click="removeLogo()" :disabled="logoBusy">Retirer</button>
-                            </div>
-                            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" x-ref="logoInput" @change="uploadLogo($event.target.files[0]); $event.target.value = ''">
+                            </template>
+                            <button type="button" class="ie-logo-choice ie-logo-choice--thumb ie-logo-add" @click="$refs.logoInput.click()" :disabled="logoBusy" title="Importer un autre logo pour ce document">
+                                <span class="ie-logo-preview"><i data-lucide="image-plus" class="w-5 h-5"></i></span>
+                            </button>
+                            <input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg" class="hidden" x-ref="logoInput" @change="uploadLogo($event.target.files[0]); $event.target.value = ''">
                         </div>
+                        <p class="ie-muted mt-2">Le logo choisi ne vaut que pour ce document ; le logo de l'entreprise reste celui des autres factures et devis.</p>
                         <label class="ie-field mt-3" x-show="activeSchemaFields.some(f => f.name === 'logo_height')">
                             <span class="flex justify-between">Taille dans l'en-tête <em x-text="`${fieldValue('logo_height') || 52} px`"></em></span>
                             <input type="range" min="28" max="120" step="2" class="ie-range" :value="fieldValue('logo_height') || 52" @input="setVariable('logo_height', $event.target.value)">
                         </label>
-                        <p class="ie-muted mt-2" x-show="!organization.logo_url">Sans logo, l'initiale de votre entreprise est affichée. PNG, JPG ou WEBP, 2 Mo max.</p>
                     </div>
 
                     <p class="ie-muted mb-3">Textes et couleurs du modèle « <span x-text="selectedTemplateName()"></span> ». Les zones pointillées de la facture se modifient aussi directement.</p>
@@ -569,6 +575,7 @@
 {{ invoice_editor_bootstrap|json_script:"invoice-editor-bootstrap" }}
 {{ templates_data_obj|json_script:"invoice-editor-templates" }}
 {{ currency_formats|default:None|json_script:"invoice-editor-currencies" }}
+{{ logo_assets|default:None|json_script:"invoice-editor-logos" }}
 {{ clients_data|json_script:"invoice-editor-clients" }}
 {{ organization_data|json_script:"invoice-editor-organization" }}
 {{ products_data|json_script:"invoice-editor-products" }}
@@ -597,7 +604,8 @@
         {% endif %}
         clientCreate: "{% url 'clients:client-quick-create' %}",
         saveTemplate: "{% url 'templates_app:template-save-as-personal' %}",
-        logo: "{% url 'organizations:organization-logo' %}",
+        logoUpload: "{% url 'templates_app:template-asset-upload' %}",
+
         isNew: {% if invoice or quote %}false{% else %}true{% endif %},
     };
 </script>
