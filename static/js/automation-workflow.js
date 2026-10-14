@@ -967,7 +967,7 @@
 
   // ------------------------------------------------------------------ inspecteur
   const opt = (list, value) => list.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(value) ? ' selected' : ''}>${esc(l)}</option>`).join('');
-  const varChips = () => `<div class="wf-vars"><span class="wf-vars-label">Insérer :</span>${VAR_DEFS.map(([v, l]) => `<button type="button" class="wf-var" data-insert-var="${v}" title="Insérer « ${esc(l)} » à l'emplacement du curseur">+ ${esc(l)}</button>`).join('')}</div>`;
+  const varChips = () => `<div class="wf-vars"><span class="wf-vars-label">Insérer :</span>${VAR_DEFS.map(([v, l]) => `<button type="button" class="wf-var" data-insert-var="${v}" title="Insérer « ${esc(l)} » à l'emplacement du curseur"><span aria-hidden="true">+ </span><span>${esc(l)}</span></button>`).join('')}</div>`;
 
   function triggerOptions(value) {
     const groups = {};

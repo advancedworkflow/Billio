@@ -514,9 +514,9 @@
                         <span>Ajouter une colonne</span>
                         <div class="ed-vars">
                             <template x-for="v in tableVars.filter((v) => !canvas.table.columns.some((c) => c.key === v.key))" :key="v.key">
-                                <button type="button" class="ed-var" @click="addColumn(v.key)" x-text="'+ ' + v.label"></button>
+                                <button type="button" class="ed-var" @click="addColumn(v.key)"><span aria-hidden="true">+ </span><span x-text="v.label"></span></button>
                             </template>
-                            <button type="button" class="ed-var ed-var--strong" @click="addColumn('perso')">+ Colonne personnalisée</button>
+                            <button type="button" class="ed-var ed-var--strong" @click="addColumn('perso')"><span aria-hidden="true">+ </span><span>Colonne personnalisée</span></button>
                         </div>
                     </div>
 
@@ -601,7 +601,7 @@
                                 <p class="ed-hint">Une facture doit comporter ces éléments. Cliquez pour les ajouter :</p>
                                 <div class="ed-vars">
                                     <template x-for="m in missing()" :key="m.key">
-                                        <button type="button" class="ed-var" @click="m.key === 'items' ? setItems(true) : addBlock(m.key)" x-text="'+ ' + m.label"></button>
+                                        <button type="button" class="ed-var" @click="m.key === 'items' ? setItems(true) : addBlock(m.key)"><span aria-hidden="true">+ </span><span x-text="m.label"></span></button>
                                     </template>
                                 </div>
                             </div>

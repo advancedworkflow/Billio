@@ -299,7 +299,7 @@ def test_connection(key, config, user=None, organization=None):
                 from_email=sender(config), to=[to], connection=connection,
             ).send(fail_silently=False)
         except Exception as exc:  # smtplib remonte des erreurs très variées
-            raise ProviderError(f'Envoi impossible : {exc}') from None
+            raise ProviderError(smtp_error_message(exc, config)) from None
         return f'Email de test envoyé à {to}'
     if key == 'notion':
         me = http('GET', 'https://api.notion.com/v1/users/me', headers=notion_headers(config))
@@ -351,6 +351,24 @@ def smtp_connection(config):
         password=config.get('password') or '', use_tls=security == 'tls', use_ssl=security == 'ssl',
         timeout=TIMEOUT, fail_silently=False,
     )
+
+
+def smtp_error_message(exc, config):
+    """Message lisible pour une erreur SMTP ; les erreurs réseau visent l'hébergeur, pas les identifiants."""
+    import errno
+    import smtplib
+    import socket
+    target = f"{config.get('host') or '?'}:{config.get('port') or '?'}"
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        return "Identifiant ou mot de passe SMTP refusé par le serveur (pour Gmail ou Outlook, utilisez un mot de passe d'application)."
+    if isinstance(exc, socket.gaierror):
+        return f"Serveur SMTP introuvable ({target}) : vérifiez l'hôte."
+    if isinstance(exc, (socket.timeout, TimeoutError)) or getattr(exc, 'errno', None) in (
+            errno.ENETUNREACH, errno.EHOSTUNREACH, errno.ECONNREFUSED, errno.ETIMEDOUT):
+        return (f"Le serveur de Billio n'arrive pas à joindre {target}. Vérifiez l'hôte, le port et la sécurité "
+                f"(587 + STARTTLS ou 465 + SSL) ; si c'est correct, l'hébergeur bloque les ports SMTP sortants. "
+                f"Détail : {exc}")
+    return f'Envoi impossible : {exc}'
 
 
 def sender(config):

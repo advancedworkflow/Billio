@@ -37,7 +37,7 @@
                         <p class="pr-meta">
                             <span x-text="proc.id ? `${proc.projects} projet${proc.projects > 1 ? 's' : ''}` : 'Nouveau'"></span>
                             <template x-if="proc.templates && proc.templates.length">
-                                <span x-text="` · modèles : ${proc.templates.join(', ')}`"></span>
+                                <span> · <span>modèles :</span> <span x-text="proc.templates.join(', ')"></span></span>
                             </template>
                         </p>
                     </header>
