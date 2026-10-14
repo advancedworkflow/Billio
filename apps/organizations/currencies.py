@@ -132,4 +132,4 @@ def editor_context(organization, bootstrap, *, new):
             data['currency'] = organization.default_currency or DEFAULT_CURRENCY
     from apps.templates_app.canvas_assets import assets_for
     return {'currency_choices': choices(organization), 'currency_formats': js_formats(organization),
-            'logo_assets': assets_for(organization)}
+            'logo_assets': assets_for(organization) if getattr(organization, 'pk', None) else []}

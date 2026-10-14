@@ -1701,3 +1701,13 @@ def global_search(request):
         results.append({'type': 'Projet', 'icon': 'kanban-square', 'label': p.name, 'sub': p.client.name if p.client_id else '',
                         'url': reverse('dashboard:project-detail', args=[p.id])})
     return JsonResponse({'results': results})
+
+
+@login_required
+def help_center(request):
+    """Centre d'aide : questions fréquentes par thème, raccourcis clavier, contact."""
+    from django.conf import settings as django_settings
+    return render(request, 'dashboard/help.html', {
+        'page_title': 'Aide',
+        'support_email': getattr(django_settings, 'SUPPORT_EMAIL', ''),
+    })

@@ -236,6 +236,8 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 # Expéditeur des emails de la plateforme (mot de passe oublié…) ; les emails aux clients passent par le SMTP de l'organisation.
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or EMAIL_HOST_USER or 'Billio <no-reply@billio.fr>'
+# Adresse affichée sur la page d'aide (« Nous écrire ») ; masquée si vide.
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', '')
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # lien « mot de passe oublié » valable 24 h
 
 # Nombre de proxys devant Django (1 derrière le proxy de l'hébergeur) : sert à lire la vraie IP.

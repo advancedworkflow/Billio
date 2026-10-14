@@ -76,3 +76,14 @@ class GlobalSearchTests(TestCase):
         labels = [r['label'] for r in http.get(reverse('dashboard:global-search') + '?q=bras').json()['results']]
         self.assertEqual(labels, ['Brasserie du Canal'])
         self.assertEqual(http.get(reverse('dashboard:global-search') + '?q=b').json()['results'], [])
+
+
+class HelpCenterTests(TestCase):
+    def test_help_page_and_profile_menu(self):
+        user = User.objects.create_user(username='h', email='h@test.fr', password='x-Test-1234')
+        http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')
+        http.force_login(user)
+        page = http.get(reverse('dashboard:help'))
+        self.assertContains(page, 'Comment pouvons-nous vous aider')
+        self.assertNotContains(page, 'Community')
+        self.assertContains(page, reverse('dashboard:help'))   # lien « Aide » du menu du profil

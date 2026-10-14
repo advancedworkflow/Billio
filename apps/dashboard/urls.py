@@ -49,6 +49,7 @@ urlpatterns = [
     path('projects/<int:project_id>/time/invoice/', time_views.time_invoice, name='time-invoice'),
     path('projects/<int:project_id>/time/rate/', time_views.time_rate_update, name='time-rate-update'),
     path('search/', views.global_search, name='global-search'),
+    path('aide/', views.help_center, name='help'),
     path('time/status/', time_views.time_timer_status, name='time-timer-status'),
     path('time/widget/', time_views.time_widget, name='time-widget'),
     path('time/<int:entry_id>/stop/',time_views.time_timer_stop, name='time-timer-stop'),

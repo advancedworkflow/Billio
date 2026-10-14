@@ -1,0 +1,127 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Aide - Billio{% endblock %}
+{% block page_title %}Aide{% endblock %}
+{% block page_subtitle %}Réponses rapides pour bien utiliser Billio{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/help.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="hp" x-data="{ q: '', open: null,
+        match(el) { const q = this.q.trim().toLowerCase(); return !q || el.textContent.toLowerCase().includes(q); },
+        visible(section) { return [...section.querySelectorAll('.hp-q')].some((el) => this.match(el)); } }">
+    <section class="hp-hero">
+        <h2>Comment pouvons-nous vous aider ?</h2>
+        <label class="hp-search">
+            <i data-lucide="search" class="w-5 h-5"></i>
+            <input type="search" x-model="q" placeholder="Ex. relance, avoir, logo, processus, devise…" aria-label="Rechercher dans l'aide" autofocus>
+        </label>
+        <div class="hp-quick">
+            <a href="#demarrer"><i data-lucide="rocket" class="w-4 h-4"></i> Démarrer</a>
+            <a href="#factures"><i data-lucide="file-text" class="w-4 h-4"></i> Factures</a>
+            <a href="#devis"><i data-lucide="file-signature" class="w-4 h-4"></i> Devis</a>
+            <a href="#projets"><i data-lucide="kanban" class="w-4 h-4"></i> Projets</a>
+            <a href="#modeles"><i data-lucide="palette" class="w-4 h-4"></i> Modèles</a>
+            <a href="#parametres"><i data-lucide="settings" class="w-4 h-4"></i> Paramètres</a>
+        </div>
+    </section>
+
+    {% comment %} Chaque question : un <details class="hp-q"> ; la recherche masque celles qui ne correspondent pas. {% endcomment %}
+    <section class="hp-section" id="demarrer" x-show="visible($el)">
+        <h3><i data-lucide="rocket" class="w-5 h-5"></i> Démarrer</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Par quoi commencer ?</summary>
+            <p>Trois étapes suffisent : complétez votre entreprise dans <a href="{% url 'accounts:user-settings' %}?tab=entreprise">Paramètres › Entreprise</a> (adresse, SIRET, logo : ils figurent sur vos factures), ajoutez un <a href="{% url 'clients:client-list' %}">client</a>, puis créez votre première <a href="{% url 'invoices:invoice-create' %}">facture</a> ou votre premier <a href="{% url 'invoices:quote-create' %}">devis</a>.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Où trouver une fonction rapidement ?</summary>
+            <p>Appuyez sur <kbd>Ctrl</kbd> + <kbd>K</kbd> (<kbd>⌘</kbd> + <kbd>K</kbd> sur Mac) : la recherche trouve vos clients, factures, devis et projets, et lance les actions courantes (nouvelle facture, nouveau devis…).</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment ajouter un client avec son adresse ?</summary>
+            <p>Dans <a href="{% url 'clients:client-list' %}">Clients</a>, cliquez sur « Nouveau client ». Renseignez l'adresse, le code postal et la ville : ils sont imprimés sur vos factures. Pour une entreprise, ouvrez « Client professionnel » (raison sociale, SIRET, n° de TVA). Vous pouvez aussi créer un client sans quitter une facture.</p></details>
+    </section>
+
+    <section class="hp-section" id="factures" x-show="visible($el)">
+        <h3><i data-lucide="file-text" class="w-5 h-5"></i> Factures et paiements</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Pourquoi ma facture porte-t-elle un numéro « BROUILLON » ?</summary>
+            <p>Tant qu'elle n'est pas envoyée, une facture est un brouillon modifiable. Son numéro définitif est attribué à l'envoi, dans une suite continue : la loi interdit les trous et les doublons dans la numérotation.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment corriger une facture déjà envoyée ?</summary>
+            <p>Une facture émise ne se modifie plus. Créez un <strong>avoir</strong> depuis la facture (il annule tout ou partie du montant), puis une nouvelle facture si besoin. Le montant restant dû tient compte des avoirs et des paiements reçus.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment me faire payer en ligne ?</summary>
+            <p>Connectez votre compte Stripe dans <a href="{% url 'accounts:user-settings' %}?tab=paiement">Paramètres › Paiement</a>. Vos clients reçoivent un lien de paiement par carte ; la facture passe en « Payée » dès que Stripe confirme le paiement.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Les relances sont-elles automatiques ?</summary>
+            <p>Oui : une facture en retard est relancée à J+7, J+14 et J+30 après l'échéance. Vous pouvez aussi relancer à la main depuis la facture ou depuis l'accueil (« 1 facture en retard › Relancer »).</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment facturer dans une autre devise (FCFA, dollar…) ?</summary>
+            <p>Choisissez la devise dans l'éditeur de facture. Votre devise par défaut se règle dans <a href="{% url 'accounts:user-settings' %}?tab=facturation">Paramètres › Facturation</a> ; si la vôtre n'est pas listée, ajoutez une devise personnalisée (symbole, position, décimales).</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Puis-je changer le logo d'une seule facture ?</summary>
+            <p>Oui. Le logo de l'entreprise est présélectionné ; dans l'éditeur, section Style › Logo, choisissez une autre image ou importez-en une : elle ne vaut que pour ce document. Le logo par défaut se change dans Paramètres › Entreprise.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Que contient le PDF envoyé à mon client ?</summary>
+            <p>Le PDF reprend votre modèle et inclut les données de facture électronique (Factur-X) lisibles par les logiciels comptables de vos clients.</p></details>
+    </section>
+
+    <section class="hp-section" id="devis" x-show="visible($el)">
+        <h3><i data-lucide="file-signature" class="w-5 h-5"></i> Devis</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Comment mon client accepte-t-il un devis ?</summary>
+            <p>Envoyez le devis : votre client l'ouvre en ligne, l'accepte ou le refuse. Vous êtes notifié et le statut se met à jour.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment transformer un devis en facture ?</summary>
+            <p>Depuis le devis accepté, « Convertir en facture ». Pour les chantiers, les échéances du devis (acompte, situations, solde) deviennent des factures au fil de l'avancement.</p></details>
+    </section>
+
+    <section class="hp-section" id="projets" x-show="visible($el)">
+        <h3><i data-lucide="kanban" class="w-5 h-5"></i> Projets</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Qu'est-ce qu'un processus ?</summary>
+            <p>Les étapes que suit un projet. Un chantier ne se déroule pas comme un dépannage : créez un processus par façon de travailler dans <a href="{% url 'dashboard:process-list' %}">Projets › Processus</a>, ou ajoutez ceux suggérés pour votre métier. Chaque projet suit le sien.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment passer un projet à l'étape suivante ?</summary>
+            <p>Sur la fiche du projet, cliquez sur une étape pour voir ses jalons, puis « Terminer et passer à … ». Votre client voit la nouvelle étape dans son espace.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Que voit mon client dans son espace ?</summary>
+            <p>L'avancement, les jalons, les livrables à valider, les réunions et ses documents. Vous en réglez le contenu dans « Portail client ».</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment réutiliser un projet type ?</summary>
+            <p>Depuis un projet, « Enregistrer comme modèle » ; à la création d'un nouveau projet, « Partir d'un modèle » recrée jalons, tâches et livrables, datés à partir du début du projet.</p></details>
+    </section>
+
+    <section class="hp-section" id="modeles" x-show="visible($el)">
+        <h3><i data-lucide="palette" class="w-5 h-5"></i> Modèles de facture</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Comment créer un modèle à mon image ?</summary>
+            <p>Dans <a href="{% url 'templates_app:template-list' %}">Modèles</a>, partez d'un modèle de la galerie ou d'une page vide. Glissez les blocs, ajoutez des formes (bandeaux, vagues…) et des images, réglez les couleurs : elles sont des variables, les changer met à jour tout le modèle.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment personnaliser le tableau des lignes ?</summary>
+            <p>Cliquez sur le tableau : choisissez un style, les colonnes (variables comme la quantité ou le total TTC, ou colonnes personnalisées). Clic droit sur une colonne pour l'aligner, la colorer, l'insérer ou la supprimer ; glissez son bord pour la largeur.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Mode Simple ou Avancé ?</summary>
+            <p>« Simple » garde l'essentiel (alignement, taille, couleurs, styles prêts à l'emploi). « Avancé » ajoute polices, bordures, dégradés, marges et positions au pixel près.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Mon modèle est-il conforme ?</summary>
+            <p>L'éditeur l'indique : « Facture conforme » ou la liste des mentions obligatoires manquantes (entreprise, client, dates, totaux, règlement, mentions légales), à ajouter d'un clic.</p></details>
+    </section>
+
+    <section class="hp-section" id="parametres" x-show="visible($el)">
+        <h3><i data-lucide="settings" class="w-5 h-5"></i> Paramètres et compte</h3>
+        <details class="hp-q" x-show="match($el)"><summary>Comment changer la langue ?</summary>
+            <p>Avec le drapeau en haut de l'écran (français, anglais, allemand, espagnol). Vos documents restent dans la langue où vous les avez rédigés.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment inviter mon équipe ?</summary>
+            <p>Dans <a href="{% url 'accounts:user-settings' %}?tab=equipe">Paramètres › Équipe</a>, invitez un collaborateur et choisissez ses droits.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Comment changer d'abonnement ?</summary>
+            <p>Dans « Abonnement » : comparez les forfaits et changez à tout moment ; le paiement passe par Stripe.</p></details>
+        <details class="hp-q" x-show="match($el)"><summary>Mes données sont-elles sauvegardées ?</summary>
+            <p>Oui, la base est sauvegardée chaque nuit. Vos factures émises restent conservées et non modifiables, comme l'exige la loi.</p></details>
+    </section>
+
+    <p class="hp-empty" x-show="q && ![...$root.querySelectorAll('.hp-q')].some((el) => match(el))" x-cloak>Aucune réponse pour « <span x-text="q"></span> ». Essayez un autre mot{% if support_email %}, ou écrivez-nous{% endif %}.</p>
+
+    <div class="hp-bottom">
+        <section class="hp-card">
+            <h3><i data-lucide="keyboard" class="w-5 h-5"></i> Raccourcis clavier</h3>
+            <dl class="hp-keys">
+                <div><dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>Rechercher, lancer une action</dd></div>
+                <div><dt><kbd>Ctrl</kbd> <kbd>S</kbd></dt><dd>Enregistrer (factures, devis, modèles)</dd></div>
+                <div><dt><kbd>Ctrl</kbd> <kbd>Z</kbd> / <kbd>Y</kbd></dt><dd>Annuler / rétablir dans l'éditeur de modèle</dd></div>
+                <div><dt><kbd>Ctrl</kbd> <kbd>D</kbd></dt><dd>Dupliquer le bloc sélectionné</dd></div>
+                <div><dt><kbd>Suppr</kbd></dt><dd>Retirer le bloc sélectionné</dd></div>
+                <div><dt>Clic droit</dt><dd>Options d'un bloc ou d'une colonne du tableau</dd></div>
+            </dl>
+        </section>
+        {% if support_email %}
+        <section class="hp-card hp-contact">
+            <h3><i data-lucide="mail" class="w-5 h-5"></i> Une question sans réponse ?</h3>
+            <p>Écrivez-nous :</p>
+            <a href="mailto:{{ support_email }}" class="hp-btn">{{ support_email }}</a>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
