@@ -530,3 +530,6 @@ body.wf-tpl-open { overflow: hidden; }
 .wf-board { user-select: none; -webkit-user-select: none; }
 .wf-board input, .wf-board textarea, .wf-board [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
 body.wf-no-select, body.wf-no-select * { user-select: none !important; -webkit-user-select: none !important; }
+
+/* Conditions : aperçu des suggestions */
+.wf-rule-hint { display: block; margin-top: 4px; font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

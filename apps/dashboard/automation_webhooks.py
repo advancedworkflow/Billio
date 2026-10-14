@@ -136,6 +136,21 @@ def receive_webhook(request, token):
     name = name or f'{first} {last}'.strip()
     if email:
         variables.setdefault('email', email)
+    # Toutes les données reçues, lisibles : « Champ : valeur » (description du projet, e-mail…).
+    variables.setdefault('donnees_recues', '\n'.join(
+        f"{key.replace('_', ' ').capitalize()} : {value}" for key, value in list(variables.items())[:MAX_VARIABLES] if value
+    )[:4000])
+    # Coordonnées reconnues pour la fiche d'un client créé à la volée.
+    client_details = {
+        field: (_find(variables, keys)[1] or '')[:limit]
+        for field, keys, limit in (
+            ('company_name', ('company', 'company_name', 'entreprise', 'societe', 'organization'), 200),
+            ('address', ('address', 'adresse', 'street', 'address_line1', 'rue'), 500),
+            ('postal_code', ('postal_code', 'zip', 'zipcode', 'code_postal', 'cp'), 20),
+            ('city', ('city', 'ville', 'town'), 100),
+            ('country', ('country', 'pays'), 100),
+        )
+    }
 
     delivery = request.headers.get('Idempotency-Key') or _find(variables, ID_KEYS)[1] or uuid.uuid4().hex
     started = 0
@@ -144,7 +159,8 @@ def receive_webhook(request, token):
         client = Client.objects.filter(organization=organization, email__iexact=email).first() if email else None
         if not client and email and params.get('create_client'):
             client = Client.objects.create(organization=organization, email=email, name=(name or email)[:200],
-                                           phone=(variables.get('phone') or variables.get('telephone') or '')[:20] or None)
+                                           phone=(variables.get('phone') or variables.get('telephone') or '')[:20] or None,
+                                           **{k: v or None for k, v in client_details.items()})
         target_id = f'{rule.id}:{delivery}'[:64]
         try:
             run_automations(

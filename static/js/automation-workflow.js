@@ -112,7 +112,8 @@
     ['client', 'Client'], ['montant', 'Montant'], ['numero', 'N° du document'], ['projet', 'Projet'], ['produit', 'Livrable'],
     ['date', 'Date du jour'], ['evenement', "Résumé de l'événement"], ['formulaire', 'Formulaire'], ['lien_formulaire', 'Lien du formulaire'], ['document', 'Document'], ['lien_document', 'Lien du document'],
     ['reunion', 'Réunion'], ['date_reunion', 'Date de la réunion'], ['lieu', 'Lieu'],
-    ['jalon', 'Jalon'], ['date_echeance', "Date d'échéance"], ['origine', 'Origine du paiement'],
+    ['jalon', 'Jalon'], ['date_echeance', "Date d'échéance"], ['origine', 'Origine du paiement'], ['donnees_recues', 'Données reçues'],
+    ['email_client', 'Email du client'], ['telephone_client', 'Téléphone du client'], ['adresse_client', 'Adresse du client'], ['societe_client', 'Société du client'],
   ];
   const VARIABLES = VAR_DEFS.map(([k]) => k);
   const VAR_NAME = Object.fromEntries(VAR_DEFS);
@@ -159,7 +160,7 @@
       notify: { title: '', message: '', priority: 'medium' },
       create_task: { title: '', message: '', priority: 'high' },
       create_document: { template_id: '', title: '', field_values: {}, var_values: {}, share: false },
-      create_project: { value: '', template_id: '', process_id: '', client: 'event' }, create_phase: { value: '' }, create_milestone: { value: '' }, create_deliverable: { value: '' },
+      create_project: { value: '', template_id: '', process_id: '', client: 'event', description: '', delivery: '' }, create_phase: { value: '' }, create_milestone: { value: '' }, create_deliverable: { value: '' },
       create_form: {
         title: 'Questionnaire de démarrage', intro: 'Quelques questions pour bien lancer votre projet.', notify_client: true,
         fields: [
@@ -989,7 +990,15 @@
     if (needsValue) {
       if (rule.field === 'client') valueInput = `<select data-rule="${index}" data-rule-prop="value"><option value="">Choisir un client…</option>${opt(cfg.clients.map((c) => [c.id, c.name]), rule.value)}</select>`;
       else if (rule.field === 'weekday') valueInput = `<select data-rule="${index}" data-rule-prop="value">${opt(WEEKDAYS, rule.value)}</select>`;
-      else valueInput = `<input type="${kind === 'number' ? 'number' : 'text'}" data-rule="${index}" data-rule-prop="value" value="${esc(rule.value)}" placeholder="Valeur">`;
+      else {
+        // Suggestions tirées de vos données (clients, projets, livrables, formulaires) ; texte libre possible.
+        const refs = (cfg.conditionRefs || {})[rule.field] || [];
+        const listId = refs.length ? `wf-refs-${rule.field}` : '';
+        valueInput = `<input type="${kind === 'number' ? 'number' : 'text'}" data-rule="${index}" data-rule-prop="value" value="${esc(rule.value)}"`
+          + ` placeholder="${refs.length ? 'Choisir ou saisir…' : 'Valeur'}"${listId ? ` list="${listId}" autocomplete="off"` : ''}>`
+          + (listId ? `<datalist id="${listId}">${refs.map((r) => `<option value="${esc(r)}"></option>`).join('')}</datalist>` : '')
+          + (refs.length ? `<small class="wf-rule-hint">${refs.length} suggestion${refs.length > 1 ? 's' : ''} : ${esc(refs.slice(0, 3).join(', '))}${refs.length > 3 ? '…' : ''}</small>` : '');
+      }
     }
     return `
       <div class="wf-rule">
@@ -1196,7 +1205,10 @@
           <label class="wf-field"><span>Client du projet</span><select data-param="client">${opt([['event', "Le client de l'événement"], ...cfg.clients.map((c) => [String(c.id), c.name])], String(p.client || 'event'))}</select></label>
           <label class="wf-field"><span>Processus (étapes)</span><select data-param="process_id">${opt([['', tpl && tpl.process ? `Celui du modèle (${tpl.process})` : 'Processus par défaut'], ...processes.map((x) => [String(x.id), x.name])], String(p.process_id || ''))}</select></label>
           <label class="wf-field"><span>Nom du projet</span>${tokenField('value', p.value, false, tpl ? `${tpl.name} — {{client}}` : 'Ex. Projet {{client}}')}</label>
+          <label class="wf-field"><span>Description du projet</span>${tokenField('description', p.description, true, 'Ex. {{donnees_recues}}', 4)}</label>
+          <label class="wf-field"><span>Date de livraison</span>${tokenField('delivery', p.delivery, false, 'Ex. {{date_souhaitee}}, 30/11/2026 ou 30 (jours)')}</label>
           ${varChips()}
+          <p class="wf-help">Avec le déclencheur « Webhook entrant », chaque champ reçu devient une variable ({{nom_du_champ}}) et {{donnees_recues}} les reprend tous : mettez-le dans la description pour retrouver dans le projet ce que le client a envoyé.</p>
           <p class="wf-help">Le projet démarre aujourd'hui : jalons, tâches et livrables du modèle sont datés à partir de cette date. Les actions suivantes (jalon, réunion, formulaire…) visent ce projet.</p>`;
       }
       default: {
@@ -1401,6 +1413,9 @@
         <div class="wf-insp-head"><span class="wf-node-icon"><i data-lucide="workflow" class="w-4 h-4"></i></span><div><p class="wf-insp-type">Workflow</p><p class="wf-insp-name">${nodes.length} bloc${nodes.length > 1 ? 's' : ''} · ${graph().edges.length} lien${graph().edges.length > 1 ? 's' : ''}</p></div></div>
         <div class="wf-insp-body">
           <label class="wf-field"><span>Description</span><textarea rows="3" data-wf-description placeholder="À quoi sert ce workflow ?">${esc(current.description)}</textarea></label>
+          <label class="wf-field"><span>Me notifier du statut</span>
+            <select data-wf-notify>${opt([['failure', "En cas d'échec"], ['always', 'À chaque exécution'], ['never', 'Jamais']], current.notify_on || 'failure')}</select></label>
+          <p class="wf-help">La notification (cloche en haut de l'écran) indique les actions réalisées, ou l'étape en erreur et sa cause.</p>
           ${testLog ? `<div class="wf-field"><span>Résultat du test</span><ol class="wf-run-log">${current._testEntries.map((entry) => logLine(entry, graph())).join('')}</ol>
             <button type="button" class="wf-btn wf-btn--ghost wf-btn--block" data-test-clear>Effacer le résultat</button></div>` : ''}
           <div class="wf-field"><span>Historique d'exécution</span>${saved ? runsHtml(saved.runs.map((r) => Object.assign({ graph: saved.graph }, r))) : '<p class="wf-empty">Enregistrez le workflow pour suivre ses exécutions.</p>'}</div>
@@ -1451,6 +1466,7 @@
     if (t.matches('[data-group-label]')) { const g = groupById(selected.id); if (g) { g.label = t.value.slice(0, 80); renderGroups(); markDirty(); } return; }
     if (t.matches('[data-node-label]') && node) { node.label = t.value.slice(0, 80); updateNodeCard(); markDirty(); return; }
     if (t.matches('[data-wf-description]')) { current.description = t.value; markDirty(); return; }
+    if (t.matches('[data-wf-notify]')) { current.notify_on = t.value; markDirty(); return; }
     if (node && t.dataset.q !== undefined && t.type !== 'checkbox' && t.tagName !== 'SELECT') {
       node.params.fields[+t.dataset.q][t.dataset.qprop] = t.value;
       updateNodeCard(); markDirty();
@@ -1818,6 +1834,7 @@
       name: $('[data-wf-name]').value.trim(),
       description: current.description || '',
       is_active: $('[data-wf-active]').checked ? 'true' : 'false',
+      notify_on: current.notify_on || 'failure',
     });
     if (current.id) body.append('rule_id', current.id);
     const btn = $('[data-wf-save]');
@@ -1833,7 +1850,7 @@
       current.is_active = body.get('is_active') === 'true';
       const existing = workflows.find((w) => w.id === data.id);
       const record = {
-        id: data.id, name: current.name || nodeTitle(triggerNode()), description: current.description, is_active: current.is_active,
+        id: data.id, name: current.name || nodeTitle(triggerNode()), description: current.description, is_active: current.is_active, notify_on: current.notify_on,
         trigger_key: triggerNode().key, graph: clone(data.graph),
         run_count: existing ? existing.run_count : 0, last_triggered_at: existing ? existing.last_triggered_at : '', runs: existing ? existing.runs : [],
       };
@@ -1861,6 +1878,7 @@
       name: record.name || '',
       description: record.description || '',
       is_active: record.is_active !== false,
+      notify_on: record.notify_on || 'failure',
       graph: clone(record.graph || { nodes: [], edges: [] }),
     };
     if (current.graph.nodes.some((n) => n.x === undefined)) autoLayout(current.graph);

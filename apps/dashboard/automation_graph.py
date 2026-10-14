@@ -152,6 +152,9 @@ def _clean_params(node_type, key, raw, *, organization):
         client = str(raw.get('client') or 'event')
         params['client'] = client if client == 'event' or (client.isdigit() and Client.objects.filter(
             organization=organization, id=int(client)).exists()) else 'event'
+        # Données reçues (formulaire, webhook, client créé) reportées dans le projet.
+        params['description'] = _str(raw.get('description'), 4000)
+        params['delivery'] = _str(raw.get('delivery'), 100)
     elif key in ('create_phase', 'create_milestone', 'create_deliverable'):
         params['value'] = _str(raw.get('value'))
     elif key == 'create_form':

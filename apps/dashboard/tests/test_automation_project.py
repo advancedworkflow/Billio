@@ -55,3 +55,93 @@ class AutomationProjectTests(TestCase):
         bad = self.rule({'client': str(foreign_client.id), 'template_id': '999999'})
         params = bad.get_graph()['nodes'][1]['params']
         self.assertEqual((params['client'], params['template_id']), ('event', ''))   # identifiants étrangers écartés
+
+
+class ConditionReferencesTests(TestCase):
+    def test_builder_suggests_real_clients_and_projects(self):
+        import json
+        from django.test import Client as HttpClient
+        from django.urls import reverse
+        user = User.objects.create_user(username='r', email='r@test.fr', password='x-Test-1234')
+        org = Organization.objects.create(name='Studio', owner=user, city='Paris')
+        client = Client.objects.create(organization=org, name='Atelier Néon', email='hello@neon.fr', city='Lyon')
+        Project.objects.create(organization=org, client=client, name='Clip Néons', status='onboarding')
+        other_org = Organization.objects.create(name='Autre', owner=User.objects.create_user(username='z', email='z@t.fr', password='x-Test-1234'))
+        Client.objects.create(organization=other_org, name='Concurrent secret', email='c@t.fr')
+        http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')
+        http.force_login(user)
+        page = http.get(reverse('dashboard:automation-builder')).content.decode()
+        start = page.index('id="wf-config"')
+        config = json.loads(page[page.index('>', start) + 1:page.index('</script>', start)])
+        refs = config['conditionRefs']
+        self.assertEqual(refs['client_name'], ['Atelier Néon'])
+        self.assertEqual(refs['client_city'], ['Lyon'])
+        self.assertEqual(refs['projet'], ['Clip Néons'])
+        self.assertNotIn('Concurrent secret', json.dumps(refs))
+
+
+class WebhookClientToProjectTests(TestCase):
+    def test_webhook_creates_client_and_project_with_received_data(self):
+        import json
+        from django.test import Client as HttpClient
+        from django.urls import reverse
+        from apps.subscriptions.testing import give_plan
+        user = User.objects.create_user(username='w', email='w@test.fr', password='x-Test-1234')
+        org = Organization.objects.create(name='Studio', owner=user)
+        give_plan(user, 'business')
+        raw = {'nodes': [{'id': 't', 'type': 'trigger', 'key': 'webhook_received', 'params': {'create_client': True}},
+                         {'id': 'a', 'type': 'action', 'key': 'create_project', 'params': {
+                             'value': 'Site {{societe_client}}', 'description': '{{donnees_recues}}', 'delivery': '{{date_souhaitee}}'}}],
+               'edges': [{'from': 't', 'port': 'out', 'to': 'a'}]}
+        graph = validate_graph(raw, organization=org, valid_triggers=TRIGGERS, valid_actions=ACTIONS)
+        AutomationRule.objects.create(organization=org, trigger_key='webhook_received', action_key='create_project', graph=graph)
+        token = graph['nodes'][0]['params']['token']
+        payload = {'email': 'lea@neon.fr', 'name': 'Léa Martin', 'company': 'Néon SAS', 'city': 'Lyon',
+                   'zip': '69001', 'budget': '5000', 'date_souhaitee': '30/11/2026', 'message': 'Refonte du site'}
+        response = HttpClient().post(reverse('dashboard:automation-webhook', args=[token]), json.dumps(payload), content_type='application/json')
+        self.assertEqual(response.status_code, 202)
+        client = Client.objects.get(organization=org, email='lea@neon.fr')
+        self.assertEqual((client.company_name, client.city, client.postal_code), ('Néon SAS', 'Lyon', '69001'))
+        project = Project.objects.get(client=client)
+        self.assertEqual(project.name, 'Site Néon SAS')
+        self.assertIn('Message : Refonte du site', project.description)
+        self.assertIn('Budget : 5000', project.description)
+        self.assertEqual(str(project.delivery_date), '2026-11-30')
+
+
+class WorkflowStatusNotificationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='n', email='n@test.fr', password='x-Test-1234')
+        self.org = Organization.objects.create(name='Studio', owner=self.user)
+        self.client_obj = Client.objects.create(organization=self.org, name='Mme Durand', email='d@test.fr')
+
+    def rule(self, notify_on, client='event'):
+        raw = {'nodes': [{'id': 't', 'type': 'trigger', 'key': 'client_created', 'params': {}},
+                         {'id': 'a', 'type': 'action', 'key': 'create_project', 'params': {'value': 'P', 'client': client}}],
+               'edges': [{'from': 't', 'port': 'out', 'to': 'a'}]}
+        graph = validate_graph(raw, organization=self.org, valid_triggers=TRIGGERS, valid_actions=ACTIONS)
+        return AutomationRule.objects.create(organization=self.org, name='Onboarding', trigger_key='client_created',
+                                             action_key='create_project', graph=graph, notify_on=notify_on)
+
+    def notes(self):
+        from apps.dashboard.models import Notification
+        return Notification.objects.filter(user=self.user, notification_type='workflow_status')
+
+    def test_success_notified_only_when_always(self):
+        self.rule('failure')
+        run_automations(self.org, 'client_created', target_type='client', target_id=self.client_obj.id, client_id=self.client_obj.id)
+        self.assertEqual(self.notes().count(), 0)
+        AutomationRule.objects.update(notify_on='always')
+        other = Client.objects.create(organization=self.org, name='B', email='b@test.fr')
+        run_automations(self.org, 'client_created', target_type='client', target_id=other.id, client_id=other.id)
+        note = self.notes().get()
+        self.assertIn('exécuté', note.title)
+        self.assertIn('Projet', note.message)
+
+    def test_failure_notified_by_default(self):
+        self.rule('failure')
+        # Aucun client rattaché : « Créer un projet » échoue.
+        run_automations(self.org, 'client_created', target_type='webhook', target_id='sans-client', client_id=None)
+        note = self.notes().get()
+        self.assertIn('en échec', note.title)
+        self.assertEqual(note.priority, 'high')

@@ -5389,5 +5389,16 @@
   "le service d'envoi d'emails utilisé pour les messages de la plateforme (mot de passe oublié, notifications) ;": "el servicio de envío de emails usado para los mensajes de la plataforma (contraseña olvidada, notificaciones);",
   "ne traiter ces données que pour fournir le service et selon vos instructions ;": "tratar estos datos solo para prestar el servicio y según sus instrucciones;",
   "vous aider à répondre aux demandes d'exercice des droits et vous notifier toute violation de données dans les meilleurs délais ;": "ayudarle a responder a las solicitudes de ejercicio de derechos y notificarle cualquier violación de datos lo antes posible;",
-  "{} : hébergement des serveurs et de la base de données ({}) ;": "{}: alojamiento de los servidores y de la base de datos ({});"
+  "{} : hébergement des serveurs et de la base de données ({}) ;": "{}: alojamiento de los servidores y de la base de datos ({});",
+  "Description du projet": "Descripción del proyecto",
+  "Ex. {{donnees_recues}}": "P. ej. {{donnees_recues}}",
+  "Données reçues": "Datos recibidos",
+  "Société du client": "Empresa del cliente",
+  "Me notifier du statut": "Notificarme el estado",
+  "En cas d'échec": "En caso de fallo",
+  "À chaque exécution": "En cada ejecución",
+  "Jamais": "Nunca",
+  "La notification (cloche en haut de l'écran) indique les actions réalisées, ou l'étape en erreur et sa cause.": "La notificación (campana en la parte superior) indica las acciones realizadas, o el paso con error y su causa.",
+  "Statut d'un workflow": "Estado de un flujo",
+  "Choisir ou saisir…": "Elegir o escribir…"
 }

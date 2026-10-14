@@ -136,6 +136,7 @@ class Notification(models.Model):
         ('proposal_rejected', _('Proposition refusée')),
         ('milestone_form_submitted', _('Formulaire de jalon soumis')),
         ('support_reply', _('Réponse du support')),
+        ('workflow_status', _("Statut d'un workflow")),
     ]
 
     PRIORITY_CHOICES = [
@@ -933,6 +934,13 @@ class AutomationRule(models.Model):
     graph = models.JSONField(blank=True, default=dict)
     description = models.CharField(max_length=255, blank=True, default='')
     is_active = models.BooleanField(default=True)
+    NOTIFY_CHOICES = [
+        ('failure', _("En cas d'échec")),
+        ('always', _('À chaque exécution')),
+        ('never', _('Jamais')),
+    ]
+    # Notification du statut d'une exécution au propriétaire (échec, ou chaque exécution).
+    notify_on = models.CharField(max_length=10, choices=NOTIFY_CHOICES, default='failure')
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

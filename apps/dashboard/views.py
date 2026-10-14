@@ -737,6 +737,35 @@ def _user_org_ids(user):
     return list(user.organization_memberships.values_list("organization_id", flat=True))
 
 
+def condition_references(organization, clients, limit=300):
+    """Valeurs proposées dans les conditions : noms, e-mails et villes des clients, projets, livrables, formulaires."""
+    from apps.documents.models import Document
+    from .models import ClientForm, Deliverable, Project
+
+    def unique(values):
+        seen = []
+        for value in values:
+            value = (value or '').strip()
+            if value and value not in seen:
+                seen.append(value)
+            if len(seen) >= limit:
+                break
+        return sorted(seen, key=str.lower)
+
+    if organization is None:
+        return {}
+    clients = list(clients)
+    return {
+        'client_name': unique(c.name for c in clients),
+        'client_email': unique(c.email for c in clients),
+        'client_city': unique(c.city for c in clients),
+        'projet': unique(Project.objects.filter(organization=organization).order_by('-created_at').values_list('name', flat=True)[:limit]),
+        'produit': unique(Deliverable.objects.filter(project__organization=organization).order_by('-id').values_list('title', flat=True)[:limit]),
+        'formulaire': unique(list(ClientForm.objects.filter(organization=organization).order_by('-id').values_list('title', flat=True)[:limit])
+                             + list(Document.objects.filter(organization=organization).order_by('-id').values_list('title', flat=True)[:limit])),
+    }
+
+
 @login_required
 def automation_builder(request):
     """Centre d'automatisation — board de workflow (nœuds reliés) avec un moteur d'exécution réel."""
@@ -783,6 +812,7 @@ def automation_builder(request):
         'name': rule.name or str(rule),
         'description': rule.description,
         'is_active': rule.is_active,
+        'notify_on': rule.notify_on,
         'trigger_key': rule.trigger_key,
         'run_count': rule.run_count,
         'last_triggered_at': timezone.localtime(rule.last_triggered_at).strftime('%d/%m/%Y %H:%M') if rule.last_triggered_at else '',
@@ -818,6 +848,8 @@ def automation_builder(request):
             "processes": [{"id": p.id, "name": p.name, "is_default": p.is_default}
                           for p in ProjectProcess.for_organization(organization)] if organization else [],
             "conditionFields": CONDITION_FIELDS,
+            # Suggestions des conditions « Si » : valeurs réelles de l'organisation (texte libre toujours possible).
+            "conditionRefs": condition_references(organization, clients),
             "conditionOps": {kind: sorted(ops) for kind, ops in CONDITION_OPS.items()},
             "driveConnected": ConnectionInstance.objects.filter(organization=organization, connector__key="google-drive", status="connected").exists() if organization else False,
             "messagingChannels": [
@@ -886,6 +918,8 @@ def automation_rule_save(request):
 
     rule.name = name
     rule.description = description
+    if request.POST.get('notify_on') in dict(AutomationRule.NOTIFY_CHOICES):
+        rule.notify_on = request.POST['notify_on']
     rule.graph = graph
     # Champs « à plat » conservés pour l'indexation par déclencheur et l'affichage.
     rule.trigger_key = trigger['key']

@@ -5389,5 +5389,16 @@
   "le service d'envoi d'emails utilisé pour les messages de la plateforme (mot de passe oublié, notifications) ;": "the email service used for platform messages (forgotten password, notifications);",
   "ne traiter ces données que pour fournir le service et selon vos instructions ;": "process this data only to provide the service and according to your instructions;",
   "vous aider à répondre aux demandes d'exercice des droits et vous notifier toute violation de données dans les meilleurs délais ;": "help you answer requests to exercise rights and notify you of any data breach as soon as possible;",
-  "{} : hébergement des serveurs et de la base de données ({}) ;": "{}: hosting of the servers and database ({});"
+  "{} : hébergement des serveurs et de la base de données ({}) ;": "{}: hosting of the servers and database ({});",
+  "Description du projet": "Project description",
+  "Ex. {{donnees_recues}}": "E.g. {{donnees_recues}}",
+  "Données reçues": "Received data",
+  "Société du client": "Client company",
+  "Me notifier du statut": "Notify me of the status",
+  "En cas d'échec": "On failure",
+  "À chaque exécution": "On every run",
+  "Jamais": "Never",
+  "La notification (cloche en haut de l'écran) indique les actions réalisées, ou l'étape en erreur et sa cause.": "The notification (bell at the top of the screen) shows the actions completed, or the failing step and its cause.",
+  "Statut d'un workflow": "Workflow status",
+  "Choisir ou saisir…": "Choose or type…"
 }

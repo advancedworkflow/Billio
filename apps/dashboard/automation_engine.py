@@ -51,11 +51,17 @@ def _render_tokens(text, variables):
 def _build_context(organization, trigger_key, *, target_type, target_id, amount=None, client_id=None,
                    project_id=None, variables=None, context_label=''):
     variables = dict(variables or {})
-    if client_id and 'client' not in variables:
+    if client_id:
         from apps.clients.models import Client
-        name = Client.objects.filter(id=client_id).values_list('name', flat=True).first()
-        if name:
-            variables['client'] = name
+        client = Client.objects.filter(id=client_id).first()
+        if client:
+            variables.setdefault('client', client.name)
+            # Coordonnées du client : à reporter dans un projet, un e-mail, un document…
+            city_line = ' '.join(p for p in (client.postal_code or '', client.city or '') if p)
+            for key, value in (('email_client', client.email), ('telephone_client', client.phone),
+                               ('societe_client', client.company_name), ('ville_client', city_line),
+                               ('adresse_client', ', '.join(p for p in (client.address, city_line, client.country) if p))):
+                variables.setdefault(key, value or '')
     if 'numero' not in variables and target_type in ('invoice', 'quote', 'document'):
         # {{numero}} disponible pour tous les événements de facture / devis / document.
         from apps.documents.models import Document
@@ -235,7 +241,32 @@ def _save_run(rule, graph, ctx, log, pending, *, context_label='', run=None):
         rule.last_triggered_at = timezone.now()
         rule.run_count = F('run_count') + 1
         rule.save(update_fields=['last_triggered_at', 'run_count'])
+    _notify_status(rule, run, log, types, errors, pending, ctx)
     return run
+
+
+def _notify_status(rule, run, log, types, errors, pending, ctx):
+    """Prévient le propriétaire du statut d'une exécution, selon le réglage du workflow."""
+    mode = getattr(rule, 'notify_on', 'failure') or 'failure'
+    owner = ctx['organization'].owner
+    if mode == 'never' or owner is None or (mode == 'failure' and not errors):
+        return
+    if not errors and not any(e['status'] == 'ok' and types.get(e['node']) == 'action' for e in log):
+        return  # rien d'exécuté (conditions non remplies) : pas de bruit
+    name = rule.name or rule.get_trigger_key_display()
+    done = [e['detail'] for e in log if e['status'] == 'ok' and types.get(e['node']) == 'action']
+    if errors:
+        title = f"Workflow « {name} » en échec"
+        message = f"Étape en erreur : {errors[0]['detail']}"
+        if done:
+            message += f" — déjà fait : {'; '.join(done[:3])}"
+        priority = 'high'
+    else:
+        title = f"Workflow « {name} » exécuté" + (' (en attente de la suite)' if pending else '')
+        message = '; '.join(done[:4]) or (ctx.get('context_label') or '')
+        priority = 'low'
+    Notification.objects.create(user=owner, notification_type='workflow_status', title=title[:200],
+                                message=message[:1000], priority=priority)
 
 
 def run_pending_waits():
@@ -445,6 +476,22 @@ def _email_recipients(params, ctx, owner):
     return [owner.email] if owner and owner.email else []
 
 
+def _parse_delivery(raw, today):
+    """Date de livraison saisie ou reçue : 2026-11-30, 30/11/2026, ou un nombre de jours (« 30 »)."""
+    import datetime as dt
+    raw = (raw or '').strip()
+    if not raw:
+        return None
+    if raw.isdigit() and len(raw) <= 4:
+        return today + dt.timedelta(days=int(raw))
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M:%SZ'):
+        try:
+            return dt.datetime.strptime(raw[:19] if 'T' in raw else raw, fmt.replace('Z', '') if 'T' in raw else fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 def _execute_action(rule, action_key, params, ctx):
     """Exécute une action du workflow. Retourne un court détail pour le journal."""
     organization = ctx['organization']
@@ -571,14 +618,16 @@ def _execute_action(rule, action_key, params, ctx):
         process = process or ProjectProcess.default_for(organization)
         first_stage = (process.phases() or [None])[0]
         client_name = Client.objects.filter(id=resolved_client_id).values_list('name', flat=True).first() or ''
+        description = _render_tokens(params.get('description'), variables).strip()
         project = Project.objects.create(
             organization=organization,
             client_id=resolved_client_id,
             process=process,
             name=value or (f"{template.name} — {client_name}" if template else f"Nouveau projet — {trigger_label}"),
-            description=f"Créé automatiquement par le workflow « {rule_name} ».",
+            description=description or f"Créé automatiquement par le workflow « {rule_name} ».",
             status=first_stage.key if first_stage else 'discovery',
             start_date=dj_timezone.localdate(),
+            delivery_date=_parse_delivery(_render_tokens(params.get('delivery'), variables), dj_timezone.localdate()),
         )
         if template:
             # Jalons, tâches et livrables du modèle, datés à partir d'aujourd'hui.
