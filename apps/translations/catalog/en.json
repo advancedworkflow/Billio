@@ -5400,5 +5400,21 @@
   "Jamais": "Never",
   "La notification (cloche en haut de l'écran) indique les actions réalisées, ou l'étape en erreur et sa cause.": "The notification (bell at the top of the screen) shows the actions completed, or the failing step and its cause.",
   "Statut d'un workflow": "Workflow status",
-  "Choisir ou saisir…": "Choose or type…"
+  "Choisir ou saisir…": "Choose or type…",
+  "Titulaire du compte": "Account holder",
+  "Raison sociale ou nom": "Company or name",
+  "Ex. BNP Paribas": "E.g. BNP Paribas",
+  "Imprimés sur vos factures pour que le client puisse vous payer par virement.": "Printed on your invoices so the client can pay you by bank transfer.",
+  "Chèque à l'ordre de": "Cheque payable to",
+  "L'adresse d'envoi est celle de votre organisation.": "The mailing address is your organisation's.",
+  "Adresse PayPal": "PayPal address",
+  "Email du compte PayPal ou lien paypal.me/…": "PayPal account email or paypal.me/… link",
+  "Le paiement par carte passe par Stripe Checkout avec votre propre compte Stripe : aucune donnée à saisir ici.": "Card payment goes through Stripe Checkout with your own Stripe account: nothing to enter here.",
+  "Connecter Stripe dans Intégrations": "Connect Stripe in Integrations",
+  "Rien à configurer : enregistrez le paiement en espèces sur la facture une fois l'argent reçu.": "Nothing to set up: record the cash payment on the invoice once you've received the money.",
+  "Indiquez le titulaire du compte.": "Enter the account holder.",
+  "IBAN invalide : vérifiez les caractères saisis.": "Invalid IBAN: check the characters entered.",
+  "BIC invalide (8 ou 11 caractères).": "Invalid BIC (8 or 11 characters).",
+  "Indiquez l'ordre des chèques.": "Enter who cheques are payable to.",
+  "Adresse PayPal invalide : email ou lien paypal.me/…": "Invalid PayPal address: email or paypal.me/… link"
 }

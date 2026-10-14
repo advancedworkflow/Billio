@@ -338,34 +338,7 @@
                         <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
                         <input type="text" x-model="newMethod.name" class="interactive-input" placeholder="Ex. Compte pro BNP">
                     </div>
-                    <div>
-                        <label class="interactive-label">Type</label>
-                        <select x-model="newMethod.method_type" class="interactive-input">
-                            {% for value, label in payment_method_types %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="interactive-label">Banque</label>
-                            <input type="text" x-model="newMethod.bank_name" class="interactive-input">
-                        </div>
-                        <div>
-                            <label class="interactive-label">Titulaire</label>
-                            <input type="text" x-model="newMethod.account_holder" class="interactive-input">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="interactive-label">IBAN</label>
-                            <input type="text" x-model="newMethod.iban" class="interactive-input">
-                        </div>
-                        <div>
-                            <label class="interactive-label">BIC</label>
-                            <input type="text" x-model="newMethod.bic" class="interactive-input">
-                        </div>
-                    </div>
+                    {% include 'payments/_method_fields.html' with obj='newMethod' %}
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" class="custom-checkbox" x-model="newMethod.is_default"><span>Définir par défaut</span></label>
                     <p x-show="newMethodError" x-cloak x-text="newMethodError" class="text-sm text-red-600"></p>
                 </div>
@@ -391,34 +364,7 @@
                         <label class="interactive-label">Nom <span class="interactive-hint">Obligatoire</span></label>
                         <input type="text" x-model="editMethod.name" class="interactive-input">
                     </div>
-                    <div>
-                        <label class="interactive-label">Type</label>
-                        <select x-model="editMethod.method_type" class="interactive-input">
-                            {% for value, label in payment_method_types %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="interactive-label">Banque</label>
-                            <input type="text" x-model="editMethod.bank_name" class="interactive-input">
-                        </div>
-                        <div>
-                            <label class="interactive-label">Titulaire</label>
-                            <input type="text" x-model="editMethod.account_holder" class="interactive-input">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="interactive-label">IBAN</label>
-                            <input type="text" x-model="editMethod.iban" class="interactive-input">
-                        </div>
-                        <div>
-                            <label class="interactive-label">BIC</label>
-                            <input type="text" x-model="editMethod.bic" class="interactive-input">
-                        </div>
-                    </div>
+                    {% include 'payments/_method_fields.html' with obj='editMethod' %}
                     <label class="inline-flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" class="custom-checkbox" x-model="editMethod.is_active"><span>Moyen actif</span></label>
                     <p x-show="editMethodError" x-cloak x-text="editMethodError" class="text-sm text-red-600"></p>
                 </div>

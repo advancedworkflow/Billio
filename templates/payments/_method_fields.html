@@ -1,0 +1,55 @@
+<div>
+    <label class="interactive-label">Type</label>
+    <select x-model="{{ obj }}.method_type" class="interactive-input">
+        {% for value, label in payment_method_types %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+</div>
+<template x-if="{{ obj }}.method_type === 'bank_transfer'">
+    <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="interactive-label">Titulaire du compte <span class="interactive-hint">Obligatoire</span></label>
+                <input type="text" x-model="{{ obj }}.account_holder" class="interactive-input" placeholder="Raison sociale ou nom">
+            </div>
+            <div>
+                <label class="interactive-label">Banque</label>
+                <input type="text" x-model="{{ obj }}.bank_name" class="interactive-input" placeholder="Ex. BNP Paribas">
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+                <label class="interactive-label">IBAN <span class="interactive-hint">Obligatoire</span></label>
+                <input type="text" x-model="{{ obj }}.iban" class="interactive-input font-mono" placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" spellcheck="false">
+            </div>
+            <div>
+                <label class="interactive-label">BIC</label>
+                <input type="text" x-model="{{ obj }}.bic" class="interactive-input font-mono" placeholder="BNPAFRPP" maxlength="11" autocomplete="off" spellcheck="false">
+            </div>
+        </div>
+        <p class="text-xs text-gray-500">Imprimés sur vos factures pour que le client puisse vous payer par virement.</p>
+    </div>
+</template>
+<template x-if="{{ obj }}.method_type === 'check'">
+    <div>
+        <label class="interactive-label">Chèque à l'ordre de <span class="interactive-hint">Obligatoire</span></label>
+        <input type="text" x-model="{{ obj }}.account_holder" class="interactive-input" placeholder="Raison sociale">
+        <p class="text-xs text-gray-500 mt-1">L'adresse d'envoi est celle de votre organisation.</p>
+    </div>
+</template>
+<template x-if="{{ obj }}.method_type === 'paypal'">
+    <div>
+        <label class="interactive-label">Adresse PayPal <span class="interactive-hint">Obligatoire</span></label>
+        <input type="text" x-model="{{ obj }}.account_holder" class="interactive-input" placeholder="Email du compte PayPal ou lien paypal.me/…">
+    </div>
+</template>
+<template x-if="{{ obj }}.method_type === 'credit_card' || {{ obj }}.method_type === 'stripe'">
+    <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+        Le paiement par carte passe par Stripe Checkout avec votre propre compte Stripe : aucune donnée à saisir ici.
+        <a href="{% url 'integrations:integrations-page' %}" class="font-semibold underline">Connecter Stripe dans Intégrations</a>
+    </div>
+</template>
+<template x-if="{{ obj }}.method_type === 'cash'">
+    <p class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">Rien à configurer : enregistrez le paiement en espèces sur la facture une fois l'argent reçu.</p>
+</template>

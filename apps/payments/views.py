@@ -1,6 +1,7 @@
 """
 Views for payments app.
 """
+import re
 from django.db.models import Q, Sum
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -259,6 +260,39 @@ def send_payment_reminder(request, invoice_id):
     return JsonResponse({'ok': True, 'message': f'Relance envoyée à {client.email}.'})
 
 
+def _clean_method_fields(method_type, bank_name, account_holder, iban, bic):
+    """Garde seulement les champs du type choisi et les vérifie. Renvoie (champs, erreur)."""
+    empty = {'bank_name': None, 'account_holder': None, 'iban': None, 'bic': None}
+    if method_type == 'bank_transfer':
+        iban = re.sub(r'\s+', '', iban).upper()
+        bic = re.sub(r'\s+', '', bic).upper()
+        if not account_holder:
+            return None, 'Indiquez le titulaire du compte.'
+        if not _iban_is_valid(iban):
+            return None, 'IBAN invalide : vérifiez les caractères saisis.'
+        if bic and not re.fullmatch(r'[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?', bic):
+            return None, 'BIC invalide (8 ou 11 caractères).'
+        return dict(empty, bank_name=bank_name[:100] or None, account_holder=account_holder[:100], iban=iban, bic=bic or None), None
+    if method_type == 'check':
+        if not account_holder:
+            return None, "Indiquez l'ordre des chèques."
+        return dict(empty, account_holder=account_holder[:100]), None
+    if method_type == 'paypal':
+        address = account_holder.strip()
+        if not (re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', address)
+                or re.fullmatch(r'(https?://)?(www\.)?paypal\.me/[\w.-]+/?', address, re.I)):
+            return None, 'Adresse PayPal invalide : email ou lien paypal.me/…'
+        return dict(empty, account_holder=address[:100]), None
+    return empty, None  # carte / Stripe / espèces : rien à saisir
+
+
+def _iban_is_valid(iban):
+    if not re.fullmatch(r'[A-Z]{2}\d{2}[A-Z0-9]{10,30}', iban or ''):
+        return False
+    digits = ''.join(str(int(c, 36)) for c in iban[4:] + iban[:4])
+    return int(digits) % 97 == 1
+
+
 @login_required
 @require_POST
 def payment_method_quick_create(request):
@@ -276,6 +310,9 @@ def payment_method_quick_create(request):
 
     if method_type not in dict(PaymentMethod.METHOD_CHOICES):
         return JsonResponse({'ok': False, 'error': 'Type de moyen de paiement invalide.'}, status=400)
+    fields, error = _clean_method_fields(method_type, bank_name, account_holder, iban, bic)
+    if error:
+        return JsonResponse({'ok': False, 'error': error}, status=400)
 
     organization = _get_user_primary_organization(request.user)
     if not organization:
@@ -285,11 +322,8 @@ def payment_method_quick_create(request):
         organization=organization,
         name=name,
         method_type=method_type,
-        bank_name=bank_name or None,
-        account_holder=account_holder or None,
-        iban=iban or None,
-        bic=bic or None,
         is_default=is_default,
+        **fields,
         is_active=True,
     )
 
@@ -315,13 +349,14 @@ def payment_method_quick_update(request, method_id):
 
     if method_type not in dict(PaymentMethod.METHOD_CHOICES):
         return JsonResponse({'ok': False, 'error': 'Type de moyen de paiement invalide.'}, status=400)
+    fields, error = _clean_method_fields(method_type, bank_name, account_holder, iban, bic)
+    if error:
+        return JsonResponse({'ok': False, 'error': error}, status=400)
 
     method.name = name
     method.method_type = method_type
-    method.bank_name = bank_name or None
-    method.account_holder = account_holder or None
-    method.iban = iban or None
-    method.bic = bic or None
+    for field, value in fields.items():
+        setattr(method, field, value)
     method.is_active = is_active
     method.save()
 

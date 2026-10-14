@@ -2214,3 +2214,34 @@
 .pb-save-process { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; font-size: 13px; color: #27272a; cursor: pointer; }
 .pb-save-process input { margin-top: 2px; accent-color: var(--billio-primary, #6d28d9); }
 .pb-hint { margin: 0; font-size: 12px; color: #71717a; }
+
+/* ===== Kanban projets : cartes plus marquées, couleurs franches ===== */
+.kanban-column { background: #f4f4f7; border: 0; box-shadow: inset 0 0 0 1px rgba(24, 24, 27, .06); }
+.kanban-column-head { background: var(--phase, #52525b); color: #fff; border-bottom: 0; padding: .8rem .9rem; }
+.kanban-column-head .kanban-column-title { color: #fff; font-weight: 800; letter-spacing: .01em; }
+.kanban-column-head .kanban-column-dot { background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .35); }
+.kanban-column-head .kanban-column-count { background: #fff; border: 0; color: var(--phase, #18181b); font-weight: 800; }
+.kanban-column-head .detail-item-delete { color: rgba(255, 255, 255, .85); }
+.kanban-column-head .detail-item-delete:hover { color: #fff; background: rgba(255, 255, 255, .18); }
+.kanban-card {
+  position: relative;
+  border: 0;
+  border-radius: 14px;
+  padding: .95rem 1rem .9rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(24, 24, 27, .08), 0 6px 16px -6px rgba(24, 24, 27, .18);
+  overflow: hidden;
+}
+.kanban-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--phase, #52525b); }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(24, 24, 27, .08), 0 14px 28px -8px color-mix(in srgb, var(--phase, #52525b) 45%, transparent); }
+.kanban-card-title { font-size: .92rem; font-weight: 800; color: #18181b; line-height: 1.3; }
+.kanban-card-title:hover { color: var(--phase, #18181b); }
+.kanban-card-tag { background: var(--phase, #52525b); color: #fff; font-size: .62rem; padding: .2rem .55rem; }
+.kanban-card-avatar { width: 1.6rem; height: 1.6rem; background: var(--phase, #52525b); color: #fff; font-size: .62rem; box-shadow: 0 0 0 2px #fff, 0 0 0 3px color-mix(in srgb, var(--phase, #52525b) 35%, transparent); }
+.kanban-card-client { font-size: .8rem; font-weight: 600; color: #3f3f46; }
+.kanban-card-progress { height: .5rem; background: color-mix(in srgb, var(--phase, #52525b) 16%, #fff); }
+.kanban-card-progress-bar { background: var(--phase, #52525b); }
+.kanban-card-progress-label { font-size: .7rem; font-weight: 800; }
+.kanban-card-due { font-size: .68rem; font-weight: 700; background: #f4f4f5; border: 0; color: #3f3f46; padding: .15rem .5rem; }
+.kanban-card-due--soon { background: #f59e0b; color: #fff; }
+.kanban-card-due--late { background: #ef4444; color: #fff; }
+.kanban-column-body.is-dragover { background: color-mix(in srgb, var(--phase, #6d28d9) 12%, #fff); outline: 2px dashed var(--phase, #6d28d9); outline-offset: -6px; border-radius: 0 0 1rem 1rem; }

@@ -5400,5 +5400,21 @@
   "Jamais": "Nie",
   "La notification (cloche en haut de l'écran) indique les actions réalisées, ou l'étape en erreur et sa cause.": "Die Benachrichtigung (Glocke oben) zeigt die ausgeführten Aktionen oder den fehlerhaften Schritt und die Ursache.",
   "Statut d'un workflow": "Workflow-Status",
-  "Choisir ou saisir…": "Wählen oder eingeben…"
+  "Choisir ou saisir…": "Wählen oder eingeben…",
+  "Titulaire du compte": "Kontoinhaber",
+  "Raison sociale ou nom": "Firmenname oder Name",
+  "Ex. BNP Paribas": "Z. B. BNP Paribas",
+  "Imprimés sur vos factures pour que le client puisse vous payer par virement.": "Werden auf Ihre Rechnungen gedruckt, damit der Kunde per Überweisung zahlen kann.",
+  "Chèque à l'ordre de": "Scheck zahlbar an",
+  "L'adresse d'envoi est celle de votre organisation.": "Die Versandadresse ist die Ihrer Organisation.",
+  "Adresse PayPal": "PayPal-Adresse",
+  "Email du compte PayPal ou lien paypal.me/…": "E-Mail des PayPal-Kontos oder Link paypal.me/…",
+  "Le paiement par carte passe par Stripe Checkout avec votre propre compte Stripe : aucune donnée à saisir ici.": "Kartenzahlungen laufen über Stripe Checkout mit Ihrem eigenen Stripe-Konto: hier ist nichts einzugeben.",
+  "Connecter Stripe dans Intégrations": "Stripe unter Integrationen verbinden",
+  "Rien à configurer : enregistrez le paiement en espèces sur la facture une fois l'argent reçu.": "Nichts einzurichten: Erfassen Sie die Barzahlung auf der Rechnung, sobald Sie das Geld erhalten haben.",
+  "Indiquez le titulaire du compte.": "Geben Sie den Kontoinhaber an.",
+  "IBAN invalide : vérifiez les caractères saisis.": "Ungültige IBAN: Prüfen Sie die eingegebenen Zeichen.",
+  "BIC invalide (8 ou 11 caractères).": "Ungültige BIC (8 oder 11 Zeichen).",
+  "Indiquez l'ordre des chèques.": "Geben Sie den Scheckempfänger an.",
+  "Adresse PayPal invalide : email ou lien paypal.me/…": "Ungültige PayPal-Adresse: E-Mail oder Link paypal.me/…"
 }
