@@ -740,7 +740,7 @@ def _user_org_ids(user):
 @login_required
 def automation_builder(request):
     """Centre d'automatisation — board de workflow (nœuds reliés) avec un moteur d'exécution réel."""
-    from .models import AutomationRule, AutomationRun
+    from .models import AutomationRule, AutomationRun, ProjectProcess, ProjectTemplate
     from .automation_graph import CONDITION_FIELDS, CONDITION_OPS
     from apps.documents.models import DocumentTemplate
     from apps.integrations.app_actions import board_catalog
@@ -809,6 +809,14 @@ def automation_builder(request):
                 for t in document_templates
             ],
             "clients": [{"id": str(c.id), "name": c.name} for c in clients],
+            # Action « Créer un projet » : modèle de projet (jalons, tâches, livrables) et processus.
+            "projectTemplates": [
+                {"id": t.id, "name": t.name, "milestones": len((t.data or {}).get("milestones") or []),
+                 "process": (t.data or {}).get("process") or ""}
+                for t in ProjectTemplate.objects.filter(organization=organization).order_by("name")
+            ] if organization else [],
+            "processes": [{"id": p.id, "name": p.name, "is_default": p.is_default}
+                          for p in ProjectProcess.for_organization(organization)] if organization else [],
             "conditionFields": CONDITION_FIELDS,
             "conditionOps": {kind: sorted(ops) for kind, ops in CONDITION_OPS.items()},
             "driveConnected": ConnectionInstance.objects.filter(organization=organization, connector__key="google-drive", status="connected").exists() if organization else False,

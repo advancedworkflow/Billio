@@ -178,7 +178,42 @@
                         <input type="hidden" name="process_id" :value="processId">
                     </div>
 
-                    <div>
+                    <!-- Étapes du projet : celles du processus, ou personnalisées pour ce projet -->
+                    <div class="pb-steps-edit">
+                        <div class="pb-steps-head">
+                            <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Étapes du projet</label>
+                            <button type="button" class="pb-link" x-show="!customizing" @click="startCustomizing()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> Personnaliser les étapes</button>
+                            <button type="button" class="pb-link" x-show="customizing" x-cloak @click="customizing = false; steps = []">Revenir aux étapes du processus</button>
+                        </div>
+                        <template x-if="!customizing">
+                            <p class="pb-flow"><template x-for="(step, i) in currentSteps()" :key="step.value"><span><i :style="`background:${step.color}`"></i><span x-text="step.label"></span></span></template></p>
+                        </template>
+                        <template x-if="customizing">
+                            <div class="pb-steps">
+                                <template x-for="(step, i) in steps" :key="step.uid">
+                                    <div class="pb-step">
+                                        <label class="pb-step-color" :style="`background:${step.color}`" title="Couleur"><input type="color" x-model="step.color"></label>
+                                        <input type="text" x-model="step.label" maxlength="50" class="pb-step-input" :aria-label="`Étape ${i + 1}`">
+                                        <button type="button" class="pb-step-btn" @click="moveStep(i, -1)" :disabled="i === 0" aria-label="Monter"><i data-lucide="chevron-up" class="w-3.5 h-3.5"></i></button>
+                                        <button type="button" class="pb-step-btn" @click="moveStep(i, 1)" :disabled="i === steps.length - 1" aria-label="Descendre"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i></button>
+                                        <button type="button" class="pb-step-btn pb-step-del" @click="steps.splice(i, 1)" :disabled="steps.length === 1" aria-label="Supprimer l'étape"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                    </div>
+                                </template>
+                                <div class="pb-step-add">
+                                    <input type="text" x-model="newStep" maxlength="50" placeholder="Nouvelle étape, ex. « Visite technique »" @keydown.enter.prevent="addStep()" class="pb-step-input">
+                                    <button type="button" class="pb-link" @click="addStep()"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Ajouter</button>
+                                </div>
+                                <label class="pb-save-process"><input type="checkbox" x-model="saveProcess"> <span>Enregistrer comme nouveau processus, réutilisable pour d'autres projets</span></label>
+                                <input type="text" x-show="saveProcess" x-cloak x-model="processName" maxlength="70" placeholder="Nom du processus, ex. « Rénovation express »" class="pb-step-input">
+                                <p class="pb-hint" x-text="saveProcess ? 'Le processus sera proposé à la création de vos prochains projets.' : 'Ces étapes ne valent que pour ce projet ; le processus « ' + currentProcessName() + ' » reste inchangé.'"></p>
+                                <input type="hidden" name="custom_steps" :value="JSON.stringify(steps.filter((s) => s.label.trim()).map(({ uid, ...s }) => s))">
+                                <input type="hidden" name="save_process" :value="saveProcess ? '1' : ''">
+                                <input type="hidden" name="process_name" :value="processName">
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="!customizing">
                         <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Étape de départ</label>
                         <div class="flex flex-wrap gap-1.5">
                             <template x-for="step in currentSteps()" :key="step.value">
@@ -283,7 +318,32 @@ function projectBoardPage() {
             const proc = this.processes.find((p) => p.id === this.processId);
             return proc ? proc.steps : [];
         },
+        customizing: false, steps: [], newStep: '', saveProcess: false, processName: '',
+        currentProcessName() { return (this.processes.find((p) => p.id === this.processId) || {}).name || ''; },
+        startCustomizing() {
+            let uid = 0;
+            // Copie des étapes du processus choisi (clé gardée : l'étape partagée est réutilisée).
+            this.steps = this.currentSteps().map((s) => ({ uid: ++uid, key: s.value, label: s.label, color: s.color }));
+            this._uid = uid;
+            this.customizing = true;
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        addStep() {
+            const label = this.newStep.trim();
+            if (!label) return;
+            // Avant « Terminé » quand le processus finit par cette étape.
+            const last = this.steps[this.steps.length - 1];
+            const at = last && last.key === 'completed' ? this.steps.length - 1 : this.steps.length;
+            this.steps.splice(at, 0, { uid: ++this._uid, label, color: '#6366f1' });
+            this.newStep = '';
+            this.$nextTick(() => window.lucide && lucide.createIcons());
+        },
+        moveStep(i, delta) {
+            const j = i + delta;
+            [this.steps[i], this.steps[j]] = [this.steps[j], this.steps[i]];
+        },
         pickProcess(proc) {
+            this.customizing = false; this.steps = [];
             this.processId = proc.id;
             // Étape de départ : la première du processus (la dernière est « Terminé »).
             this.status = proc.steps.length ? proc.steps[0].value : this.status;

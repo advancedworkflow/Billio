@@ -138,7 +138,21 @@ def _clean_params(node_type, key, raw, *, organization):
         params['field_values'] = _clean_field_values(raw.get('field_values'), template)
         params['var_values'] = _clean_var_values(raw.get('var_values'))
         params['share'] = bool(raw.get('share'))
-    elif key in ('create_project', 'create_phase', 'create_milestone', 'create_deliverable'):
+    elif key == 'create_project':
+        from apps.clients.models import Client
+        from .models import ProjectProcess, ProjectTemplate
+        params['value'] = _str(raw.get('value'))
+        # Modèle de projet et processus de l'organisation seulement ; client = celui de l'événement ou un client fixé.
+        template_id = str(raw.get('template_id') or '')
+        params['template_id'] = template_id if template_id.isdigit() and ProjectTemplate.objects.filter(
+            organization=organization, id=int(template_id)).exists() else ''
+        process_id = str(raw.get('process_id') or '')
+        params['process_id'] = process_id if process_id.isdigit() and ProjectProcess.objects.filter(
+            organization=organization, id=int(process_id)).exists() else ''
+        client = str(raw.get('client') or 'event')
+        params['client'] = client if client == 'event' or (client.isdigit() and Client.objects.filter(
+            organization=organization, id=int(client)).exists()) else 'event'
+    elif key in ('create_phase', 'create_milestone', 'create_deliverable'):
         params['value'] = _str(raw.get('value'))
     elif key == 'create_form':
         params['title'] = _str(raw.get('title')) or 'Formulaire'

@@ -291,7 +291,12 @@ def _describe_action(key, params, ctx):
         return f"Email à {to} — « {subject} »" + (f" · pièces jointes : {', '.join(files)}" if files else '')
     if key in ('notify', 'create_task'):
         return _render_tokens(params.get('title'), variables) or 'Titre par défaut'
-    if key in ('create_project', 'create_phase', 'create_milestone', 'create_deliverable'):
+    if key == 'create_project':
+        from .models import ProjectTemplate
+        template = ProjectTemplate.objects.filter(id=params.get('template_id') or 0).first()
+        name = _render_tokens(params.get('value'), variables) or (template.name if template else 'Nom par défaut')
+        return f"Projet « {name} »" + (f" depuis le modèle « {template.name} »" if template else '')
+    if key in ('create_phase', 'create_milestone', 'create_deliverable'):
         return _render_tokens(params.get('value'), variables) or 'Nom par défaut'
     if key == 'create_document':
         filled = sum(1 for v in (params.get('field_values') or {}).values() if v)
@@ -547,18 +552,38 @@ def _execute_action(rule, action_key, params, ctx):
         return 'Facture déjà à jour'
 
     if action_key == 'create_project':
-        from .models import Project, ProjectPhase
-        resolved_client_id = ctx.get('client_id') or _target_client_id(target_type, target_id)
+        from django.utils import timezone as dj_timezone
+        from apps.clients.models import Client
+        from . import project_templates
+        from .models import Project, ProjectProcess, ProjectTemplate
+        # Client : celui de l'événement (par défaut) ou un client choisi dans l'action.
+        fixed = str(params.get('client') or 'event')
+        if fixed != 'event':
+            resolved_client_id = Client.objects.filter(organization=organization, id=fixed).values_list('id', flat=True).first()
+        else:
+            resolved_client_id = ctx.get('client_id') or _target_client_id(target_type, target_id)
         if not resolved_client_id:
             raise ValueError("Aucun client rattaché à l'événement : impossible de créer un projet.")
-        default_phase = ProjectPhase.for_organization(organization)[0]
+        template = ProjectTemplate.objects.filter(organization=organization, id=params.get('template_id') or 0).first()
+        process = ProjectProcess.objects.filter(organization=organization, id=params.get('process_id') or 0).first()
+        if process is None and template and (template.data or {}).get('process'):
+            process = ProjectProcess.objects.filter(organization=organization, name=template.data['process']).first()
+        process = process or ProjectProcess.default_for(organization)
+        first_stage = (process.phases() or [None])[0]
+        client_name = Client.objects.filter(id=resolved_client_id).values_list('name', flat=True).first() or ''
         project = Project.objects.create(
             organization=organization,
             client_id=resolved_client_id,
-            name=value or f"Nouveau projet — {trigger_label}",
+            process=process,
+            name=value or (f"{template.name} — {client_name}" if template else f"Nouveau projet — {trigger_label}"),
             description=f"Créé automatiquement par le workflow « {rule_name} ».",
-            status=default_phase.key,
+            status=first_stage.key if first_stage else 'discovery',
+            start_date=dj_timezone.localdate(),
         )
+        if template:
+            # Jalons, tâches et livrables du modèle, datés à partir d'aujourd'hui.
+            project_templates.instantiate(template.data, project, user=owner)
+        ctx['client_id'] = resolved_client_id
         # Les actions suivantes du workflow (jalon, livrable...) visent ce nouveau projet.
         ctx['project_id'] = project.id
         variables['projet'] = project.name
@@ -569,7 +594,7 @@ def _execute_action(rule, action_key, params, ctx):
                 message=f"Créé automatiquement par le workflow « {rule_name} ».",
                 priority='medium', related_project=project,
             )
-        return f"Projet « {project.name} » créé"
+        return f"Projet « {project.name} » créé" + (f" depuis le modèle « {template.name} »" if template else '')
 
     if action_key == 'create_phase':
         from .models import ProjectPhase

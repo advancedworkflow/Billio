@@ -393,6 +393,24 @@ def project_create(request):
         if process is None and template and (template.data or {}).get('process'):
             process = ProjectProcess.objects.filter(organization=organization, name=template.data['process']).first()
         process = process or ProjectProcess.default_for(organization)
+        # Étapes personnalisées à la création : processus propre au projet, ou nouveau processus réutilisable.
+        try:
+            custom_steps = json.loads(request.POST.get('custom_steps') or '[]')
+        except ValueError:
+            custom_steps = []
+        if isinstance(custom_steps, list) and custom_steps:
+            from .process_views import save_steps
+            keys = save_steps(organization, custom_steps, rename_shared=False)
+            if keys:
+                reusable = request.POST.get('save_process') == '1' and (request.POST.get('process_name') or '').strip()
+                base = (request.POST.get('process_name') or '').strip()[:70] if reusable else                     f"Étapes de « {(request.POST.get('name') or 'Nouveau projet').strip()[:50]} »"
+                name, n = base, 2
+                while ProjectProcess.objects.filter(organization=organization, name=name).exists():
+                    name, n = f'{base} ({n})', n + 1
+                process = ProjectProcess.objects.create(
+                    organization=organization, name=name, phase_keys=keys, is_private=not reusable,
+                    order=ProjectProcess.objects.filter(organization=organization).count(),
+                )
         phases = _phases_context(organization, process=process)
         valid_phases = {p['value'] for p in phases}
         status = request.POST.get('status') or ''

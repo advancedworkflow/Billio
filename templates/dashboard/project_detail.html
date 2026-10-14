@@ -590,11 +590,12 @@
                 <dl class="pd-facts">
                     <div><dt>Client</dt><dd><a href="{% url 'clients:client-detail' project.client.id %}" class="pd-link">{{ project.client.name }}</a></dd></div>
                     <div><dt>Processus</dt><dd>
-                        {% if processes|length > 1 %}
+                        {% if processes|length > 1 or current_process.is_private and processes %}
                         <select class="pd-process-select" aria-label="Processus du projet" @change="changeProcess($event)">
+                            {% if current_process.is_private %}<option value="{{ current_process.id }}" selected>Étapes personnalisées</option>{% endif %}
                             {% for proc in processes %}<option value="{{ proc.id }}" {% if proc.id == current_process.id %}selected{% endif %}>{{ proc.name }}</option>{% endfor %}
                         </select>
-                        {% else %}{{ current_process.name }}{% endif %}
+                        {% elif current_process.is_private %}Étapes personnalisées{% else %}{{ current_process.name }}{% endif %}
                         <a href="{% url 'dashboard:process-list' %}" class="pd-link pd-process-manage" title="Gérer les processus"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i></a>
                     </dd></div>
                     <div><dt>Début</dt><dd>{{ project.start_date|date:"d/m/Y"|default:"—" }}</dd></div>

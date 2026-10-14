@@ -329,6 +329,8 @@ class ProjectProcess(models.Model):
     description = models.CharField(max_length=200, blank=True, default='')
     phase_keys = models.JSONField(default=list, blank=True)
     is_default = models.BooleanField(default=False)
+    # Étapes propres à un seul projet (personnalisées à sa création) : absent des listes et des onglets.
+    is_private = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -342,7 +344,7 @@ class ProjectProcess(models.Model):
     @classmethod
     def for_organization(cls, organization):
         """Processus de l'organisation ; le premier accès crée « Processus principal » avec toutes les étapes."""
-        processes = list(cls.objects.filter(organization=organization))
+        processes = list(cls.objects.filter(organization=organization, is_private=False))
         if processes:
             return processes
         keys = [phase.key for phase in ProjectPhase.for_organization(organization)]

@@ -70,3 +70,22 @@ class ProjectProcessTests(TestCase):
         response = self.http.post(reverse('dashboard:process-add-suggestion'), json.dumps({'name': 'Formation'}), content_type='application/json')
         self.assertTrue(response.json()['ok'])
         self.assertIn('convocation', self.keys('Formation'))
+
+    def test_create_project_with_custom_steps(self):
+        steps = [{'key': 'call', 'label': 'Appel urgent', 'color': '#3b82f6'}, {'label': 'Devis express', 'color': '#ff0000'},
+                 {'key': 'completed', 'label': 'Terminé', 'color': '#16a34a'}]
+        self.http.post(reverse('dashboard:project-create'), {
+            'client_id': self.client_obj.id, 'name': 'Urgence', 'custom_steps': json.dumps(steps)})
+        project = Project.objects.get(name='Urgence')
+        self.assertTrue(project.process.is_private)
+        self.assertEqual(len(project.process.phase_keys), 3)
+        self.assertNotEqual(project.status, 'call')   # « Appel » renommé : nouvelle étape, l'originale est intacte
+        self.assertEqual(ProjectPhase.objects.get(organization=self.org, key='call').label, 'Appel / demande')
+        self.assertNotIn(project.process.name, [p.name for p in ProjectProcess.for_organization(self.org)])   # absent des listes
+        # Version réutilisable : visible pour les prochains projets
+        self.http.post(reverse('dashboard:project-create'), {
+            'client_id': self.client_obj.id, 'name': 'Urgence 2', 'custom_steps': json.dumps(steps),
+            'save_process': '1', 'process_name': 'Urgence express'})
+        reusable = Project.objects.get(name='Urgence 2').process
+        self.assertEqual((reusable.name, reusable.is_private), ('Urgence express', False))
+        self.assertIn('Urgence express', [p.name for p in ProjectProcess.for_organization(self.org)])

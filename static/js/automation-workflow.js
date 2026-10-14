@@ -159,7 +159,7 @@
       notify: { title: '', message: '', priority: 'medium' },
       create_task: { title: '', message: '', priority: 'high' },
       create_document: { template_id: '', title: '', field_values: {}, var_values: {}, share: false },
-      create_project: { value: '' }, create_phase: { value: '' }, create_milestone: { value: '' }, create_deliverable: { value: '' },
+      create_project: { value: '', template_id: '', process_id: '', client: 'event' }, create_phase: { value: '' }, create_milestone: { value: '' }, create_deliverable: { value: '' },
       create_form: {
         title: 'Questionnaire de démarrage', intro: 'Quelques questions pour bien lancer votre projet.', notify_client: true,
         fields: [
@@ -279,6 +279,12 @@
         const days = Number(p.in_days) || 0;
         const when = days === 0 ? "Aujourd'hui" : (days === 1 ? 'Demain' : `Dans ${days} jours`);
         return [['Titre', p.title], ['Quand', `${when} à ${p.time}`], ['Durée', `${p.duration} min`], ...(p.location ? [['Lieu', p.location]] : [])];
+      }
+      case 'create_project': {
+        const tpl = (cfg.projectTemplates || []).find((t) => String(t.id) === String(p.template_id));
+        const client = p.client && p.client !== 'event' ? (cfg.clients.find((c) => String(c.id) === String(p.client)) || {}).name : '';
+        return [['Projet', p.value || (tpl ? `${tpl.name} — {{client}}` : 'Par défaut')], ...(tpl ? [['Modèle', tpl.name]] : []),
+                ['Client', client || "Celui de l'événement"]];
       }
       default: return [[{ create_project: 'Projet', create_phase: 'Phase', create_milestone: 'Jalon', create_deliverable: 'Livrable' }[node.key] || 'Nom', p.value || 'Par défaut']];
     }
@@ -1181,6 +1187,18 @@
           <label class="wf-field"><span>Ordre du jour</span>${tokenField('notes', p.notes, true, ``, 3)}</label>
           ${varChips()}
           <p class="wf-help">Nécessite un projet : déclencheur de projet, ou « Créer un projet » placé avant. La réunion apparaît dans le projet et le portail client.</p>`;
+      case 'create_project': {
+        const templates = cfg.projectTemplates || [], processes = cfg.processes || [];
+        const tpl = templates.find((t) => String(t.id) === String(p.template_id));
+        return `
+          <label class="wf-field"><span>Modèle de projet</span><select data-param="template_id">${opt([['', 'Aucun : projet vide'], ...templates.map((t) => [String(t.id), `${t.name} (${t.milestones} jalon${t.milestones > 1 ? 's' : ''})`])], String(p.template_id || ''))}</select></label>
+          ${templates.length ? '' : '<p class="wf-help">Aucun modèle pour l\'instant : depuis un projet, « Enregistrer comme modèle ».</p>'}
+          <label class="wf-field"><span>Client du projet</span><select data-param="client">${opt([['event', "Le client de l'événement"], ...cfg.clients.map((c) => [String(c.id), c.name])], String(p.client || 'event'))}</select></label>
+          <label class="wf-field"><span>Processus (étapes)</span><select data-param="process_id">${opt([['', tpl && tpl.process ? `Celui du modèle (${tpl.process})` : 'Processus par défaut'], ...processes.map((x) => [String(x.id), x.name])], String(p.process_id || ''))}</select></label>
+          <label class="wf-field"><span>Nom du projet</span>${tokenField('value', p.value, false, tpl ? `${tpl.name} — {{client}}` : 'Ex. Projet {{client}}')}</label>
+          ${varChips()}
+          <p class="wf-help">Le projet démarre aujourd'hui : jalons, tâches et livrables du modèle sont datés à partir de cette date. Les actions suivantes (jalon, réunion, formulaire…) visent ce projet.</p>`;
+      }
       default: {
         const labels = { create_project: 'Nom du projet', create_phase: 'Nom de la phase', create_milestone: 'Titre du jalon', create_deliverable: 'Titre du livrable' };
         return `

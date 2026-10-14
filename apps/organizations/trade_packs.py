@@ -330,7 +330,7 @@ def apply_trade_pack(organization, trade, *, user=None):
         from apps.dashboard.models import ProjectProcess
         main_keys = [p.key for p in ProjectPhase.objects.filter(organization=organization).order_by('order', 'id')]
         main_keys = [k for k in main_keys if k in {key for key, *_ in pack['phases']} or k in kept]
-        processes = list(ProjectProcess.objects.filter(organization=organization))
+        processes = list(ProjectProcess.objects.filter(organization=organization, is_private=False))
         main = next((p for p in processes if p.name == pack.get('process')), None)
         if main is None and len(processes) == 1 and not Project.objects.filter(process__isnull=False, organization=organization).exists():
             main = processes[0]  # processus créé automatiquement : renommé d'après le métier

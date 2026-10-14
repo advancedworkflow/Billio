@@ -79,6 +79,40 @@ def process_list(request):
     return render(request, 'dashboard/processes.html', {'page_title': 'Processus de projet', 'config': config})
 
 
+def save_steps(organization, steps, *, rename_shared=True):
+    """
+    Étapes saisies → clés d'étapes de l'organisation. Une étape existante (clé connue) est renommée /
+    recolorée (partout : elle est partagée) ; une nouvelle étape est créée avec une clé unique.
+    `rename_shared=False` (étapes propres à un projet) : une étape modifiée devient une nouvelle étape,
+    les processus qui partagent l'originale restent intacts.
+    """
+    phases = {p.key: p for p in ProjectPhase.objects.filter(organization=organization)}
+    order = max((p.order for p in phases.values()), default=-1) + 1
+    keys = []
+    for step in steps[:MAX_STEPS]:
+        if not isinstance(step, dict):
+            continue
+        label = str(step.get('label') or '').strip()[:50]
+        if not label:
+            continue
+        color = step.get('color') if _HEX.match(str(step.get('color') or '')) else '#6366f1'
+        key = step.get('key')
+        if key in phases and not rename_shared and (phases[key].label, phases[key].color) != (label, color):
+            key = None
+        if key in phases:
+            phase = phases[key]
+            if (phase.label, phase.color) != (label, color):
+                phase.label, phase.color = label, color
+                phase.save(update_fields=['label', 'color'])
+        else:
+            key = _unique_key(label, set(phases))
+            phases[key] = ProjectPhase.objects.create(organization=organization, key=key, label=label, color=color, order=order)
+            order += 1
+        if key not in keys:
+            keys.append(key)
+    return keys
+
+
 def _unique_key(label, taken):
     base = slugify(label)[:26] or 'etape'
     key, n = base, 2
@@ -106,24 +140,7 @@ def process_save(request):
         return JsonResponse({'ok': False, 'error': 'Un autre processus porte déjà ce nom.'}, status=400)
 
     with transaction.atomic():
-        phases = {p.key: p for p in ProjectPhase.objects.filter(organization=organization)}
-        order = max((p.order for p in phases.values()), default=-1) + 1
-        keys = []
-        for step in steps:
-            label = str(step['label']).strip()[:50]
-            color = step.get('color') if _HEX.match(str(step.get('color') or '')) else '#6366f1'
-            key = step.get('key')
-            if key in phases:
-                phase = phases[key]
-                if (phase.label, phase.color) != (label, color):  # étape partagée : renommée partout
-                    phase.label, phase.color = label, color
-                    phase.save(update_fields=['label', 'color'])
-            else:
-                key = _unique_key(label, set(phases))
-                phases[key] = ProjectPhase.objects.create(organization=organization, key=key, label=label, color=color, order=order)
-                order += 1
-            if key not in keys:
-                keys.append(key)
+        keys = save_steps(organization, steps)
         if process is None:
             process = ProjectProcess(organization=organization, order=ProjectProcess.objects.filter(organization=organization).count())
         process.name, process.description, process.phase_keys = name, str(data.get('description') or '').strip()[:200], keys

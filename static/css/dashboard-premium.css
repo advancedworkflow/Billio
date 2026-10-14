@@ -2193,3 +2193,24 @@
 .pb-proc-pick button strong { font-size: 13.5px; color: #18181b; }
 .pb-proc-pick button span { display: block; max-width: 100%; font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pb-proc-pick button.is-on { border-color: var(--billio-primary, #6d28d9); background: var(--billio-primary-soft, #f5f3ff); box-shadow: 0 0 0 2px var(--billio-primary-soft, #ede9fe); }
+
+/* Nouveau projet : étapes personnalisables */
+.pb-steps-edit { display: flex; flex-direction: column; gap: 8px; }
+.pb-steps-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pb-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; color: var(--billio-primary, #6d28d9); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.pb-flow { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+.pb-flow > span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #f4f4f5; font-size: 12px; color: #27272a; }
+.pb-flow i { width: 7px; height: 7px; border-radius: 999px; }
+.pb-steps { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; }
+.pb-step { display: flex; align-items: center; gap: 6px; }
+.pb-step-color { position: relative; width: 20px; height: 20px; flex-shrink: 0; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 0 0 1px #d4d4d8; cursor: pointer; }
+.pb-step-color input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pb-step-input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; font-size: 13.5px; }
+.pb-step-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: #52525b; cursor: pointer; }
+.pb-step-btn:hover:not(:disabled) { background: #f4f4f5; }
+.pb-step-btn:disabled { opacity: .3; cursor: default; }
+.pb-step-del:hover:not(:disabled) { color: #b91c1c; background: #fef2f2; }
+.pb-step-add { display: flex; align-items: center; gap: 8px; }
+.pb-save-process { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; font-size: 13px; color: #27272a; cursor: pointer; }
+.pb-save-process input { margin-top: 2px; accent-color: var(--billio-primary, #6d28d9); }
+.pb-hint { margin: 0; font-size: 12px; color: #71717a; }
