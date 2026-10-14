@@ -589,6 +589,11 @@ def _execute_action(rule, action_key, params, ctx):
             organization=organization, key=key, label=label, color='#6366f1',
             order=(max((p.order for p in existing), default=-1) + 1),
         )
+        from .models import ProjectProcess
+        from .project_views import add_phase_key
+        process = ProjectProcess.default_for(organization)
+        process.phase_keys = add_phase_key(process.phase_keys, key)
+        process.save(update_fields=['phase_keys'])
         return f"Phase « {label} » créée"
 
     if action_key == 'create_milestone':

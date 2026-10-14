@@ -332,6 +332,8 @@ def settings_view(request):
         else:
             result = apply_trade_pack(payment_organizations[0], trade, user=request.user)
             parts = [f"{result['phases_added']} phase(s) ajoutée(s)"]
+            if result.get('processes_added'):
+                parts.append(f"{result['processes_added']} processus suggéré(s)")
             if result['templates_added']:
                 parts.append(f"{result['templates_added']} modèle(s) de projet")
             messages.success(request, f"Pack « {TRADE_PACKS[trade]['label']} » appliqué : {', '.join(parts)}, mentions légales mises à jour.")

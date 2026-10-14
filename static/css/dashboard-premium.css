@@ -2180,3 +2180,16 @@
 .billio-confirm-input { display: block; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px solid #d4d4d8; border-radius: 10px; font-size: 14.5px; color: #18181b; background: #fff; }
 .billio-confirm-input:focus { outline: none; border-color: var(--billio-primary, #6d28d9); box-shadow: 0 0 0 3px rgba(109,40,217,.12); }
 .billio-confirm-input[hidden] { display: none; }
+
+/* Tableau des projets : onglets de processus et choix du processus à la création */
+.pb-processes { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.pb-processes a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--billio-border, #e4e4e7); background: #fff; color: #3f3f46; font-size: 13px; font-weight: 500; text-decoration: none; }
+.pb-processes a:hover { border-color: #a1a1aa; }
+.pb-processes a.is-on { background: #18181b; border-color: #18181b; color: #fff; }
+.pb-processes .pb-processes-manage { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; border-color: transparent; background: transparent; color: var(--billio-primary, #6d28d9); font-weight: 600; }
+.pb-proc-pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.pb-proc-pick button { min-width: 0; width: 100%; }
+.pb-proc-pick button { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; }
+.pb-proc-pick button strong { font-size: 13.5px; color: #18181b; }
+.pb-proc-pick button span { display: block; max-width: 100%; font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-proc-pick button.is-on { border-color: var(--billio-primary, #6d28d9); background: var(--billio-primary-soft, #f5f3ff); box-shadow: 0 0 0 2px var(--billio-primary-soft, #ede9fe); }

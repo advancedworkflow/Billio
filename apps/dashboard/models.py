@@ -316,6 +316,51 @@ class ProjectPhase(models.Model):
         ]
 
 
+class ProjectProcess(models.Model):
+    """
+    Processus de travail : une suite d'étapes (phases de l'organisation) suivie par un projet.
+    Une organisation en a plusieurs selon ses prestations (ex. BTP : « Chantier », « Dépannage »,
+    « Entretien annuel »). Les étapes restent partagées (« Terminé » sert à tous les processus) ;
+    `phase_keys` donne celles du processus, dans l'ordre.
+    """
+
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='project_processes')
+    name = models.CharField(max_length=80)
+    description = models.CharField(max_length=200, blank=True, default='')
+    phase_keys = models.JSONField(default=list, blank=True)
+    is_default = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        unique_together = [('organization', 'name')]
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def for_organization(cls, organization):
+        """Processus de l'organisation ; le premier accès crée « Processus principal » avec toutes les étapes."""
+        processes = list(cls.objects.filter(organization=organization))
+        if processes:
+            return processes
+        keys = [phase.key for phase in ProjectPhase.for_organization(organization)]
+        return [cls.objects.create(organization=organization, name='Processus principal', phase_keys=keys, is_default=True)]
+
+    @classmethod
+    def default_for(cls, organization):
+        processes = cls.for_organization(organization)
+        return next((p for p in processes if p.is_default), processes[0])
+
+    def phases(self, all_phases=None):
+        """Étapes du processus dans son ordre (toutes celles de l'organisation s'il n'en liste aucune)."""
+        all_phases = list(all_phases if all_phases is not None else ProjectPhase.for_organization(self.organization))
+        by_key = {phase.key: phase for phase in all_phases}
+        ordered = [by_key[key] for key in self.phase_keys or [] if key in by_key]
+        return ordered or all_phases
+
+
 class Project(models.Model):
     """
     Client project, tracked through named phases (Kanban board).
@@ -337,6 +382,8 @@ class Project(models.Model):
     description = models.TextField(blank=True, default='')
 
     status = models.CharField(max_length=30, default='discovery')
+    # Processus suivi (étapes du projet) ; vide = processus par défaut de l'organisation.
+    process = models.ForeignKey('dashboard.ProjectProcess', on_delete=models.SET_NULL, null=True, blank=True, related_name='projects')
 
     BILLING_MODE_CHOICES = [
         ('global', _('Facturation globale')),

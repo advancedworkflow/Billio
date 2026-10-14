@@ -4,7 +4,7 @@ URLs for dashboard app.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import automation_webhooks, booking, time_views, views
-from . import project_views
+from . import process_views, project_views
 from . import portal_views
 
 app_name = 'dashboard'
@@ -30,6 +30,12 @@ urlpatterns = [
     path('deliverables/', project_views.deliverables_list, name='deliverables-list'),
     path('projects/', project_views.project_board, name='project-board'),
     path('projects/milestones/', project_views.milestones_board, name='milestones-board'),
+    path('projects/processes/', process_views.process_list, name='process-list'),
+    path('projects/processes/save/', process_views.process_save, name='process-save'),
+    path('projects/processes/suggestion/', process_views.process_add_suggestion, name='process-add-suggestion'),
+    path('projects/processes/<int:process_id>/default/', process_views.process_default, name='process-default'),
+    path('projects/processes/<int:process_id>/delete/', process_views.process_delete, name='process-delete'),
+    path('projects/<int:project_id>/process/', process_views.project_update_process, name='project-update-process'),
     path('projects/phases/create/', project_views.phase_create, name='phase-create'),
     path('projects/phases/<int:phase_id>/delete/', project_views.phase_delete, name='phase-delete'),
     path('projects/phases/<int:phase_id>/move/', project_views.phase_move, name='phase-move'),

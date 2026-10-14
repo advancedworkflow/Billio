@@ -206,3 +206,4 @@
 .st-currency[open] > summary { margin-bottom: 12px; }
 .st-currency-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
 .st-currency-list label { margin-left: 10px; color: var(--billio-text-muted, #52525b); font-size: 12.5px; }
+.st-link { display: inline-block; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--billio-primary, #6d28d9); text-decoration: none; } .st-link:hover { text-decoration: underline; }

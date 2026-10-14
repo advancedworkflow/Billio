@@ -1,0 +1,64 @@
+/* Projets › Processus */
+.pr { display: flex; flex-direction: column; gap: 16px; }
+.pr-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 20px 22px; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 16px; }
+.pr-intro h2 { margin: 0 0 4px; font: 700 17px/1.3 var(--font-titles, Manrope), Inter, sans-serif; color: #18181b; }
+.pr-intro p { margin: 0; max-width: 640px; font-size: 13.5px; line-height: 1.5; color: #52525b; }
+.pr-intro-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pr-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .pr-main { grid-template-columns: 1fr; } }
+.pr-list { display: flex; flex-direction: column; gap: 14px; }
+
+.pr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 13px; border: 1px solid var(--billio-border-strong, #d4d4d8); border-radius: 10px; background: #fff; color: #18181b; font: 600 13px/1 Inter, system-ui, sans-serif; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.pr-btn:hover:not(:disabled) { background: #fafafa; border-color: #a1a1aa; }
+.pr-btn:disabled { opacity: .5; cursor: default; }
+.pr-btn--primary { background: var(--billio-primary, #6d28d9); border-color: var(--billio-primary, #6d28d9); color: #fff; }
+.pr-btn--primary:hover:not(:disabled) { background: var(--billio-primary-hover, #4c1d95); border-color: var(--billio-primary-hover, #4c1d95); }
+.pr-btn--ghost { border-color: transparent; background: transparent; }
+.pr-btn--danger { color: #b91c1c; }
+.pr-btn--small { height: 28px; padding: 0 10px; font-size: 12px; }
+
+.pr-card { background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.pr-card.is-dirty { border-color: #c4b5fd; box-shadow: 0 0 0 3px rgba(124, 58, 237, .08); }
+.pr-card-head { display: flex; flex-direction: column; gap: 4px; }
+.pr-card-title { display: flex; align-items: center; gap: 10px; }
+.pr-name { flex: 1; min-width: 0; height: 36px; padding: 0 8px; margin-left: -8px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: 700 18px/1.2 var(--font-titles, Manrope), Inter, sans-serif; color: #18181b; }
+.pr-desc { height: 30px; padding: 0 8px; margin-left: -8px; border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: 13.5px; color: #52525b; }
+.pr-name:hover, .pr-desc:hover { border-color: #e4e4e7; }
+.pr-name:focus, .pr-desc:focus, .pr-step-label:focus, .pr-input:focus { outline: none; border-color: var(--billio-primary, #6d28d9); box-shadow: 0 0 0 3px rgba(124, 58, 237, .12); background: #fff; }
+.pr-meta { margin: 0; font-size: 12px; color: #a1a1aa; }
+.pr-badge { padding: 3px 9px; border-radius: 999px; background: var(--billio-primary-soft, #f5f3ff); color: var(--billio-primary, #6d28d9); font: 600 11.5px/1.2 Inter, sans-serif; white-space: nowrap; }
+.pr-badge--soft { background: #f0fdf4; color: #15803d; margin-left: 6px; }
+
+.pr-flow { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pr-flow li { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px; background: color-mix(in srgb, var(--c) 12%, #fff); color: #27272a; font: 500 12px/1.2 Inter, sans-serif; }
+.pr-flow li::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--c); }
+.pr-flow li + li { position: relative; }
+.pr-flow--mini li { padding: 3px 8px 3px 6px; font-size: 11px; }
+
+.pr-steps { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.pr-step { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #f0f0f2; border-radius: 10px; background: #fafafa; }
+.pr-step-num { width: 22px; flex-shrink: 0; text-align: center; font: 700 12px/1 Inter, sans-serif; color: #a1a1aa; }
+.pr-color { position: relative; width: 22px; height: 22px; flex-shrink: 0; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 0 0 1px #d4d4d8; cursor: pointer; }
+.pr-color input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pr-step-label { flex: 1; min-width: 0; height: 32px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: 500 14px/1 Inter, sans-serif; color: #18181b; }
+.pr-step-label:hover { border-color: #e4e4e7; background: #fff; }
+.pr-shared { color: #a1a1aa; display: inline-flex; }
+.pr-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #52525b; cursor: pointer; }
+.pr-icon:hover:not(:disabled) { background: #f4f4f5; color: #18181b; }
+.pr-icon:disabled { opacity: .3; cursor: default; }
+.pr-icon--danger:hover:not(:disabled) { background: #fef2f2; color: #b91c1c; }
+.pr-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.pr-input { flex: 1; min-width: 180px; height: 36px; padding: 0 11px; border: 1px solid var(--billio-border-strong, #d4d4d8); border-radius: 10px; background: #fff; font: 14px Inter, sans-serif; color: #18181b; }
+.pr-reuse { flex: 0 1 220px; min-width: 160px; }
+.pr-error { margin: 0; color: #b91c1c; font-size: 13px; font-weight: 500; }
+.pr-card-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid #f4f4f5; }
+.pr-spacer { flex: 1; }
+
+.pr-side { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 8px; padding: 18px; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 16px; max-height: calc(100vh - 110px); overflow-y: auto; }
+.pr-side h3 { margin: 0; font: 700 15px/1.3 var(--font-titles, Manrope), Inter, sans-serif; }
+.pr-hint { margin: 0 0 6px; font-size: 12.5px; color: #71717a; }
+.pr-group { border-top: 1px solid #f4f4f5; padding-top: 8px; }
+.pr-group summary { display: flex; align-items: center; cursor: pointer; padding: 4px 0; font: 600 13.5px/1.3 Inter, sans-serif; color: #18181b; }
+.pr-sugg { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 10px; padding: 10px 12px; border: 1px solid #f0f0f2; border-radius: 12px; }
+.pr-sugg-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.pr-sugg p { margin: 0; font-size: 12px; color: #71717a; }

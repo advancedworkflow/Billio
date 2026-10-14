@@ -6,7 +6,7 @@
 {% block page_subtitle %}{{ project.client.name }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/project-detail.css' %}?v=1.6">
+<link rel="stylesheet" href="{% static 'css/project-detail.css' %}?v=1.7">
 {% endblock %}
 
 {% block content %}
@@ -589,6 +589,14 @@
                 <h2 class="pd-side-title">Infos du projet</h2>
                 <dl class="pd-facts">
                     <div><dt>Client</dt><dd><a href="{% url 'clients:client-detail' project.client.id %}" class="pd-link">{{ project.client.name }}</a></dd></div>
+                    <div><dt>Processus</dt><dd>
+                        {% if processes|length > 1 %}
+                        <select class="pd-process-select" aria-label="Processus du projet" @change="changeProcess($event)">
+                            {% for proc in processes %}<option value="{{ proc.id }}" {% if proc.id == current_process.id %}selected{% endif %}>{{ proc.name }}</option>{% endfor %}
+                        </select>
+                        {% else %}{{ current_process.name }}{% endif %}
+                        <a href="{% url 'dashboard:process-list' %}" class="pd-link pd-process-manage" title="Gérer les processus"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i></a>
+                    </dd></div>
                     <div><dt>Début</dt><dd>{{ project.start_date|date:"d/m/Y"|default:"—" }}</dd></div>
                     <div><dt>Livraison</dt><dd>{{ project.delivery_date|date:"d/m/Y"|default:"—" }}</dd></div>
                     {% if summary.next_meeting %}<div><dt>Prochaine réunion</dt><dd>{{ summary.next_meeting.scheduled_at|date:"d/m à H:i" }}</dd></div>{% endif %}
@@ -692,6 +700,19 @@ function projectDetail() {
             });
             if (!ok) return;
             await this.changePhase(key);
+        },
+        async changeProcess(event) {
+            const select = event.target, label = select.options[select.selectedIndex].text;
+            const ok = await billioConfirm({
+                title: `Suivre le processus « ${label} » ?`,
+                message: "Les étapes du projet deviennent celles de ce processus. Les jalons gardent leur étape ; si l'étape en cours n'existe pas dans ce processus, le projet passe à sa première étape.",
+                confirmLabel: 'Changer de processus', icon: 'git-branch',
+            });
+            if (!ok) { select.value = '{{ current_process.id }}'; return; }
+            const response = await fetch('{% url "dashboard:project-update-process" project.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: new URLSearchParams({ process_id: select.value }),
+            });
+            if (response.ok) window.location.reload();
         },
         async changePhase(key) {
             this.status = key;

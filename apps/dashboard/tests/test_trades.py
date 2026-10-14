@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.clients.models import Client
-from apps.dashboard.models import Milestone, Project, ProjectPhase, ProjectTemplate
+from apps.dashboard.models import Milestone, Project, ProjectPhase, ProjectTemplate, ProjectProcess
 from apps.organizations.models import Organization, OrganizationMember
 from apps.organizations.trade_packs import TRADE_PACKS, apply_trade_pack
 
@@ -54,9 +54,14 @@ class PackAndTemplateTests(TestCase):
             phase_keys = [k for k, *_ in pack['phases']]
             self.assertEqual(phase_keys[-1], 'completed', key)
             self.assertEqual(len(phase_keys), len(set(phase_keys)), key)
+            processes = {proc['name']: [k for k, *_ in proc['phases']] for proc in pack['processes']}
+            for name, keys in processes.items():
+                self.assertEqual(keys[-1], 'completed', f'{key} / {name}')
             for template in pack['templates']:
+                # Étapes du processus du modèle (processus suggéré) ou, à défaut, du processus principal.
+                allowed = processes.get(template.get('process'), phase_keys)
                 for milestone in template['milestones']:
-                    self.assertIn(milestone['phase'], phase_keys, f"{key} / {template['name']}")
+                    self.assertIn(milestone['phase'], allowed, f"{key} / {template['name']}")
 
     def test_reapplying_pack_keeps_phases_in_use(self):
         ProjectPhase.for_organization(self.org)  # phases par défaut (agence web)
@@ -66,7 +71,11 @@ class PackAndTemplateTests(TestCase):
         self.assertIn('design', keys)  # porte un projet : conservée
         self.assertNotIn('development', keys)  # inutilisée : remplacée
         self.assertEqual(keys[-1], 'completed')
-        self.assertEqual(keys[-2], 'design')  # rangée juste avant « Terminé »
+        main = ProjectProcess.default_for(self.org)
+        self.assertEqual(main.name, 'Production vidéo')
+        self.assertEqual(main.phase_keys[-2:], ['design', 'completed'])  # rangée juste avant « Terminé »
+        names = set(ProjectProcess.objects.filter(organization=self.org).values_list('name', flat=True))
+        self.assertEqual(names, {'Production vidéo', 'Shooting photo', 'Réseaux sociaux (mensuel)'})
 
     def test_project_from_template_creates_dated_structure(self):
         apply_trade_pack(self.org, 'audiovisuel')

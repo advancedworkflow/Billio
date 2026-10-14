@@ -26,10 +26,20 @@
 {% block content %}
 {{ clients_data|json_script:"projects-clients-data" }}
 {{ phases|json_script:"projects-phases-data" }}
+{{ processes|json_script:"projects-processes-data" }}
 <div x-data="projectBoardPage()"
      x-init="init()"
      @open-create-project-modal.window="createModalOpen = true"
      @keydown.escape.window="createModalOpen = false; contextMenu.open = false">
+
+    <!-- Processus : un onglet par façon de travailler -->
+    <nav class="pb-processes" aria-label="Processus">
+        <a href="{% url 'dashboard:project-board' %}" class="{% if not selected_process %}is-on{% endif %}">Tous les projets</a>
+        {% for proc in processes %}
+        <a href="{% url 'dashboard:project-board' %}?process={{ proc.id }}" class="{% if selected_process.id == proc.id %}is-on{% endif %}">{{ proc.name }}</a>
+        {% endfor %}
+        <a href="{% url 'dashboard:process-list' %}" class="pb-processes-manage"><i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Gérer les processus</a>
+    </nav>
 
     <div class="kanban-board" id="kanban-board">
         {% for column in columns %}
@@ -155,16 +165,27 @@
                         </div>
                     </div>
 
+                    <div x-show="processes.length > 1">
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Processus</label>
+                        <div class="pb-proc-pick">
+                            <template x-for="proc in processes" :key="proc.id">
+                                <button type="button" @click="pickProcess(proc)" :class="processId === proc.id && 'is-on'">
+                                    <strong x-text="proc.name"></strong>
+                                    <span x-text="proc.steps.map((s) => s.label).join(' → ')"></span>
+                                </button>
+                            </template>
+                        </div>
+                        <input type="hidden" name="process_id" :value="processId">
+                    </div>
+
                     <div>
-                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Phase de départ</label>
+                        <label class="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-2">Étape de départ</label>
                         <div class="flex flex-wrap gap-1.5">
-                            {% for value, label in status_choices %}
-                            <button type="button" @click="status = '{{ value }}'"
-                                    :class="status === '{{ value }}' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
-                                    class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors">
-                                {{ label }}
-                            </button>
-                            {% endfor %}
+                            <template x-for="step in currentSteps()" :key="step.value">
+                                <button type="button" @click="status = step.value"
+                                        :class="status === step.value ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
+                                        class="px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors" x-text="step.label"></button>
+                            </template>
                         </div>
                         <input type="hidden" name="status" x-model="status">
                     </div>
@@ -256,6 +277,17 @@ function projectBoardPage() {
         createModalOpen: false,
         clientId: '',
         status: '{{ status_choices.0.0|default:"discovery" }}',
+        processes: JSON.parse(document.getElementById('projects-processes-data').textContent || '[]'),
+        processId: null,
+        currentSteps() {
+            const proc = this.processes.find((p) => p.id === this.processId);
+            return proc ? proc.steps : [];
+        },
+        pickProcess(proc) {
+            this.processId = proc.id;
+            // Étape de départ : la première du processus (la dernière est « Terminé »).
+            this.status = proc.steps.length ? proc.steps[0].value : this.status;
+        },
         clients: [],
         addingPhase: false,
         newPhaseLabel: '',
@@ -263,6 +295,8 @@ function projectBoardPage() {
         phases: [],
         contextMenu: { open: false, x: 0, y: 0, projectId: null, currentPhase: null },
         init() {
+            const start = this.processes.find((p) => String(p.id) === '{{ selected_process.id|default:"" }}') || this.processes.find((p) => p.is_default) || this.processes[0];
+            if (start) this.pickProcess(start);
             const el = document.getElementById('projects-clients-data');
             try {
                 this.clients = el ? JSON.parse(el.textContent || '[]') : [];
@@ -312,7 +346,7 @@ function projectBoardPage() {
 
         async addPhase() {
             if (!this.newPhaseLabel.trim()) return;
-            const body = new URLSearchParams({ label: this.newPhaseLabel, color: this.newPhaseColor });
+            const body = new URLSearchParams({ label: this.newPhaseLabel, color: this.newPhaseColor, process_id: '{{ selected_process.id|default:"" }}' });
             const response = await fetch('{% url "dashboard:phase-create" %}', {
                 method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
             });

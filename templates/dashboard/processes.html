@@ -1,0 +1,200 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Processus de projet - Billio{% endblock %}
+{% block page_title %}Processus de projet{% endblock %}
+{% block page_subtitle %}Les étapes que suivent vos projets, selon le type de prestation{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/processes.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+{{ config|json_script:"process-config" }}
+<div class="pr" x-data="processPage()" x-init="init()">
+    <form class="hidden" aria-hidden="true">{% csrf_token %}</form>
+    <div class="pr-intro">
+        <div>
+            <h2>Un processus = les étapes d'un type de projet</h2>
+            <p>Un chantier ne se déroule pas comme un dépannage. Créez un processus par façon de travailler : chaque projet suit le sien, et votre client voit les bonnes étapes dans son espace.</p>
+        </div>
+        <div class="pr-intro-actions">
+            <a href="{% url 'dashboard:project-board' %}" class="pr-btn"><i data-lucide="kanban" class="w-4 h-4"></i> Tableau des projets</a>
+            <button type="button" class="pr-btn pr-btn--primary" @click="newProcess()"><i data-lucide="plus" class="w-4 h-4"></i> Nouveau processus</button>
+        </div>
+    </div>
+
+    <div class="pr-main">
+        <!-- Processus de l'organisation -->
+        <div class="pr-list">
+            <template x-for="(proc, index) in processes" :key="proc.uid">
+                <section class="pr-card" :class="proc.dirty && 'is-dirty'">
+                    <header class="pr-card-head">
+                        <div class="pr-card-title">
+                            <input class="pr-name" x-model="proc.name" @input="proc.dirty = true" maxlength="80" aria-label="Nom du processus" placeholder="Nom du processus">
+                            <span class="pr-badge" x-show="proc.is_default">Par défaut</span>
+                        </div>
+                        <input class="pr-desc" x-model="proc.description" @input="proc.dirty = true" maxlength="200" placeholder="À quoi sert ce processus ? (facultatif)">
+                        <p class="pr-meta">
+                            <span x-text="proc.id ? `${proc.projects} projet${proc.projects > 1 ? 's' : ''}` : 'Nouveau'"></span>
+                            <template x-if="proc.templates && proc.templates.length">
+                                <span x-text="` · modèles : ${proc.templates.join(', ')}`"></span>
+                            </template>
+                        </p>
+                    </header>
+
+                    <!-- Aperçu en frise -->
+                    <ol class="pr-flow" aria-hidden="true">
+                        <template x-for="(step, i) in proc.steps" :key="i">
+                            <li :style="`--c:${step.color}`"><span x-text="step.label || '…'"></span></li>
+                        </template>
+                    </ol>
+
+                    <ol class="pr-steps">
+                        <template x-for="(step, i) in proc.steps" :key="i">
+                            <li class="pr-step">
+                                <span class="pr-step-num" x-text="i + 1"></span>
+                                <label class="pr-color" :style="`background:${step.color}`" title="Couleur de l'étape">
+                                    <input type="color" x-model="step.color" @input="proc.dirty = true">
+                                </label>
+                                <input class="pr-step-label" x-model="step.label" @input="proc.dirty = true" maxlength="50" :aria-label="`Étape ${i + 1}`">
+                                <span class="pr-shared" x-show="step.key && sharedCount(step.key) > 1" :title="`Étape partagée avec ${sharedCount(step.key) - 1} autre(s) processus : la renommer la renomme partout`"><i data-lucide="link-2" class="w-3.5 h-3.5"></i></span>
+                                <button type="button" class="pr-icon" @click="move(proc, i, -1)" :disabled="i === 0" aria-label="Monter"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+                                <button type="button" class="pr-icon" @click="move(proc, i, 1)" :disabled="i === proc.steps.length - 1" aria-label="Descendre"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+                                <button type="button" class="pr-icon pr-icon--danger" @click="removeStep(proc, i)" :disabled="proc.steps.length === 1" aria-label="Retirer l'étape"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            </li>
+                        </template>
+                    </ol>
+                    <div class="pr-add">
+                        <input class="pr-input" x-model="proc.newStep" @keydown.enter.prevent="addStep(proc)" maxlength="50" placeholder="Nouvelle étape, ex. « Visite technique »">
+                        <button type="button" class="pr-btn" @click="addStep(proc)"><i data-lucide="plus" class="w-4 h-4"></i> Ajouter</button>
+                        <select class="pr-input pr-reuse" @change="reuseStep(proc, $event.target.value); $event.target.value = ''" x-show="reusable(proc).length">
+                            <option value="">Réutiliser une étape…</option>
+                            <template x-for="ph in reusable(proc)" :key="ph.key"><option :value="ph.key" x-text="ph.label"></option></template>
+                        </select>
+                    </div>
+                    <p class="pr-error" x-show="proc.error" x-text="proc.error"></p>
+                    <footer class="pr-card-foot">
+                        <button type="button" class="pr-btn pr-btn--primary" @click="save(proc)" :disabled="proc.saving || !proc.dirty">
+                            <span x-text="proc.saving ? 'Enregistrement…' : (proc.dirty ? 'Enregistrer' : 'Enregistré')"></span>
+                        </button>
+                        <button type="button" class="pr-btn" x-show="proc.id && !proc.is_default" @click="makeDefault(proc)">Utiliser par défaut</button>
+                        <span class="pr-spacer"></span>
+                        <button type="button" class="pr-btn pr-btn--ghost" x-show="!proc.id" @click="processes.splice(index, 1)">Annuler</button>
+                        <button type="button" class="pr-btn pr-btn--danger" x-show="proc.id && !proc.is_default" @click="remove(proc)"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer</button>
+                    </footer>
+                </section>
+            </template>
+        </div>
+
+        <!-- Suggestions par métier -->
+        <aside class="pr-side">
+            <h3>Processus suggérés</h3>
+            <p class="pr-hint">Prêts à l'emploi, puis modifiables. Ceux de votre métier sont en premier.</p>
+            <template x-for="group in suggestions" :key="group.trade">
+                <details class="pr-group" :open="group.mine">
+                    <summary><span x-text="group.label"></span><span class="pr-badge pr-badge--soft" x-show="group.mine">Votre métier</span></summary>
+                    <template x-for="item in group.items" :key="item.name">
+                        <div class="pr-sugg">
+                            <div class="pr-sugg-head">
+                                <strong x-text="item.name"></strong>
+                                <button type="button" class="pr-btn pr-btn--small" :disabled="item.added || adding === item.name" @click="addSuggestion(item)"
+                                        x-text="item.added ? 'Ajouté' : (adding === item.name ? '…' : 'Ajouter')"></button>
+                            </div>
+                            <p x-text="item.description"></p>
+                            <ol class="pr-flow pr-flow--mini">
+                                <template x-for="(step, i) in item.steps" :key="i"><li :style="`--c:${step.color}`"><span x-text="step.label"></span></li></template>
+                            </ol>
+                        </div>
+                    </template>
+                </details>
+            </template>
+        </aside>
+    </div>
+</div>
+<script>
+window.PROCESS_URLS = {
+    save: '{% url "dashboard:process-save" %}',
+    suggestion: '{% url "dashboard:process-add-suggestion" %}',
+    makeDefault: '{% url "dashboard:process-default" 0 %}',
+    remove: '{% url "dashboard:process-delete" 0 %}',
+};
+function processPage() {
+    const cfg = JSON.parse(document.getElementById('process-config').textContent || '{}');
+    const URLS = window.PROCESS_URLS;
+    let uid = 0;
+    const wrap = (p) => Object.assign({ uid: ++uid, dirty: false, saving: false, error: '', newStep: '' }, JSON.parse(JSON.stringify(p)));
+    // Le cookie CSRF n'est pas lisible en JavaScript (HttpOnly) : jeton de la page.
+    const csrf = () => { const el = document.querySelector('[name=csrfmiddlewaretoken]'); return el ? el.value : ''; };
+    const post = async (url, body) => {
+        const response = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).catch(() => null);
+        const data = response ? await response.json().catch(() => ({})) : {};
+        return Object.assign({ ok: false }, data);
+    };
+    return {
+        processes: (cfg.processes || []).map(wrap), suggestions: cfg.suggestions || [], phases: cfg.phases || [], adding: '',
+        init() { this.icons(); window.addEventListener('beforeunload', (e) => { if (this.processes.some((p) => p.dirty)) { e.preventDefault(); e.returnValue = ''; } }); },
+        icons() { this.$nextTick(() => window.lucide && lucide.createIcons()); },
+        refresh(data) {
+            if (data.processes) this.processes = [...data.processes.map(wrap), ...this.processes.filter((p) => !p.id && p.dirty && !data.processes.some((d) => d.name === p.name))];
+            if (data.phases) this.phases = data.phases;
+            if (data.suggestions) this.suggestions = data.suggestions;
+            this.icons();
+        },
+        sharedCount(key) { return this.processes.filter((p) => p.id && p.steps.some((s) => s.key === key)).length; },
+        reusable(proc) { return this.phases.filter((ph) => !proc.steps.some((s) => s.key === ph.key)); },
+        newProcess() {
+            const done = this.phases.find((p) => p.key === 'completed');
+            const proc = wrap({ id: null, name: 'Nouveau processus', description: '', is_default: false, projects: 0, templates: [],
+                                steps: [{ label: 'Démarrage', color: '#0ea5e9' }, { label: 'Réalisation', color: '#f59e0b' },
+                                        done ? { key: 'completed', label: done.label, color: done.color } : { label: 'Terminé', color: '#16a34a' }] });
+            proc.dirty = true;
+            this.processes.push(proc);
+            this.icons();
+            this.$nextTick(() => { const inputs = this.$root.querySelectorAll('.pr-name'); const last = inputs[inputs.length - 1]; if (last) { last.focus(); last.select(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); } });
+        },
+        addStep(proc) {
+            const label = (proc.newStep || '').trim();
+            if (!label) return;
+            // Avant « Terminé » si le processus se termine par cette étape.
+            const at = proc.steps.length && proc.steps[proc.steps.length - 1].key === 'completed' ? proc.steps.length - 1 : proc.steps.length;
+            proc.steps.splice(at, 0, { label, color: '#6366f1' });
+            proc.newStep = ''; proc.dirty = true; this.icons();
+        },
+        reuseStep(proc, key) {
+            const ph = this.phases.find((p) => p.key === key);
+            if (!ph) return;
+            const at = proc.steps.length && proc.steps[proc.steps.length - 1].key === 'completed' ? proc.steps.length - 1 : proc.steps.length;
+            proc.steps.splice(at, 0, { key: ph.key, label: ph.label, color: ph.color });
+            proc.dirty = true; this.icons();
+        },
+        move(proc, i, delta) { const j = i + delta; [proc.steps[i], proc.steps[j]] = [proc.steps[j], proc.steps[i]]; proc.dirty = true; },
+        removeStep(proc, i) { proc.steps.splice(i, 1); proc.dirty = true; },
+        async save(proc) {
+            proc.saving = true; proc.error = '';
+            const data = await post(URLS.save, { id: proc.id, name: proc.name, description: proc.description, steps: proc.steps });
+            proc.saving = false;
+            if (!data.ok) { proc.error = data.error || 'Enregistrement impossible.'; return; }
+            this.processes = this.processes.filter((p) => p !== proc || p.id);
+            this.refresh(data);
+        },
+        async makeDefault(proc) { this.refresh(await post(URLS.makeDefault.replace('/0/', `/${proc.id}/`))); },
+        async remove(proc) {
+            const ok = typeof billioConfirm === 'function' ? await billioConfirm({
+                title: `Supprimer « ${proc.name} » ?`,
+                message: proc.projects ? `Ses ${proc.projects} projet(s) passeront au processus par défaut ; leurs étapes en cours restent visibles.` : 'Aucun projet ne suit ce processus.',
+                confirmLabel: 'Supprimer', icon: 'trash-2' }) : true;
+            if (!ok) return;
+            const data = await post(URLS.remove.replace('/0/', `/${proc.id}/`));
+            if (!data.ok) { proc.error = data.error || 'Suppression impossible.'; return; }
+            this.refresh(data);
+        },
+        async addSuggestion(item) {
+            this.adding = item.name;
+            const data = await post(URLS.suggestion, { name: item.name });
+            this.adding = '';
+            if (data.ok) this.refresh(data);
+        },
+    };
+}
+</script>
+{% endblock %}

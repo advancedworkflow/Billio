@@ -30,6 +30,7 @@ def snapshot(project):
     for deliverable in project.deliverables.order_by('id'):
         deliverables_by_milestone.setdefault(deliverable.milestone_id, []).append(deliverable.title)
     data = {
+        'process': project.process.name if project.process_id else '',
         'billing_mode': project.billing_mode,
         'client_brief': {phase: [{'label': f.get('label', ''), 'answer': ''} for f in fields]
                          for phase, fields in (project.client_brief or {}).items()},
@@ -56,9 +57,10 @@ def instantiate(data, project, *, user=None):
         from django.utils.dateparse import parse_date
         start = parse_date(start)
     base = start or timezone.localdate()
-    phases = list(ProjectPhase.for_organization(project.organization))
-    valid = {p.key for p in phases}
-    fallback = phases[0].key if phases else 'discovery'
+    all_phases = list(ProjectPhase.for_organization(project.organization))
+    valid = {p.key for p in all_phases}
+    process_phases = project.process.phases(all_phases) if project.process_id else all_phases
+    fallback = process_phases[0].key if process_phases else 'discovery'
 
     def day(offset):
         return base + timedelta(days=int(offset)) if offset not in (None, '') else None

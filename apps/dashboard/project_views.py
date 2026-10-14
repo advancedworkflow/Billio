@@ -19,16 +19,55 @@ from django.views.decorators.http import require_POST
 from apps.clients.models import Client
 from apps.organizations.models import OrganizationMember
 
-from .models import Project, Deliverable, DeliverableFile, ProjectFile, Comment, Milestone, MilestoneFile, Task, ProjectPhase, Meeting
+from .models import Project, Deliverable, DeliverableFile, ProjectFile, Comment, Milestone, MilestoneFile, Task, ProjectPhase, ProjectProcess, Meeting
 from .views import _first_user_organization, _user_org_ids
 from .client_notifications import notify_client
 from .models import ProjectTemplate
 from . import project_templates
 
 
-def _phases_context(organization):
-    """Phases de l'organisation sous forme de dicts (id/value/label/color) pour les templates."""
-    return [{'id': p.id, 'value': p.key, 'label': p.label, 'color': p.color} for p in ProjectPhase.for_organization(organization)]
+def _phases_context(organization, project=None, process=None):
+    """
+    Étapes sous forme de dicts (id/value/label/color) pour les templates.
+    - `project` : étapes de son processus, plus celles qu'il utilise déjà (statut, jalons) pour
+      qu'un changement de processus ne fasse rien disparaître ;
+    - `process` : étapes de ce processus ;
+    - sinon : toutes les étapes de l'organisation.
+    """
+    all_phases = ProjectPhase.for_organization(organization)
+    chosen = all_phases
+    if project is not None or process is not None:
+        process = process or (project.process if project is not None and project.process_id else None) \
+            or ProjectProcess.default_for(organization)
+        chosen = process.phases(all_phases)
+        if project is not None and project.pk:
+            used = {project.status} | set(project.milestones.values_list('phase', flat=True))
+            keys = {p.key for p in chosen}
+            extra = [p for p in all_phases if p.key in used and p.key not in keys]
+            if extra:
+                done = [p for p in chosen if p.key == 'completed']
+                chosen = [p for p in chosen if p.key != 'completed'] + extra + done
+    return [{'id': p.id, 'value': p.key, 'label': p.label, 'color': p.color} for p in chosen]
+
+
+def add_phase_key(keys, key):
+    """Ajoute une étape à la liste d'un processus, juste avant « Terminé »."""
+    keys = [k for k in (keys or []) if k != key]
+    if 'completed' in keys:
+        keys.insert(keys.index('completed'), key)
+    else:
+        keys.append(key)
+    return keys
+
+
+def _processes_context(organization):
+    """Processus de l'organisation (id, nom, étapes) pour les sélecteurs."""
+    if organization is None:
+        return []
+    all_phases = ProjectPhase.for_organization(organization)
+    return [{'id': proc.id, 'name': proc.name, 'is_default': proc.is_default,
+             'steps': [{'value': p.key, 'label': p.label, 'color': p.color} for p in proc.phases(all_phases)]}
+            for proc in ProjectProcess.for_organization(organization)]
 
 
 def _organization_members_data(organization):
@@ -104,7 +143,16 @@ def project_board(request):
         )
 
     organization = _first_user_organization(request.user)
-    phases = _phases_context(organization) if organization else []
+    processes = _processes_context(organization)
+    # Filtre par processus : ses étapes en colonnes et ses projets seulement (vide = tous).
+    selected_process = next((p for p in processes if str(p['id']) == request.GET.get('process', '')), None)
+    if organization and selected_process:
+        process_obj = ProjectProcess.objects.get(id=selected_process['id'])
+        phases = _phases_context(organization, process=process_obj)
+        default_id = next((p['id'] for p in processes if p['is_default']), None)
+        projects = [p for p in projects if p.process_id == process_obj.id or (p.process_id is None and process_obj.id == default_id)]
+    else:
+        phases = _phases_context(organization) if organization else []
 
     columns = []
     for phase in phases:
@@ -132,6 +180,8 @@ def project_board(request):
         'status_choices': [(p['value'], p['label']) for p in phases],
         'phases': phases,
         'project_templates': ProjectTemplate.objects.filter(organization_id__in=org_ids) if org_ids else [],
+        'processes': processes,
+        'selected_process': selected_process,
     })
 
 
@@ -192,7 +242,7 @@ def milestones_board(request):
             m.progress_percent = round(100 * m.tasks_done / m.tasks_total) if m.tasks_total else 0
             m.form_fields_json = json.dumps(m.form_fields)
 
-        phases = _phases_context(project.organization)
+        phases = _phases_context(project.organization, project=project)
         for phase in phases:
             cards = [m for m in milestones if m.phase == phase['value']]
             columns.append({
@@ -248,6 +298,10 @@ def phase_create(request):
         color=request.POST.get('color') or '#6366f1',
         order=order,
     )
+    # La nouvelle étape rejoint le processus affiché (ou le processus par défaut), avant « Terminé ».
+    process = ProjectProcess.objects.filter(organization=organization, id=request.POST.get('process_id') or 0).first()         or ProjectProcess.default_for(organization)
+    process.phase_keys = add_phase_key(process.phase_keys, key)
+    process.save(update_fields=['phase_keys'])
     return JsonResponse({'success': True, 'phase': {'value': phase.key, 'label': phase.label, 'color': phase.color}})
 
 
@@ -272,6 +326,10 @@ def phase_delete(request, phase_id):
             'message': 'Cette phase est encore utilisée par des projets ou des jalons. Déplacez-les avant de la supprimer.',
         }, status=400)
 
+    for process in ProjectProcess.objects.filter(organization=organization):
+        if phase.key in (process.phase_keys or []):
+            process.phase_keys = [k for k in process.phase_keys if k != phase.key]
+            process.save(update_fields=['phase_keys'])
     phase.delete()
     return JsonResponse({'success': True})
 
@@ -309,7 +367,7 @@ def milestone_update_phase(request, milestone_id):
         Milestone.objects.filter(project__in=_user_projects_queryset(request.user)), id=milestone_id
     )
     new_phase = request.POST.get('phase', '')
-    valid_phases = {p['value'] for p in _phases_context(milestone.project.organization)}
+    valid_phases = {p['value'] for p in _phases_context(milestone.project.organization, project=milestone.project)}
     if new_phase not in valid_phases:
         return JsonResponse({'success': False, 'message': 'Phase invalide.'}, status=400)
 
@@ -330,6 +388,12 @@ def project_create(request):
         client_id = request.POST.get('client_id')
         client = get_object_or_404(Client, id=client_id, organization=organization)
 
+        template = ProjectTemplate.objects.filter(organization=organization, id=request.POST.get('template_id') or 0).first()
+        process = ProjectProcess.objects.filter(organization=organization, id=request.POST.get('process_id') or 0).first()
+        if process is None and template and (template.data or {}).get('process'):
+            process = ProjectProcess.objects.filter(organization=organization, name=template.data['process']).first()
+        process = process or ProjectProcess.default_for(organization)
+        phases = _phases_context(organization, process=process)
         valid_phases = {p['value'] for p in phases}
         status = request.POST.get('status') or ''
         if status not in valid_phases:
@@ -338,6 +402,7 @@ def project_create(request):
         project = Project.objects.create(
             organization=organization,
             client=client,
+            process=process,
             name=request.POST.get('name') or 'Nouveau projet',
             reference=request.POST.get('reference', ''),
             description=request.POST.get('description', ''),
@@ -347,7 +412,6 @@ def project_create(request):
             created_by=request.user,
         )
 
-        template = ProjectTemplate.objects.filter(organization=organization, id=request.POST.get('template_id') or 0).first()
         if template:
             project_templates.instantiate(template.data, project, user=request.user)
         elif 'onboarding' in valid_phases:
@@ -376,6 +440,7 @@ def project_create(request):
         'clients': clients,
         'status_choices': [(p['value'], p['label']) for p in phases],
         'next_reference': next_reference,
+        'processes': _processes_context(organization),
     })
 
 
@@ -410,7 +475,7 @@ def project_detail(request, project_id):
         m.form_fields_json = json.dumps(m.form_fields)
         m.grouped_tasks = m_tasks
     orphan_tasks = tasks_by_milestone.get(None, [])
-    org_phases = _phases_context(project.organization)
+    org_phases = _phases_context(project.organization, project=project)
     phase_counts = {p['value']: 0 for p in org_phases}
     for m in milestones:
         phase_counts[m.phase] = phase_counts.get(m.phase, 0) + 1
@@ -472,6 +537,8 @@ def project_detail(request, project_id):
         'meetings': meetings,
         'org_members': _organization_members_data(project.organization),
         'phases': phases,
+        'processes': _processes_context(project.organization),
+        'current_process': project.process or ProjectProcess.default_for(project.organization),
         'task_status_choices': Task.STATUS_CHOICES,
         'client_brief_json': json.dumps(project.client_brief),
         'phase_labels_json': json.dumps({p['value']: p['label'] for p in phases}),
@@ -554,7 +621,7 @@ def project_update_status(request, project_id):
     """Change la phase d'un projet (appelé par le drag & drop du kanban)."""
     project = get_object_or_404(_user_projects_queryset(request.user), id=project_id)
     new_status = request.POST.get('status', '')
-    valid_statuses = {p['value'] for p in _phases_context(project.organization)}
+    valid_statuses = {p['value'] for p in _phases_context(project.organization, project=project)}
     if new_status not in valid_statuses:
         return JsonResponse({'success': False, 'message': 'Statut invalide.'}, status=400)
 
@@ -562,7 +629,7 @@ def project_update_status(request, project_id):
     project.status = new_status
     project.save(update_fields=['status', 'updated_at'])
     if new_status != previous:
-        label = next((p['label'] for p in _phases_context(project.organization) if p['value'] == new_status), new_status)
+        label = next((p['label'] for p in _phases_context(project.organization, project=project) if p['value'] == new_status), new_status)
         notify_client(
             'phase_changed', project.client, f"Nouvelle étape « {label} » — {project.name}",
             "Votre projet avance : consultez la nouvelle étape et ce qui est attendu de votre part.", project=project,
@@ -591,7 +658,7 @@ def project_brief_update(request, project_id):
     project = get_object_or_404(_user_projects_queryset(request.user), id=project_id)
 
     phase = request.POST.get('phase') or project.status
-    valid_phases = {p['value'] for p in _phases_context(project.organization)}
+    valid_phases = {p['value'] for p in _phases_context(project.organization, project=project)}
     if phase not in valid_phases:
         return JsonResponse({'success': False, 'message': 'Phase invalide.'}, status=400)
 
@@ -630,10 +697,11 @@ def project_duplicate(request, project_id):
     original = get_object_or_404(_user_projects_queryset(request.user), id=project_id)
     today = timezone.localdate()
     shift = (today - original.start_date) if original.start_date else None
-    phases = _phases_context(original.organization)
+    phases = _phases_context(original.organization, process=original.process) if original.process_id else _phases_context(original.organization, process=ProjectProcess.default_for(original.organization))
     duplicate = Project.objects.create(
         organization=original.organization,
         client=original.client,
+        process=original.process,
         name=f"{original.name} (copie)",
         description=original.description,
         status=phases[0]['value'] if phases else original.status,
@@ -683,7 +751,7 @@ def project_delete(request, project_id):
 def milestone_create(request, project_id):
     """Créer un jalon sur un projet."""
     project = get_object_or_404(_user_projects_queryset(request.user), id=project_id)
-    valid_phases = {p['value'] for p in _phases_context(project.organization)}
+    valid_phases = {p['value'] for p in _phases_context(project.organization, project=project)}
     phase = request.POST.get('phase') or project.status
     if phase not in valid_phases:
         phase = project.status
