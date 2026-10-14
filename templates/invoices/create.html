@@ -10,8 +10,8 @@
 {% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=1.9">
-<script src="{% static 'js/invoice-editor.js' %}?v=2.1"></script>
+<link rel="stylesheet" href="{% static 'css/invoice-editor.css' %}?v=2.0">
+<script src="{% static 'js/invoice-editor.js' %}?v=2.2"></script>
 {% endblock %}
 
 {% block content %}
@@ -203,6 +203,20 @@
                         <label class="ie-field"><span>Nom</span><input type="text" x-ref="newClientName" x-model="newClient.name" required></label>
                         <label class="ie-field"><span>Email</span><input type="email" x-model="newClient.email" required></label>
                         <label class="ie-field"><span>Téléphone <em>(optionnel)</em></span><input type="tel" x-model="newClient.phone"></label>
+                        <label class="ie-field"><span>Adresse</span><input type="text" x-model="newClient.address" placeholder="12 rue des Arts" autocomplete="street-address"></label>
+                        <div class="ie-grid-2">
+                            <label class="ie-field"><span>Code postal</span><input type="text" x-model="newClient.postal_code" autocomplete="postal-code"></label>
+                            <label class="ie-field"><span>Ville</span><input type="text" x-model="newClient.city" autocomplete="address-level2"></label>
+                        </div>
+                        <label class="ie-field"><span>Pays <em>(optionnel)</em></span><input type="text" x-model="newClient.country" autocomplete="country-name"></label>
+                        <details class="ie-client-pro">
+                            <summary>Client professionnel <em>(société, SIRET, TVA)</em></summary>
+                            <label class="ie-field"><span>Raison sociale</span><input type="text" x-model="newClient.company_name" autocomplete="organization"></label>
+                            <div class="ie-grid-2">
+                                <label class="ie-field"><span>SIRET</span><input type="text" x-model="newClient.registration_number"></label>
+                                <label class="ie-field"><span>N° de TVA</span><input type="text" x-model="newClient.tax_id"></label>
+                            </div>
+                        </details>
                         <p class="ie-error" x-show="newClient.error" x-text="newClient.error"></p>
                         <div class="ie-row-actions">
                             <button type="button" class="ie-btn ie-btn--ghost" @click="clientCreate = false">Annuler</button>

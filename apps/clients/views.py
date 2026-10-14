@@ -247,6 +247,10 @@ def client_quick_create(request):
     if not organization:
         return JsonResponse({'ok': False, 'error': 'Aucune organisation disponible.'}, status=400)
 
+    # Adresse complète et identité légale : imprimées sur les factures (obligatoires en B2B).
+    limits = {'address': 500, 'postal_code': 20, 'city': 100, 'country': 100,
+              'company_name': 200, 'registration_number': 50, 'tax_id': 50}
+    extra = {field: (request.POST.get(field) or '').strip()[:limit] or None for field, limit in limits.items()}
     try:
         client = Client.objects.create(
             organization=organization,
@@ -254,6 +258,7 @@ def client_quick_create(request):
             email=email,
             phone=phone or None,
             is_active=True,
+            **extra,
         )
     except IntegrityError:
         return JsonResponse({'ok': False, 'error': 'Un client avec cet email existe déjà.'}, status=409)
@@ -271,6 +276,13 @@ def client_quick_create(request):
         'name': client.name,
         'email': client.email,
         'phone': client.phone or '',
+        'address': client.address or '',
+        'postal_code': client.postal_code or '',
+        'city': client.city or '',
+        'country': client.country or '',
+        'company_name': client.company_name or '',
+        'registration_number': client.registration_number or '',
+        'tax_id': client.tax_id or '',
         'is_active': client.is_active,
     })
 

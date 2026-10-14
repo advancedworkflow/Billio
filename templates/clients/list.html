@@ -14,7 +14,7 @@
             window.clientTable = function () {
                 return {
                     newClientModal: false,
-                    newClient: { name: '', email: '', phone: '' },
+                    newClient: { name: '', email: '', phone: '', address: '', postal_code: '', city: '', country: '', company_name: '', registration_number: '', tax_id: '' },
                     newClientError: '',
                     async createClient() {
                         this.newClientError = '';
@@ -26,7 +26,7 @@
                         const payload = new URLSearchParams();
                         payload.set('name', this.newClient.name);
                         payload.set('email', this.newClient.email);
-                        payload.set('phone', this.newClient.phone || '');
+                        for (const [field, value] of Object.entries(this.newClient)) if (!['name', 'email'].includes(field)) payload.set(field, (value || '').trim());
                         const response = await fetch('{% url "clients:client-quick-create" %}', {
                             method: 'POST',
                             headers: {
@@ -424,7 +424,7 @@
         <div x-show="automationModal" x-cloak class="fixed inset-0 z-50" @keydown.escape.window="automationModal = false">
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="automationModal = false"></div>
             <div class="absolute inset-0 flex items-center justify-center p-4">
-                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl max-h-[92vh] overflow-y-auto">
                     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-gray-900">Automatisations client</h3>
                         <button type="button" class="text-gray-500 hover:text-gray-700" @click="automationModal = false">✕</button>
@@ -446,7 +446,7 @@
         >
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="newClientModal = false"></div>
             <div class="absolute inset-0 flex items-center justify-center p-4">
-                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl">
+                <div class="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-xl max-h-[92vh] overflow-y-auto">
                     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-gray-900">Nouveau client</h3>
                         <button type="button" class="text-gray-500 hover:text-gray-700" @click="newClientModal = false">✕</button>
@@ -465,10 +465,7 @@
                             <label class="interactive-label">Email <span class="interactive-hint">Obligatoire</span></label>
                             <input type="email" x-model="newClient.email" class="interactive-input" placeholder="email@client.com">
                             </div>
-                        <div>
-                            <label class="interactive-label">Téléphone <span class="interactive-hint">Optionnel</span></label>
-                            <input type="text" x-model="newClient.phone" class="interactive-input" placeholder="+33 ...">
-                        </div>
+                        {% include "clients/_new_client_extra_fields.html" %}
                         <p x-show="newClientError" x-cloak x-text="newClientError" class="text-sm text-red-600"></p>
                     </div>
                     <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
@@ -493,7 +490,7 @@
                 viewClientModal: false,
                 editClientModal: false,
                 automationModal: false,
-                newClient: { name: '', email: '', phone: '' },
+                newClient: { name: '', email: '', phone: '', address: '', postal_code: '', city: '', country: '', company_name: '', registration_number: '', tax_id: '' },
                 newClientError: '',
                 selectedClient: {},
                 editClient: { id: '', name: '', email: '', phone: '', address: '', notes: '', is_active: true },
@@ -644,7 +641,7 @@
                     const payload = new URLSearchParams();
                     payload.set('name', this.newClient.name);
                     payload.set('email', this.newClient.email);
-                    payload.set('phone', this.newClient.phone || '');
+                    for (const [field, value] of Object.entries(this.newClient)) if (!['name', 'email'].includes(field)) payload.set(field, (value || '').trim());
 
                     const response = await fetch('{% url "clients:client-quick-create" %}', {
                         method: 'POST',
@@ -706,10 +703,7 @@
                             <label class="interactive-label">Email <span class="interactive-hint">Obligatoire</span></label>
                             <input type="email" x-model="newClient.email" class="interactive-input" placeholder="email@client.com">
                         </div>
-                        <div>
-                            <label class="interactive-label">Téléphone <span class="interactive-hint">Optionnel</span></label>
-                            <input type="text" x-model="newClient.phone" class="interactive-input" placeholder="+33 ...">
-                        </div>
+                        {% include "clients/_new_client_extra_fields.html" %}
                         <p x-show="newClientError" x-cloak x-text="newClientError" class="text-sm text-red-600"></p>
                     </div>
                     <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">

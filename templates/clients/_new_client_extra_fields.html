@@ -1,0 +1,42 @@
+{# Champs du formulaire « Nouveau client » (liste des clients) : contact, adresse, identité légale. #}
+<div>
+    <label class="interactive-label">Téléphone <span class="interactive-hint">Optionnel</span></label>
+    <input type="text" x-model="newClient.phone" class="interactive-input" placeholder="+33 ...">
+</div>
+<div>
+    <label class="interactive-label">Adresse <span class="interactive-hint">Imprimée sur vos factures</span></label>
+    <input type="text" x-model="newClient.address" class="interactive-input" placeholder="12 rue des Arts" autocomplete="street-address">
+</div>
+<div class="grid grid-cols-3 gap-3">
+    <div>
+        <label class="interactive-label">Code postal</label>
+        <input type="text" x-model="newClient.postal_code" class="interactive-input" placeholder="75011" autocomplete="postal-code">
+    </div>
+    <div class="col-span-2">
+        <label class="interactive-label">Ville</label>
+        <input type="text" x-model="newClient.city" class="interactive-input" placeholder="Paris" autocomplete="address-level2">
+    </div>
+</div>
+<div>
+    <label class="interactive-label">Pays <span class="interactive-hint">Optionnel</span></label>
+    <input type="text" x-model="newClient.country" class="interactive-input" placeholder="France" autocomplete="country-name">
+</div>
+<details class="rounded-xl border border-gray-200 px-4 py-3" :open="!!(newClient.company_name || newClient.registration_number || newClient.tax_id)">
+    <summary class="cursor-pointer text-sm font-semibold text-gray-900">Client professionnel <span class="interactive-hint">société, SIRET, n° de TVA</span></summary>
+    <div class="space-y-3 mt-3">
+        <div>
+            <label class="interactive-label">Raison sociale</label>
+            <input type="text" x-model="newClient.company_name" class="interactive-input" placeholder="Atelier Lumière SARL" autocomplete="organization">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="interactive-label">SIRET / n° d'entreprise</label>
+                <input type="text" x-model="newClient.registration_number" class="interactive-input" placeholder="987 654 321 00021">
+            </div>
+            <div>
+                <label class="interactive-label">N° de TVA</label>
+                <input type="text" x-model="newClient.tax_id" class="interactive-input" placeholder="FR12 987654321">
+            </div>
+        </div>
+    </div>
+</details>

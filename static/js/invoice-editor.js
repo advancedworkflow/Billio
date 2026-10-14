@@ -120,7 +120,7 @@ function invoiceEditor() {
     hoverObj: null, hoverLabel: '', hoverStyle: '',
     templatesOpen: false, moreOpen: false, fullscreenPreview: false, showHelp: false,
     clientQuery: '', clientHighlight: 0, clientCreate: false,
-    newClient: { name: '', email: '', phone: '', error: '', submitting: false },
+    newClient: { name: '', email: '', phone: '', address: '', postal_code: '', city: '', country: '', company_name: '', registration_number: '', tax_id: '', error: '', submitting: false },
     saving: false, dirty: false, logoBusy: false, logoFocus: false,
     defineTpl: { open: false, name: '', isDefault: false, saving: false, error: '' },
     picker: { open: false, index: null, top: 0, left: 0, width: 300, hover: 0 },
@@ -224,7 +224,7 @@ function invoiceEditor() {
     },
     startClientCreate() {
       this.clientCreate = true;
-      this.newClient = { name: this.clientQuery.trim(), email: '', phone: '', error: '', submitting: false };
+      this.newClient = { name: this.clientQuery.trim(), email: '', phone: '', address: '', postal_code: '', city: '', country: '', company_name: '', registration_number: '', tax_id: '', error: '', submitting: false };
       this.$nextTick(() => this.$refs.newClientName && this.$refs.newClientName.focus());
     },
     async submitNewClient() {
@@ -234,13 +234,16 @@ function invoiceEditor() {
       this.newClient.submitting = true;
       this.newClient.error = '';
       try {
-        const body = new URLSearchParams({ name, email, phone: this.newClient.phone.trim() });
+        const body = new URLSearchParams({ name, email });
+        for (const field of ['phone', 'address', 'postal_code', 'city', 'country', 'company_name', 'registration_number', 'tax_id']) body.append(field, (this.newClient[field] || '').trim());
         const orgId = this.$root.dataset.invoiceOrgId;
         if (orgId) body.append('organization_id', orgId);
         const res = await fetch(urls.clientCreate, { method: 'POST', headers: { 'X-CSRFToken': this.csrf() }, body });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) { this.newClient.error = data.error || 'Impossible de créer le client.'; return; }
-        const row = { id: data.id, name: data.name || name, email: data.email || email, phone: data.phone || '', address: '', registration_number: '', tax_id: '' };
+        const fullAddress = [data.address, [data.postal_code, data.city].filter(Boolean).join(' '), data.country].filter(Boolean).join('\n');
+        const row = { id: data.id, name: data.name || name, email: data.email || email, phone: data.phone || '', address: fullAddress,
+                      company_name: data.company_name || '', registration_number: data.registration_number || '', tax_id: data.tax_id || '' };
         this.clients = [...this.clients, row];
         this.clientCreate = false;
         this.chooseClient(row);

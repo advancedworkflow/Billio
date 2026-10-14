@@ -166,7 +166,12 @@ class InvoiceTemplate(models.Model):
             **self._quote_text_overrides(document, is_quote),
             'client_name': cl.name if cl else '',
             'client_email': cl.email if cl else '',
-            'client_address': cl.address or '' if cl else '',
+            # Adresse complète (rue, code postal et ville, pays) : tous les modèles, même anciens, l'impriment.
+            'client_address': self._client_full_address(cl),
+            'client_postal_code': (cl.postal_code or '') if cl else '',
+            'client_city': (cl.city or '') if cl else '',
+            'client_country': (cl.country or '') if cl else '',
+            'client_company_name': (cl.company_name or '') if cl else '',
             'client_phone': cl.phone or '' if cl else '',
             'client_registration_number': cl.registration_number or '' if cl else '',
             'client_tax_id': cl.tax_id or '' if cl else '',
@@ -196,6 +201,21 @@ class InvoiceTemplate(models.Model):
             if value:
                 overrides[key] = value
         return overrides
+
+    @staticmethod
+    def _client_full_address(client):
+        if client is None:
+            return ''
+        street = (client.address or '').strip()
+        lines = [street] if street else []
+        city_line = ' '.join(part for part in ((client.postal_code or '').strip(), (client.city or '').strip()) if part)
+        # Anciennes fiches : la ville est parfois déjà saisie dans l'adresse.
+        if city_line and city_line.lower() not in street.lower():
+            lines.append(city_line)
+        country = (client.country or '').strip()
+        if country and country.lower() not in street.lower():
+            lines.append(country)
+        return '\n'.join(lines)
 
     @staticmethod
     def _logo_file_uri(org):
