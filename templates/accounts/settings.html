@@ -34,6 +34,7 @@
         <button type="button" :class="tab === 'rdv' && 'is-active'" @click="go('rdv')"><i data-lucide="calendar-check" class="w-4 h-4"></i> Prise de rendez-vous</button>
         <button type="button" :class="tab === 'metier' && 'is-active'" @click="go('metier')"><i data-lucide="briefcase-business" class="w-4 h-4"></i> Métier & modèles</button>
         <button type="button" :class="tab === 'notifications' && 'is-active'" @click="go('notifications')"><i data-lucide="bell-ring" class="w-4 h-4"></i> Notifications client</button>
+        <a href="{% url 'organizations:email-settings' %}"><i data-lucide="mail" class="w-4 h-4"></i> Emails aux clients</a>
         {% endif %}
         <p class="st-nav-title">Avancé</p>
         <button type="button" :class="tab === 'dev' && 'is-active'" @click="go('dev')"><i data-lucide="braces" class="w-4 h-4"></i> API</button>
@@ -381,6 +382,7 @@
                     </div>
                     {% endfor %}
                 </div>
+                <p class="st-help">Logo, couleur, bannière, signature et textes des emails : <a href="{% url 'organizations:email-settings' %}">Personnalisation des emails</a>.</p>
                 <p class="st-help">Les emails partent de votre adresse d'envoi si elle est connectée dans Intégrations, sinon de l'adresse Billio. Le client répond directement à {{ org.email|default:"votre email" }}.</p>
                 <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
             </form>

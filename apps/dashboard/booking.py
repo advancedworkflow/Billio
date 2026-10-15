@@ -196,18 +196,15 @@ def _after_booking(organization, appointment, config):
                                     title=f"Nouveau rendez-vous : {appointment.name}",
                                     message=label + (f" — « {appointment.notes[:200]} »" if appointment.notes else ''))
     try:
-        from django.core.mail import EmailMessage
-        from apps.integrations.providers import org_mail
-        connection, from_email = org_mail(organization)
+        from apps.organizations.branded_email import branded_message
         cancel_url = f"{settings.SITE_URL}{reverse('dashboard:public-booking-done', args=[appointment.cancel_token])}"
-        EmailMessage(
+        branded_message(
+            organization,
             subject=f"[{organization.name}] Rendez-vous confirmé le {when:%d/%m/%Y à %H:%M}",
             body=(f"Bonjour {appointment.name},\n\nVotre rendez-vous « {appointment.type_name} » est confirmé le "
                   f"{when:%d/%m/%Y à %H:%M} ({int((appointment.end - appointment.start).total_seconds() // 60)} min)."
-                  + (f"\nLieu : {config['location']}" if config['location'] else '')
-                  + f"\n\nBesoin d'annuler ? {cancel_url}\n\n— {organization.name}"),
-            from_email=from_email, to=[appointment.email], connection=connection,
-            reply_to=[organization.email] if organization.email else None,
+                  + (f"\nLieu : {config['location']}" if config['location'] else '')),
+            to=[appointment.email], button=("Gérer ou annuler le rendez-vous", cancel_url),
         ).send(fail_silently=False)
     except Exception:
         logger.exception('Confirmation de rendez-vous non envoyée (%s)', appointment.id)

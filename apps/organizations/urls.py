@@ -3,7 +3,7 @@ URLs for organizations app.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import email_views, views
 from .views import organization_list
 
 app_name = 'organizations'
@@ -21,6 +21,8 @@ urlpatterns = [
     path('list/', organization_list, name='organization-list'),
     path('create/', views.organization_create, name='organization-create'),
     path('automations/', views.automation_settings, name='automation-settings'),
+    path('emails/', email_views.email_settings, name='email-settings'),
+    path('emails/preview/', email_views.email_preview, name='email-preview'),
     path('logo/', views.organization_logo, name='organization-logo'),
     path('invites/create/', views.invite_member_create, name='invite-member-create'),
     path('members/<int:member_id>/update/', views.member_update, name='member-update'),

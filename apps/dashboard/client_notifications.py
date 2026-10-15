@@ -74,8 +74,7 @@ def notify_client(event, client, title, message='', *, project=None, link=''):
 
 
 def _send_email(notification, organization):
-    from django.core.mail import EmailMessage
-    from apps.integrations.providers import org_mail
+    from apps.organizations.branded_email import branded_message
 
     client = notification.client
     url = portal_url(client, notification.link)
@@ -83,14 +82,8 @@ def _send_email(notification, organization):
         f"Bonjour {client.get_display_name()},\n\n"
         f"{notification.title}\n"
         + (f"{notification.message}\n" if notification.message else '')
-        + f"\nRetrouvez tous les détails dans votre espace client :\n{url}\n\n"
-        f"— {organization.name}"
     )
-    connection, from_email = org_mail(organization)
-    EmailMessage(
-        subject=f"[{organization.name}] {notification.title}",
-        body=body, from_email=from_email, to=[client.email], connection=connection,
-        reply_to=[organization.email] if organization.email else None,
-    ).send(fail_silently=False)
+    branded_message(organization, subject=f"[{organization.name}] {notification.title}", body=body,
+                    to=[client.email], button=('Ouvrir mon espace client', url)).send(fail_silently=False)
     notification.emailed_at = timezone.now()
     notification.save(update_fields=['emailed_at'])

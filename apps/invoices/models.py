@@ -1049,6 +1049,7 @@ class Quote(models.Model):
             self.status = 'sent'
             self.sent_at = timezone.now()
             self.save()
+            self._email_client(pdf_content)
 
             from apps.dashboard.automation_engine import run_automations
             run_automations(
@@ -1061,6 +1062,32 @@ class Quote(models.Model):
             return True, f"Devis #{self.quote_number} envoyé avec succès"
         except Exception as e:
             return False, f"Erreur lors de l'envoi: {str(e)}"
+
+    def _email_client(self, pdf_content=None):
+        """Email du devis au client (lien d'acceptation en ligne + PDF). N'empêche jamais l'envoi."""
+        import logging
+        from django.conf import settings
+        from django.urls import reverse
+        from apps.organizations.branded_email import branded_message, money, render_kind
+
+        if not self.client_id or not self.client.email:
+            return False
+        try:
+            subject, body, button_label = render_kind(self.organization, 'quote', {
+                'client': self.client.get_display_name(), 'numero': self.quote_number,
+                'montant': money(self.total_amount, self.currency),
+                'echeance': f"{self.expiry_date:%d/%m/%Y}" if self.expiry_date else '', 'jours_retard': '',
+            })
+            url = f"{settings.SITE_URL}{reverse('invoices:public-quote-view', args=[self.id])}"
+            message = branded_message(self.organization, subject=subject, body=body, to=[self.client.email],
+                                      button=(button_label, url))
+            if pdf_content:
+                message.attach(f"Devis-{self.quote_number}.pdf", pdf_content, 'application/pdf')
+            message.send(fail_silently=False)
+            return True
+        except Exception:
+            logging.getLogger(__name__).exception('Email du devis %s non envoyé', self.quote_number)
+            return False
 
     def mark_as_viewed(self):
         """Marque le devis comme vu par le client (idempotent)."""

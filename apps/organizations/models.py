@@ -124,6 +124,13 @@ class Organization(models.Model):
     # 'min_notice_hours', 'max_days_ahead', 'location'} — voir apps.dashboard.booking.booking_config.
     booking_settings = models.JSONField(default=dict, blank=True)
     booking_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # Personnalisation des emails envoyés aux clients (voir apps.organizations.branded_email).
+    email_color = models.CharField(max_length=7, blank=True, default='')  # vide = couleur principale
+    email_banner = models.ImageField(upload_to='organization_email/', blank=True, null=True)
+    email_signature = models.TextField(blank=True, default='')
+    email_signature_photo = models.ImageField(upload_to='organization_email/', blank=True, null=True)
+    # {type d'email: {'subject': …, 'body': …}} ; absent = texte par défaut (branded_email.EMAIL_KINDS).
+    email_templates = models.JSONField(default=dict, blank=True)
 
     def billing_texts(self):
         """Mentions générées depuis les réglages : {'legal_mentions', 'payment_terms'} (vide si rien n'est réglé)."""

@@ -1,0 +1,101 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Personnalisation des emails - Billio{% endblock %}
+{% block page_title %}Personnalisation des emails{% endblock %}
+{% block page_subtitle %}Logo, couleur, bannière, signature et textes des emails envoyés à vos clients{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/email-settings.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+{{ kinds_json|json_script:"em-defaults" }}
+<form method="post" enctype="multipart/form-data" class="em" x-data="emailSettings()" @input.debounce.400ms="refresh()" @change="refresh()">
+    {% csrf_token %}
+    {% if messages %}{% for m in messages %}<p class="em-flash em-flash--{{ m.tags }}">{{ m }}</p>{% endfor %}{% endif %}
+
+    <div class="em-side">
+        <section class="em-card">
+            <h2>Apparence</h2>
+            <p class="em-help">Appliquée à tous vos emails : factures, devis, relances, rendez-vous, notifications et automatisations. Le logo est celui de <a href="{% url 'accounts:user-settings' %}?tab=entreprise">Identité &amp; mentions</a>.</p>
+            <label class="em-field"><span>Couleur des emails</span>
+                <span class="em-color"><input type="color" x-model="color" @input="$refs.colorText.value = color"><input type="text" name="email_color" x-ref="colorText" value="{{ org.email_color }}" placeholder="{{ color }} (couleur principale)" maxlength="7" @input="if (/^#[0-9a-f]{6}$/i.test($event.target.value)) color = $event.target.value"></span></label>
+            <div class="em-field"><span>Bannière en haut de l'email <small>(facultatif, 1200 × 400 px conseillé)</small></span>
+                {% if org.email_banner %}<img src="{{ org.email_banner.url }}" alt="" class="em-thumb em-thumb--wide">
+                <label class="em-check"><input type="checkbox" name="remove_email_banner" value="1"> Retirer la bannière</label>{% endif %}
+                <input type="file" name="email_banner" accept="image/png,image/jpeg,image/webp,image/gif"></div>
+            <label class="em-field"><span>Signature</span>
+                <textarea translate="no" name="email_signature" rows="4" maxlength="1000" placeholder="Camille Martin&#10;Gérante — {{ org.name }}&#10;06 12 34 56 78">{{ org.email_signature }}</textarea>
+                <small>Vide : « — {{ org.name }} ».</small></label>
+            <div class="em-field"><span>Photo de signature <small>(facultatif)</small></span>
+                {% if org.email_signature_photo %}<img src="{{ org.email_signature_photo.url }}" alt="" class="em-thumb em-thumb--round">
+                <label class="em-check"><input type="checkbox" name="remove_email_signature_photo" value="1"> Retirer la photo</label>{% endif %}
+                <input type="file" name="email_signature_photo" accept="image/png,image/jpeg,image/webp,image/gif"></div>
+        </section>
+
+        <section class="em-card">
+            <h2>Textes</h2>
+            <nav class="em-kinds" aria-label="Type d'email">
+                {% for k in kinds %}<button type="button" :class="kind === '{{ k.key }}' && 'is-on'" @click="kind = '{{ k.key }}'; refresh()">{{ k.label }}{% if k.custom %} <em title="Texte personnalisé">●</em>{% endif %}</button>{% endfor %}
+            </nav>
+            {% for k in kinds %}
+            <div x-show="kind === '{{ k.key }}'" x-cloak translate="no">
+                <label class="em-field"><span>Objet</span><input type="text" name="subject_{{ k.key }}" value="{{ k.subject }}" maxlength="200" data-field="subject" data-kind="{{ k.key }}"></label>
+                <label class="em-field"><span>Message</span><textarea name="body_{{ k.key }}" rows="9" maxlength="5000" data-field="body" data-kind="{{ k.key }}">{{ k.body }}</textarea></label>
+            </div>
+            {% endfor %}
+            <div class="em-vars"><span>Insérer :</span>{% for key, label in variables %}<button type="button" @mousedown.prevent @click="insert('{{ key }}')">+ {{ label }}</button>{% endfor %}</div>
+            <p class="em-help">Le bouton (« Payer », « Consulter le devis »…), la signature et le pied de page avec vos coordonnées sont ajoutés automatiquement.</p>
+            <button type="button" class="em-link" @click="reset()">Revenir au texte par défaut</button>
+        </section>
+
+        <div class="em-actions">
+            <input type="hidden" name="test_kind" :value="kind">
+            <button type="submit" name="form_action" value="test" class="em-btn">M'envoyer un test</button>
+            <button type="submit" name="form_action" value="save" class="em-btn em-btn--primary">Enregistrer</button>
+        </div>
+    </div>
+
+    <div class="em-preview">
+        <p class="em-preview-label">Aperçu <small>(exemple : Mme Durand, facture INV-0042)</small></p>
+        <iframe title="Aperçu de l'email" x-ref="frame" class="em-frame" sandbox=""></iframe>
+    </div>
+</form>
+
+<script>
+function emailSettings() {
+    const defaults = JSON.parse(document.getElementById('em-defaults').textContent);
+    return {
+        kind: '{{ current_kind }}',
+        color: '{{ color }}',
+        lastField: null,
+        init() {
+            this.formEl = this.$el;
+            this.formEl.addEventListener('focusin', (e) => { if (e.target.dataset && e.target.dataset.field) this.lastField = e.target; });
+            this.refresh();
+        },
+        field(name) { return this.formEl.querySelector(`[data-kind="${this.kind}"][data-field="${name}"]`); },
+        insert(key) {
+            const el = (this.lastField && this.lastField.dataset.kind === this.kind) ? this.lastField : this.field('body');
+            const token = '{' + '{' + key + '}' + '}';
+            const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? el.value.length;
+            el.value = el.value.slice(0, start) + token + el.value.slice(end);
+            el.focus(); el.selectionStart = el.selectionEnd = start + token.length;
+            this.refresh();
+        },
+        reset() {
+            this.field('subject').value = defaults[this.kind].subject;
+            this.field('body').value = defaults[this.kind].body;
+            this.refresh();
+        },
+        async refresh() {
+            const data = new FormData(this.formEl);
+            data.delete('email_banner'); data.delete('email_signature_photo');
+            data.set('kind', this.kind);
+            const res = await fetch('{% url "organizations:email-preview" %}', { method: 'POST', body: data });
+            if (res.ok) this.$refs.frame.srcdoc = await res.text();
+        },
+    };
+}
+</script>
+{% endblock %}

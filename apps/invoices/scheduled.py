@@ -30,16 +30,12 @@ def _payment_url(invoice):
     return f"{settings.SITE_URL}{reverse('invoices:public-invoice-payment', args=[invoice.id])}"
 
 
-def _send(invoice, subject, body, *, attach_pdf=True):
-    from django.core.mail import EmailMessage
-    from apps.integrations.providers import org_mail
+def _send(invoice, subject, body, *, attach_pdf=True, button=None):
+    from apps.organizations.branded_email import branded_message
 
     if not invoice.client_id or not invoice.client.email:
         return False
-    organization = invoice.organization
-    connection, from_email = org_mail(organization)
-    message = EmailMessage(subject=subject, body=body, from_email=from_email, to=[invoice.client.email],
-                           connection=connection, reply_to=[organization.email] if organization.email else None)
+    message = branded_message(invoice.organization, subject=subject, body=body, to=[invoice.client.email], button=button)
     if attach_pdf:
         try:
             message.attach(f"{'Avoir' if invoice.is_credit_note else 'Facture'}-{invoice.invoice_number}.pdf",
@@ -52,21 +48,17 @@ def _send(invoice, subject, body, *, attach_pdf=True):
 
 def send_invoice_email(invoice):
     """Email d'envoi d'une facture (ou d'un avoir) au client. Ne lève pas : l'envoi reste valide."""
-    org = invoice.organization
-    name = invoice.client.get_display_name() if invoice.client_id else ''
-    if invoice.is_credit_note:
-        subject = f"[{org.name}] Avoir {invoice.invoice_number}"
-        body = (f"Bonjour {name},\n\nVeuillez trouver ci-joint l'avoir {invoice.invoice_number} d'un montant de "
-                f"{invoice.total_amount:.2f} {invoice.currency}"
-                + (f", sur la facture {invoice.credited_invoice.invoice_number}" if invoice.credited_invoice_id else '')
-                + f".\n\n— {org.name}")
-    else:
-        subject = f"[{org.name}] Facture {invoice.invoice_number}"
-        body = (f"Bonjour {name},\n\nVeuillez trouver votre facture {invoice.invoice_number} d'un montant de "
-                f"{invoice.total_amount:.2f} {invoice.currency}, à régler avant le {invoice.due_date:%d/%m/%Y}.\n\n"
-                f"Consulter et payer la facture : {_payment_url(invoice)}\n\n— {org.name}")
+    from apps.organizations.branded_email import money, render_kind
+
+    kind = 'credit_note' if invoice.is_credit_note else 'invoice'
+    subject, body, button_label = render_kind(invoice.organization, kind, {
+        'client': invoice.client.get_display_name() if invoice.client_id else '',
+        'numero': invoice.invoice_number, 'montant': money(invoice.total_amount, invoice.currency),
+        'echeance': f"{invoice.due_date:%d/%m/%Y}" if invoice.due_date else '', 'jours_retard': '',
+    })
+    button = (button_label, _payment_url(invoice)) if button_label else None
     try:
-        return _send(invoice, subject, body)
+        return _send(invoice, subject, body, button=button)
     except Exception:
         logger.exception("Email de la facture %s non envoyé", invoice.invoice_number)
         return False
@@ -96,18 +88,14 @@ def send_overdue_reminders(organization, today=None):
         remaining = invoice.amount_due()
         if remaining <= 0:
             continue
-        subject = {'j7': f"Rappel : facture {invoice.invoice_number} en attente de règlement",
-                   'j14': f"Second rappel : facture {invoice.invoice_number}",
-                   'j30': f"Dernière relance : facture {invoice.invoice_number}"}[key]
-        body = (f"Bonjour {invoice.client.get_display_name()},\n\n"
-                f"Sauf erreur de notre part, la facture {invoice.invoice_number} arrivée à échéance le "
-                f"{invoice.due_date:%d/%m/%Y} reste impayée ({remaining:.2f} {invoice.currency}, {days_late} jours de retard).\n\n"
-                f"Vous pouvez la régler ici : {_payment_url(invoice)}\n\n"
-                + ("Sans règlement de votre part, des pénalités de retard et l'indemnité forfaitaire de 40 € "
-                   "pour frais de recouvrement pourront être appliquées.\n\n" if key == 'j30' else '')
-                + f"Si le paiement a déjà été effectué, merci de ne pas tenir compte de ce message.\n\n— {organization.name}")
+        from apps.organizations.branded_email import money, render_kind
+        subject, body, button_label = render_kind(organization, f'reminder_{key}', {
+            'client': invoice.client.get_display_name(), 'numero': invoice.invoice_number,
+            'montant': money(remaining, invoice.currency), 'echeance': f"{invoice.due_date:%d/%m/%Y}",
+            'jours_retard': str(days_late),
+        })
         try:
-            if not _send(invoice, subject, body, attach_pdf=(key == 'j7')):
+            if not _send(invoice, subject, body, attach_pdf=(key == 'j7'), button=(button_label, _payment_url(invoice))):
                 continue
         except Exception:
             logger.exception('Relance %s non envoyée pour %s', key, invoice.invoice_number)

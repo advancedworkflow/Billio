@@ -10,7 +10,6 @@ from decimal import Decimal
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -514,11 +513,10 @@ def _execute_action(rule, action_key, params, ctx):
         body = _render_tokens(params.get('body'), variables) or (
             f"Le workflow « {rule_name} » s'est déclenché.\n{context_label}".strip()
         )
-        from django.core.mail import EmailMessage
+        from apps.organizations.branded_email import branded_message
         connection, from_email = org_mail(organization)  # SMTP de l'organisation s'il est connecté
-        message = EmailMessage(
-            subject=subject, body=body, from_email=from_email, to=recipients, connection=connection,
-        )
+        message = branded_message(organization, subject=subject, body=body, to=recipients,
+                                  connection=connection, from_email=from_email)
         for filename, content in files:
             message.attach(filename, content, 'application/pdf')
         message.send(fail_silently=False)
@@ -705,18 +703,14 @@ def _execute_action(rule, action_key, params, ctx):
         variables['formulaire'] = form.title
         variables['lien_formulaire'] = link
         if params.get('notify_client', True) and form.client.email:
-            send_mail(
-                subject=f"{organization.name} — {form.title}",
-                message=(
-                    f"Bonjour {form.client.name},\n\n"
-                    f"{form.intro + chr(10) + chr(10) if form.intro else ''}"
-                    f"Merci de compléter ce formulaire : {link}\n\n{organization.name}"
-                ),
-                from_email=org_mail(organization)[1],
-                recipient_list=[form.client.email],
-                fail_silently=False,
-                connection=org_mail(organization)[0],
-            )
+            from apps.organizations.branded_email import branded_message
+            branded_message(
+                organization, subject=f"{organization.name} — {form.title}",
+                body=(f"Bonjour {form.client.name},\n\n"
+                      f"{form.intro + chr(10) + chr(10) if form.intro else ''}"
+                      "Merci de compléter ce formulaire."),
+                to=[form.client.email], button=('Compléter le formulaire', link),
+            ).send(fail_silently=False)
             return f"Formulaire « {form.title} » envoyé à {form.client.email}"
         return f"Formulaire « {form.title} » créé (visible dans le portail client)"
 
