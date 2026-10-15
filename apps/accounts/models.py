@@ -34,6 +34,9 @@ class User(AbstractUser):
     timezone = models.CharField(max_length=50, default='Europe/Paris')
     currency = models.CharField(max_length=3, default='EUR')
 
+    # Acceptation des CGU, de la politique de confidentialité et des cookies (case cochée à l'inscription)
+    terms_accepted_at = models.DateTimeField(blank=True, null=True)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

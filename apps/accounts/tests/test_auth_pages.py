@@ -52,9 +52,18 @@ class SignupTests(TestCase):
         self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')  # textes vérifiés en français
 
     def signup(self, **overrides):
-        data = {'name': 'Julie Moreau', 'email': 'Julie@Moreau-Photo.fr', 'password': 'Photo-Lumiere-2026', 'trade': 'audiovisuel'}
+        data = {'name': 'Julie Moreau', 'email': 'Julie@Moreau-Photo.fr', 'password': 'Photo-Lumiere-2026', 'trade': 'audiovisuel',
+                'accept_terms': '1'}
         data.update(overrides)
         return self.http.post(reverse('accounts:register'), data)
+
+    def test_terms_must_be_accepted(self):
+        response = self.signup(accept_terms='')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Cochez la case pour accepter les conditions')
+        self.assertFalse(User.objects.filter(email='julie@moreau-photo.fr').exists())
+        self.signup()
+        self.assertIsNotNone(User.objects.get(email='julie@moreau-photo.fr').terms_accepted_at)
 
     def test_four_fields_create_account_and_organization(self):
         from apps.organizations.models import Organization

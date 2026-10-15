@@ -5724,5 +5724,8 @@
   "requêtes": "Anfragen",
   "temps moyen": "Durchschnittszeit",
   "visiteurs uniques": "eindeutige Besucher",
-  "{} connecté(s)": "{} angemeldet"
+  "{} connecté(s)": "{} angemeldet",
+  "Cochez la case pour accepter les conditions d'utilisation.": "Bitte bestätigen Sie die Nutzungsbedingungen mit dem Häkchen.",
+  ", la": ", die",
+  "politique cookies": "Cookie-Richtlinie"
 }

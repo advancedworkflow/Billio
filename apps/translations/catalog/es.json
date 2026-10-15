@@ -5724,5 +5724,8 @@
   "requêtes": "peticiones",
   "temps moyen": "tiempo medio",
   "visiteurs uniques": "visitantes únicos",
-  "{} connecté(s)": "{} conectado(s)"
+  "{} connecté(s)": "{} conectado(s)",
+  "Cochez la case pour accepter les conditions d'utilisation.": "Marque la casilla para aceptar las condiciones de uso.",
+  ", la": ", la",
+  "politique cookies": "política de cookies"
 }

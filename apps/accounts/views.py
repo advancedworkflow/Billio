@@ -150,7 +150,8 @@ def register_view(request):
             user = form.save()
             from apps.translations.middleware import request_language
             user.language = request_language(request)
-            user.save(update_fields=['language'])
+            user.terms_accepted_at = timezone.now()
+            user.save(update_fields=['language', 'terms_accepted_at'])
             # Create user profile
             UserProfile.objects.create(user=user, industry=form.cleaned_data['trade'])
             # Entreprise créée d'emblée, préparée pour le métier choisi (phases, modèles de projet, mentions).

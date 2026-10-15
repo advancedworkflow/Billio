@@ -18,6 +18,8 @@ class RegisterForm(forms.Form):
     email = forms.EmailField(error_messages={'required': 'Indiquez votre email.', 'invalid': 'Cette adresse email ne semble pas valide.'})
     password = forms.CharField(strip=False, error_messages={'required': 'Choisissez un mot de passe.'})
     trade = forms.ChoiceField(error_messages={'required': 'Choisissez votre activité.'})
+    accept_terms = forms.BooleanField(error_messages={
+        'required': "Cochez la case pour accepter les conditions d'utilisation."})
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

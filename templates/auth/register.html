@@ -40,8 +40,14 @@
         {% for error in form.trade.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
         {% if not form.trade.errors %}<p class="auth-help">Billio prépare vos étapes de projet et vos mentions légales selon votre métier.</p>{% endif %}
     </label>
+    <div class="auth-field">
+        <label class="auth-check" for="accept_terms">
+            <input id="accept_terms" name="accept_terms" type="checkbox" value="1" required {% if form.accept_terms.value %}checked{% endif %}>
+            <span>J'accepte les <a href="{% url 'landing:terms' %}" target="_blank" rel="noopener">conditions d'utilisation</a>, la <a href="{% url 'landing:privacy' %}" target="_blank" rel="noopener">politique de confidentialité</a> et la <a href="{% url 'landing:cookies' %}" target="_blank" rel="noopener">politique cookies</a>.</span>
+        </label>
+        {% for error in form.accept_terms.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+    </div>
     <button type="submit" class="auth-submit-btn">Créer mon compte</button>
-    <p class="auth-legal">En créant un compte, vous acceptez les <a href="{% url 'landing:terms' %}" target="_blank" rel="noopener">conditions d'utilisation</a> et la <a href="{% url 'landing:privacy' %}" target="_blank" rel="noopener">politique de confidentialité</a>.</p>
 </form>
 {% endblock %}
 

@@ -10,7 +10,10 @@ On applique partout la règle la plus stricte (consentement préalable, « opt-i
   données personnelles (lien « Ne pas vendre ou partager mes informations ») ;
 - chaque choix est journalisé sans donnée identifiante (ConsentRecord) pour pouvoir le prouver.
 
-Le bandeau (static/js/consent.js) est ajouté à toutes les pages HTML par ConsentMiddleware. Les
+Le bandeau (static/js/consent.js) est ajouté par ConsentMiddleware aux pages du site public, pour les
+visiteurs non connectés. Les utilisateurs de l'application ont accepté les conditions d'utilisation, la
+politique de confidentialité et la politique cookies en cochant la case obligatoire de l'inscription
+(User.terms_accepted_at) ; ils n'ont donc pas de bandeau dans le tableau de bord. Les
 scripts facultatifs se déclarent `<script type="text/plain" data-consent="analytics">` : ils ne
 s'exécutent qu'après accord. Côté serveur, `analytics_allowed(request)` conditionne la mesure
 d'audience des visiteurs anonymes (apps.staff.metrics).
@@ -68,6 +71,7 @@ class ConsentMiddleware:
         response = self.get_response(request)
         if (response.streaming or response.status_code != 200 or SKIP_PATHS.search(request.path)
                 or request.path.startswith(ADMIN_PREFIXES)
+                or getattr(getattr(request, 'user', None), 'is_authenticated', False)
                 or 'text/html' not in response.get('Content-Type', '') or response.get('Content-Encoding')):
             return response
         markup = response.content.decode(response.charset or 'utf-8', errors='replace')
