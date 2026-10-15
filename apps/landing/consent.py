@@ -18,6 +18,7 @@ d'audience des visiteurs anonymes (apps.staff.metrics).
 import json
 import re
 
+from django.conf import settings
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.templatetags.static import static
 from django.views.decorators.csrf import csrf_exempt
@@ -27,6 +28,8 @@ COOKIE_NAME = 'billio_consent'
 CONSENT_VERSION = 1
 CATEGORIES = ('analytics',)
 SKIP_PATHS = re.compile(r'^/(?:static|media|healthz|i18n/catalog)/')
+# Espaces d'administration (Administration Billio et admin Django) : pas de bandeau.
+ADMIN_PREFIXES = ('/staff/', '/' + getattr(settings, 'ADMIN_URL', 'admin/').lstrip('/'))
 
 
 def gpc(request):
@@ -64,6 +67,7 @@ class ConsentMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         if (response.streaming or response.status_code != 200 or SKIP_PATHS.search(request.path)
+                or request.path.startswith(ADMIN_PREFIXES)
                 or 'text/html' not in response.get('Content-Type', '') or response.get('Content-Encoding')):
             return response
         markup = response.content.decode(response.charset or 'utf-8', errors='replace')

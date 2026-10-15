@@ -131,6 +131,13 @@ class ConsentTests(TestCase):
         for url in ('/', reverse('landing:cookies'), reverse('accounts:login')):
             self.assertContains(self.http.get(url), 'js/consent.js')
 
+    def test_no_banner_in_admin_areas(self):
+        admin = get_user_model().objects.create_superuser(username='c', email='c@test.fr', password='x-Test-1234')
+        self.http.force_login(admin)
+        for url in (reverse('staff:overview'), reverse('staff:traffic'), reverse('admin:index')):
+            self.assertNotContains(self.http.get(url), 'js/consent.js')
+        self.assertContains(self.http.get(reverse('dashboard:dashboard-home')), 'js/consent.js')
+
     def test_consent_choice_is_logged(self):
         from apps.landing.models import ConsentRecord
         response = self.http.post(reverse('landing:cookie-consent'), data={
