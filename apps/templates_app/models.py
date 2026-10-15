@@ -9,6 +9,11 @@ from django.template import Template, Context
 from django.utils import timezone
 import os
 
+# À l'impression, le navigateur retire fonds et couleurs : on impose les couleurs exactes du modèle.
+PRINT_EXACT_COLORS = (
+    '\n@media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }\n'
+)
+
 
 class InvoiceTemplate(models.Model):
     """
@@ -270,7 +275,10 @@ class InvoiceTemplate(models.Model):
         # Police imposée depuis le mode simple de l'éditeur (en tête : contient un @import).
         from .preview import font_override_css
         override = font_override_css((self.style_config or {}).get('font_override'))
-        return override + css if override else css
+        css = override + css if override else css
+        # À l'impression, le navigateur retire fonds et couleurs par défaut : formes, bandeaux et
+        # couleur de page disparaîtraient. On impose les couleurs exactes du modèle.
+        return css + PRINT_EXACT_COLORS
 
     def _prepare_context_data(self, document):
         """

@@ -886,6 +886,7 @@ a {{ color: inherit; }}
 # --------------------------------------------------------------------------- #
 
 WEB_CANVAS_CSS = """
+@media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
 .cv-page { position: relative; overflow: hidden; background: #fff; }
 .cv-page .el { position: absolute; box-sizing: border-box; overflow: hidden; word-wrap: break-word; }
 .cv-page .el-text, .cv-page .el-table { overflow: visible; }
