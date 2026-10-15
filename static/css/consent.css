@@ -1,0 +1,29 @@
+/* Bandeau de consentement aux cookies (static/js/consent.js) */
+.bc { position: fixed; z-index: 2147483000; left: 16px; bottom: 16px; width: min(440px, calc(100vw - 32px)); font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.bc--panel { left: 50%; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100vw - 32px)); }
+.bc--panel::before { content: ''; position: fixed; inset: -100vh -100vw; background: rgba(24, 24, 27, .35); z-index: -1; }
+.bc-box { position: relative; display: grid; gap: .7rem; padding: 1.15rem 1.2rem; background: #fff; color: #27272a; border: 1px solid #e4e4e7; border-radius: 16px; box-shadow: 0 18px 50px rgba(24, 24, 27, .18); max-height: calc(100vh - 32px); overflow-y: auto; }
+.bc-title { margin: 0; font-size: 1rem; font-weight: 800; color: #18181b; }
+.bc-text { margin: 0; font-size: .84rem; line-height: 1.5; color: #52525b; }
+.bc-note { margin: 0; font-size: .78rem; color: #6d28d9; background: #faf8ff; border-radius: 8px; padding: .45rem .6rem; }
+.bc-list { display: grid; gap: .5rem; }
+.bc-item { display: flex; gap: .8rem; align-items: center; justify-content: space-between; padding: .65rem .75rem; border: 1px solid #e4e4e7; border-radius: 12px; cursor: pointer; }
+.bc-item-text { display: grid; gap: .15rem; }
+.bc-item-text strong { font-size: .86rem; color: #18181b; }
+.bc-item-text small { font-size: .76rem; color: #71717a; line-height: 1.4; }
+.bc-switch { appearance: none; -webkit-appearance: none; flex-shrink: 0; width: 40px; height: 22px; border-radius: 999px; background: #d4d4d8; position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+.bc-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.bc-switch:checked { background: #6d28d9; }
+.bc-switch:checked::after { transform: translateX(18px); }
+.bc-switch:disabled { opacity: .6; cursor: not-allowed; }
+.bc-switch:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; }
+/* Les trois choix ont le même poids visuel : refuser est aussi simple qu'accepter. */
+.bc-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+.bc-btn { border: 1px solid #6d28d9; background: #fff; color: #6d28d9; border-radius: 10px; padding: .55rem .5rem; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.bc-btn:hover { background: #6d28d9; color: #fff; }
+.bc-btn:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; }
+.bc-links { margin: 0; font-size: .75rem; }
+.bc-links a { color: #6d28d9; font-weight: 600; }
+.bc-close { position: absolute; top: .5rem; right: .6rem; border: 0; background: none; color: #71717a; font-size: 1.3rem; padding: .1rem .4rem; width: auto; }
+.bc-close:hover { background: #f4f4f5; color: #18181b; }
+@media (max-width: 480px) { .bc-actions { grid-template-columns: 1fr; } }

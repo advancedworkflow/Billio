@@ -78,10 +78,10 @@ def traffic():
     now = timezone.now()
     day_rows = RequestMetric.objects.filter(bucket__gte=now - timedelta(days=30)) \
         .annotate(day=TruncDate('bucket')).values('day') \
-        .annotate(count=Sum('count'), errors=Sum('errors'), total_ms=Sum('total_ms'))
+        .annotate(count=Sum('count'), pageviews=Sum('pageviews'), errors=Sum('errors'), total_ms=Sum('total_ms'))
     day_rows = [dict(r, avg_ms=round(r['total_ms'] / r['count']) if r['count'] else 0) for r in day_rows]
-    visitor_rows = VisitorDay.objects.filter(day__gte=timezone.localdate() - timedelta(days=30)) \
-        .values('day').annotate(visitors=Count('id'))
+    visitor_rows = list(VisitorDay.objects.filter(day__gte=timezone.localdate() - timedelta(days=30))
+                        .values('day').annotate(visitors=Count('id'), members=Count('user')))
     hour_rows = RequestMetric.objects.filter(bucket__gte=now - timedelta(hours=24)) \
         .annotate(hour=TruncHour('bucket')).values('hour').annotate(count=Sum('count')).order_by('hour')
     by_hour = {timezone.localtime(h['hour']).replace(minute=0, second=0, microsecond=0): h['count'] for h in hour_rows}
@@ -100,7 +100,8 @@ def traffic():
         'visitors_today_anon': visitors.filter(user__isnull=True).count(),
         'visitors_7d': VisitorDay.objects.filter(day__gt=today - timedelta(days=7)).values('visitor').distinct().count(),
         'requests_series': _bars(day_rows, 'count', 30),
-        'visitors_series': _bars(list(visitor_rows), 'visitors', 30),
+        'visitors_series': _bars(visitor_rows, 'visitors', 30),
+        'days': _day_table(day_rows, visitor_rows),
         'latency_series': _bars(day_rows, 'avg_ms', 30),
         'hours': hours,
         'routes': _routes(now - timedelta(days=7)),
@@ -109,6 +110,51 @@ def traffic():
         .values('exception', 'route').annotate(n=Count('id'), last=Max('created_at')).order_by('-n')[:10],
         'landings': VisitorDay.objects.filter(day__gt=today - timedelta(days=7), user__isnull=True)
         .values('landing').annotate(n=Count('id')).order_by('-n')[:8],
+    }
+
+
+def _day_table(day_rows, visitor_rows):
+    """Une ligne par jour (30 jours, le plus récent en haut) : pages vues, requêtes, visiteurs, temps, erreurs."""
+    requests = {r['day']: r for r in day_rows}
+    visitors = {r['day']: r for r in visitor_rows}
+    today = timezone.localdate()
+    rows = []
+    for offset in range(30):
+        day = today - timedelta(days=offset)
+        r, v = requests.get(day) or {}, visitors.get(day) or {}
+        rows.append({'day': day, 'pageviews': r.get('pageviews') or 0, 'count': r.get('count') or 0,
+                     'visitors': v.get('visitors') or 0, 'members': v.get('members') or 0,
+                     'avg_ms': r.get('avg_ms') or 0, 'errors': r.get('errors') or 0})
+    return rows
+
+
+def live():
+    """Trafic du jour en temps réel (rafraîchi toutes les 10 s par la page Trafic)."""
+    now = timezone.now()
+    start = timezone.localtime(now).replace(hour=0, minute=0, second=0, microsecond=0)
+    today = timezone.localdate()
+    day = summary(start)
+    pageviews = RequestMetric.objects.filter(bucket__gte=start).aggregate(n=Sum('pageviews'))['n'] or 0
+    online = VisitorDay.objects.filter(day=today, last_seen__gte=now - timedelta(minutes=5))
+    rows = RequestMetric.objects.filter(bucket__gte=start).annotate(hour=TruncHour('bucket')).values('hour') \
+        .annotate(count=Sum('count'), pageviews=Sum('pageviews'))
+    by_hour = {timezone.localtime(r['hour']).hour: r for r in rows}
+    current = timezone.localtime(now).hour
+    hours = [{'h': h, 'count': (by_hour.get(h) or {}).get('count') or 0,
+              'pageviews': (by_hour.get(h) or {}).get('pageviews') or 0} for h in range(current + 1)]
+    top = max((h['count'] for h in hours), default=0) or 1
+    for h in hours:
+        h['pct'] = round(h['count'] * 100 / top)
+    visitors = VisitorDay.objects.filter(day=today)
+    recent = list(visitors.filter(last_seen__isnull=False).select_related('user').order_by('-last_seen')[:8])
+    return {
+        'time': timezone.localtime(now).strftime('%H:%M:%S'),
+        'online': online.count(), 'online_members': online.filter(user__isnull=False).count(),
+        'pageviews': pageviews, 'requests': day['count'], 'avg_ms': day['avg_ms'], 'errors': day['errors'],
+        'slow': day['slow'], 'visitors': visitors.count(), 'members': visitors.filter(user__isnull=False).count(),
+        'hours': hours,
+        'recent': [{'who': v.user.email if v.user_id else 'Visiteur anonyme', 'member': bool(v.user_id),
+                    'seen': timezone.localtime(v.last_seen).strftime('%H:%M'), 'landing': v.landing} for v in recent],
     }
 
 

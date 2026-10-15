@@ -72,6 +72,7 @@ class MetricsTests(TestCase):
     def test_requests_counted_per_route_and_visitors_once_per_day(self):
         from apps.staff import metrics
         from apps.staff.models import RequestMetric, VisitorDay
+        self.http.cookies['billio_consent'] = 'v1.analytics-1'
         self.http.get('/')
         self.http.get('/')
         self.http.get('/page-qui-n-existe-pas/')
@@ -80,6 +81,7 @@ class MetricsTests(TestCase):
         total = sum(RequestMetric.objects.values_list('count', flat=True))
         self.assertEqual(total, 3)
         self.assertEqual(sum(RequestMetric.objects.values_list('client_errors', flat=True)), 1)
+        self.assertEqual(sum(RequestMetric.objects.values_list('pageviews', flat=True)), 2)
         self.assertEqual(VisitorDay.objects.filter(user__isnull=True).count(), 1)
         self.http.force_login(self.user)
         self.http.get(reverse('dashboard:dashboard-home'))
@@ -99,3 +101,43 @@ class MetricsTests(TestCase):
         self.assertEqual(response.status_code, 500)
         error = ServerError.objects.get()
         self.assertEqual((error.exception, error.message, error.path), ('RuntimeError', 'boom', '/'))
+
+    def test_anonymous_visitor_needs_consent_and_no_gpc(self):
+        from apps.staff.models import VisitorDay
+        self.http.get('/')
+        self.assertFalse(VisitorDay.objects.exists())  # aucun choix : pas de mesure
+        self.http.cookies['billio_consent'] = 'v1.analytics-0'
+        self.http.get('/')
+        self.assertFalse(VisitorDay.objects.exists())  # refus
+        cache.clear()
+        self.http.cookies['billio_consent'] = 'v1.analytics-1'
+        self.http.get('/', HTTP_SEC_GPC='1')
+        self.assertFalse(VisitorDay.objects.exists())  # signal GPC = refus
+
+    def test_live_traffic_for_superuser(self):
+        admin = get_user_model().objects.create_superuser(username='s', email='s@test.fr', password='x-Test-1234')
+        self.http.force_login(admin)
+        self.http.get(reverse('staff:traffic'))
+        data = self.http.get(reverse('staff:traffic-live')).json()
+        self.assertEqual(data['online'], 1)
+        self.assertIn('hours', data)
+
+
+class ConsentTests(TestCase):
+    def setUp(self):
+        self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')
+
+    def test_banner_injected_on_pages(self):
+        for url in ('/', reverse('landing:cookies'), reverse('accounts:login')):
+            self.assertContains(self.http.get(url), 'js/consent.js')
+
+    def test_consent_choice_is_logged(self):
+        from apps.landing.models import ConsentRecord
+        response = self.http.post(reverse('landing:cookie-consent'), data={
+            'id': '0f8c2a1e-1111-4222-8333-123456789abc', 'choices': {'analytics': True}, 'action': 'accept_all'},
+            content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        record = ConsentRecord.objects.get()
+        self.assertEqual((record.choices, record.action, record.version), ({'analytics': True}, 'accept_all', 1))
+        bad = self.http.post(reverse('landing:cookie-consent'), data={'id': '<script>'}, content_type='application/json')
+        self.assertEqual(bad.status_code, 400)

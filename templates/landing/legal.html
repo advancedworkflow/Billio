@@ -14,6 +14,9 @@
         @media (max-width: 640px) { .legal-doc { padding: 1.75rem 1.25rem; } }
         .legal-doc h1 { font-family: var(--font-titles); font-weight: 800; font-size: 2rem; letter-spacing: -0.02em; margin-bottom: .25rem; }
         .legal-doc h2 { font-family: var(--font-titles); font-weight: 700; font-size: 1.2rem; margin: 2rem 0 .6rem; }
+        .legal-table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .5rem 0 1rem; }
+        .legal-table th, .legal-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--billio-border); vertical-align: top; }
+        .legal-table td:first-child { font-family: ui-monospace, monospace; white-space: nowrap; }
         .legal-doc p, .legal-doc li { font-size: .975rem; line-height: 1.7; color: #3f3f46; }
         .legal-doc p { margin-bottom: .75rem; }
         .legal-doc ul { list-style: disc; padding-left: 1.25rem; margin-bottom: .75rem; }
@@ -39,6 +42,7 @@
             <a href="{% url 'landing:legal-notice' %}" class="{% if page == 'mentions' %}is-active{% endif %}">Mentions légales</a>
             <a href="{% url 'landing:terms' %}" class="{% if page == 'cgu' %}is-active{% endif %}">CGU</a>
             <a href="{% url 'landing:privacy' %}" class="{% if page == 'confidentialite' %}is-active{% endif %}">Confidentialité</a>
+            <a href="{% url 'landing:cookies' %}" class="{% if page == 'cookies' %}is-active{% endif %}">Cookies</a>
         </nav>
 
         <article class="legal-doc" translate="no" lang="fr">
@@ -112,7 +116,7 @@
             <h2>11. Droit applicable et litiges</h2>
             <p>Les présentes CGU sont soumises au droit français. En cas de litige, les parties recherchent d'abord une solution amiable. À défaut, compétence exclusive est attribuée au {{ legal.court }}.</p>
 
-            {% else %}
+            {% elif page == 'confidentialite' %}
             <h2>Qui est responsable de vos données ?</h2>
             <p>{{ legal.company }} (voir les <a href="{% url 'landing:legal-notice' %}">mentions légales</a>) est responsable du traitement des données de ses utilisateurs et des visiteurs du site. Pour les données de vos propres clients que vous saisissez dans Billio, vous êtes responsable de traitement et nous agissons comme sous-traitant (article 5 des <a href="{% url 'landing:terms' %}">CGU</a>).</p>
             <p>Contact pour toute question sur vos données : <a href="mailto:{{ legal.dpo_email }}">{{ legal.dpo_email }}</a>.</p>
@@ -153,16 +157,40 @@
             <p>Connexions chiffrées (HTTPS), mots de passe hachés, accès cloisonnés par organisation, clés d'intégration stockées côté serveur, sauvegardes régulières. En cas de violation de données présentant un risque, nous prévenons la CNIL et les personnes concernées dans les délais légaux.</p>
 
             <h2>Cookies</h2>
-            <p>Billio n'utilise que des cookies et un stockage local strictement nécessaires au fonctionnement : session de connexion, protection contre la falsification de requêtes (CSRF), langue choisie et préférences d'affichage. Aucun cookie publicitaire ni de mesure d'audience tierce n'est déposé ; ces cookies ne nécessitent donc pas votre consentement.</p>
+            <p>Billio dépose des cookies strictement nécessaires (connexion, sécurité, langue) et, uniquement si vous l'acceptez, une mesure d'audience interne. Le détail et vos choix sont sur la page <a href="{% url 'landing:cookies' %}">Cookies</a>.</p>
+
+            <h2>Résidents des États-Unis (Californie et autres États)</h2>
+            <p>Billio ne vend pas vos informations personnelles et ne les partage pas à des fins de publicité ciblée. Le signal Global Privacy Control (GPC) envoyé par votre navigateur est automatiquement appliqué comme un refus. Vous pouvez demander à connaître, corriger ou supprimer vos informations, sans aucune discrimination, en écrivant à <a href="mailto:{{ legal.dpo_email }}">{{ legal.dpo_email }}</a>. <a href="#" data-consent-open>Ne pas vendre ou partager mes informations personnelles</a>.</p>
 
             <h2>Vos droits</h2>
             <p>Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, ainsi que du droit de définir des directives sur leur sort après votre décès. Pour les exercer, écrivez à <a href="mailto:{{ legal.dpo_email }}">{{ legal.dpo_email }}</a> ; nous répondons sous un mois. Vous pouvez aussi introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>).</p>
+            {% elif page == 'cookies' %}
+            <h2>Votre choix</h2>
+            <p>Au premier passage, un bandeau vous demande votre accord. « Tout refuser » est aussi simple que « Tout accepter », et rien de facultatif n'est déposé avant votre choix. Votre choix est conservé 6 mois, puis redemandé. Vous pouvez le modifier à tout moment : <a href="#" data-consent-open>gérer mes cookies</a>.</p>
+
+            <h2>Cookies strictement nécessaires (toujours actifs)</h2>
+            <table class="legal-table">
+                <thead><tr><th>Nom</th><th>Rôle</th><th>Durée</th></tr></thead>
+                <tbody>
+                    <tr><td translate="no">sessionid</td><td>Garder votre session de connexion ouverte.</td><td>2 semaines</td></tr>
+                    <tr><td translate="no">csrftoken</td><td>Protéger les formulaires contre la falsification de requêtes.</td><td>1 an</td></tr>
+                    <tr><td translate="no">billio_lang</td><td>Retenir la langue choisie.</td><td>1 an</td></tr>
+                    <tr><td translate="no">billio_consent</td><td>Retenir vos choix de cookies.</td><td>6 mois</td></tr>
+                </tbody>
+            </table>
+            <p>Le stockage local du navigateur garde aussi des préférences d'affichage (barre latérale repliée, onglets ouverts). Ces éléments sont exemptés de consentement.</p>
+
+            <h2>Mesure d'audience (avec votre accord)</h2>
+            <p>Si vous l'acceptez, Billio compte les visiteurs uniques de son site, sans cookie supplémentaire : une empreinte chiffrée et non réversible, calculée pour la journée, permet de ne pas vous compter deux fois. Ces statistiques restent chez Billio, ne sont transmises à aucun tiers et sont effacées après 90 jours. Sans votre accord, seuls des totaux anonymes (nombre de pages servies, temps de réponse) sont calculés.</p>
+
+            <h2>Publicité et partage</h2>
+            <p>Billio n'utilise aucun cookie publicitaire, aucun traceur de réseau social et ne vend ni ne partage vos informations. Le signal Global Privacy Control de votre navigateur est respecté et vaut refus.</p>
             {% endif %}
         </article>
     </main>
 
     <footer class="max-w-3xl mx-auto px-4 pb-10 text-sm text-center" style="color: var(--billio-text-muted);">
-        © {% now "Y" %} Billio · <a href="{% url 'landing:legal-notice' %}">Mentions légales</a> · <a href="{% url 'landing:terms' %}">CGU</a> · <a href="{% url 'landing:privacy' %}">Confidentialité</a>
+        © {% now "Y" %} Billio · <a href="{% url 'landing:legal-notice' %}">Mentions légales</a> · <a href="{% url 'landing:terms' %}">CGU</a> · <a href="{% url 'landing:privacy' %}">Confidentialité</a> · <a href="{% url 'landing:cookies' %}">Cookies</a> · <a href="#" data-consent-open>Gérer les cookies</a>
     </footer>
     <script>
         // Repère visuellement les informations éditeur encore à compléter.

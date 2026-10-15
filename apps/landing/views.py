@@ -25,6 +25,7 @@ LEGAL_PAGES = {
     'mentions': 'Mentions légales',
     'cgu': "Conditions générales d'utilisation",
     'confidentialite': 'Politique de confidentialité',
+    'cookies': 'Cookies et traceurs',
 }
 
 

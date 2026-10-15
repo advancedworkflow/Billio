@@ -28,6 +28,7 @@ class RequestMetric(models.Model):
     bucket = models.DateTimeField(db_index=True)
     route = models.CharField(max_length=120)
     count = models.PositiveIntegerField(default=0)
+    pageviews = models.PositiveIntegerField(default=0)
     errors = models.PositiveIntegerField(default=0)
     client_errors = models.PositiveIntegerField(default=0)
     total_ms = models.BigIntegerField(default=0)
@@ -45,6 +46,7 @@ class VisitorDay(models.Model):
     visitor = models.CharField(max_length=40)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name='+')
     landing = models.CharField(max_length=200, blank=True, default='')
+    last_seen = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         unique_together = ('day', 'visitor')

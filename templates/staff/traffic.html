@@ -1,5 +1,55 @@
 {% extends "staff/base.html" %}
 {% block staff %}
+{{ live|json_script:"st-live-data" }}
+<section class="st-card st-live" x-data="staffLive()" x-init="start()">
+    <header class="st-live-head">
+        <h2><span class="st-dot" :class="{ 'is-off': failed }"></span> En direct : aujourd'hui</h2>
+        <small>Mis à jour à <span x-text="d.time"></span>, toutes les 10 secondes</small>
+    </header>
+    <div class="st-live-kpis">
+        <div><strong x-text="d.online"></strong><span>en ligne maintenant</span><small x-text="d.online_members + ' connecté(s)'"></small></div>
+        <div><strong x-text="d.pageviews"></strong><span>pages vues</span></div>
+        <div><strong x-text="d.visitors"></strong><span>visiteurs uniques</span><small x-text="d.members + ' connecté(s)'"></small></div>
+        <div><strong x-text="d.requests"></strong><span>requêtes</span></div>
+        <div><strong x-text="d.avg_ms + ' ms'"></strong><span>temps moyen</span></div>
+        <div :class="{ 'is-bad': d.errors > 0 }"><strong x-text="d.errors"></strong><span>erreurs serveur</span></div>
+    </div>
+    <div class="st-live-grid">
+        <div>
+            <p class="st-live-label">Requêtes par heure, depuis minuit</p>
+            <div class="st-bars st-bars--live">
+                <template x-for="h in d.hours" :key="h.h"><span :style="'--h: ' + h.pct + '%'" :title="h.h + ' h : ' + h.count + ' requêtes, ' + h.pageviews + ' pages vues'"></span></template>
+            </div>
+        </div>
+        <div>
+            <p class="st-live-label">Dernières activités</p>
+            <ul class="st-list">
+                <template x-for="(r, i) in d.recent" :key="i">
+                    <li><span translate="no"><strong x-text="r.who"></strong> <small x-text="r.landing"></small></span><time x-text="r.seen"></time></li>
+                </template>
+                <li x-show="!d.recent.length">Aucune visite comptée aujourd'hui.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+<script>
+function staffLive() {
+    return {
+        d: JSON.parse(document.getElementById('st-live-data').textContent),
+        failed: false,
+        start() {
+            setInterval(() => {
+                if (document.hidden) return;
+                fetch('{% url "staff:traffic-live" %}', { credentials: 'same-origin' })
+                    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                    .then((data) => { this.d = data; this.failed = false; })
+                    .catch(() => { this.failed = true; });
+            }, 10000);
+        },
+    };
+}
+</script>
+
 <section class="st-kpis">
     <div class="st-kpi"><span>Requêtes (24 h)</span><strong>{{ t.last_24h.count }}</strong><small>{{ t.last_7d.count }} sur 7 jours</small></div>
     <div class="st-kpi"><span>Visiteurs uniques aujourd'hui</span><strong>{{ t.visitors_today }}</strong><small>dont non connectés : {{ t.visitors_today_anon }} · {{ t.visitors_7d }} sur 7 jours</small></div>
@@ -27,6 +77,21 @@
         <div class="st-bars">{% for h in t.hours %}<span style="--h: {{ h.pct }}%" title="{{ h.hour|date:'H' }} h : {{ h.count }}"></span>{% empty %}<em class="st-empty">Pas encore de données.</em>{% endfor %}</div>
     </section>
 </div>
+
+<section class="st-card st-card--flush">
+    <h2 class="st-pad">Trafic par jour <small>30 jours</small></h2>
+    <div class="st-scroll">
+    <table class="st-table">
+        <thead><tr><th>Jour</th><th>Pages vues</th><th>Visiteurs uniques</th><th>dont connectés</th><th>Requêtes</th><th>Temps moyen</th><th>Erreurs serveur</th></tr></thead>
+        <tbody>{% for d in t.days %}
+            <tr{% if forloop.first %} class="is-today"{% endif %}><td>{% if forloop.first %}<strong>Aujourd'hui</strong>{% else %}{{ d.day|date:"D d/m" }}{% endif %}</td>
+                <td>{{ d.pageviews }}</td><td>{{ d.visitors }}</td><td>{{ d.members }}</td><td>{{ d.count }}</td>
+                <td class="{% if d.avg_ms >= 1000 %}st-bad{% elif d.avg_ms >= 400 %}st-warn{% endif %}">{{ d.avg_ms }} ms</td>
+                <td class="{% if d.errors %}st-bad{% endif %}">{{ d.errors }}</td></tr>
+        {% endfor %}</tbody>
+    </table>
+    </div>
+</section>
 
 <div class="st-grid">
     <section class="st-card st-card--flush">
@@ -78,5 +143,5 @@
     <h2>Pages d'arrivée des visiteurs non connectés <small>7 jours</small></h2>
     <ul class="st-list">{% for l in t.landings %}<li><code translate="no">{{ l.landing }}</code><span>{{ l.n }}</span></li>{% empty %}<li>Pas encore de données.</li>{% endfor %}</ul>
 </section>
-<p class="st-help">Mesure interne : chaque requête est chronométrée et cumulée par heure (écrite en base chaque minute). Les visiteurs anonymes sont comptés par une empreinte chiffrée, sans cookie ni donnée personnelle conservée. Historique gardé 90 jours.</p>
+<p class="st-help">Mesure interne : chaque requête est chronométrée et cumulée par heure (écrite en base toutes les 15 secondes). Les visiteurs anonymes ne sont comptés que s'ils ont accepté la mesure d'audience dans le bandeau cookies (et sans signal GPC), par une empreinte chiffrée, sans cookie supplémentaire. Historique gardé 90 jours.</p>
 {% endblock %}

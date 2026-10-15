@@ -83,3 +83,26 @@
 .st-good { color: #047857; font-weight: 700; }
 .st-meter { display: inline-block; width: 90px; height: 6px; border-radius: 999px; background: #f4f4f5; vertical-align: middle; margin-right: .4rem; overflow: hidden; }
 .st-meter span { display: block; height: 100%; background: #8b5cf6; }
+
+/* Trafic en direct */
+.st-live { border-color: #ddd6fe; background: linear-gradient(180deg, #faf8ff, #fff 60%); }
+.st-live-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.st-live-head h2 { display: flex; align-items: center; gap: .5rem; }
+.st-live-head small { font-size: .75rem; color: #71717a; }
+.st-dot { width: .6rem; height: .6rem; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 0 rgba(16, 185, 129, .6); animation: st-pulse 1.8s infinite; }
+.st-dot.is-off { background: #f59e0b; animation: none; }
+@keyframes st-pulse { 70% { box-shadow: 0 0 0 .5rem rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+@media (prefers-reduced-motion: reduce) { .st-dot { animation: none; } }
+.st-live-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .6rem; }
+.st-live-kpis > div { display: grid; gap: .1rem; padding: .7rem .85rem; background: #fff; border: 1px solid #ede9fe; border-radius: 12px; }
+.st-live-kpis strong { font-size: 1.5rem; font-weight: 800; color: #18181b; }
+.st-live-kpis span { font-size: .76rem; font-weight: 600; color: #52525b; }
+.st-live-kpis small { font-size: .72rem; color: #a1a1aa; }
+.st-live-kpis > div.is-bad { border-color: #fecaca; background: #fff8f8; }
+.st-live-kpis > div.is-bad strong { color: #b91c1c; }
+.st-live-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1rem; }
+@media (max-width: 1000px) { .st-live-grid { grid-template-columns: 1fr; } }
+.st-live-label { margin: 0 0 .3rem; font-size: .78rem; font-weight: 700; color: #3f3f46; }
+.st-bars--live { height: 110px; }
+.st-scroll { overflow-x: auto; }
+.st-table tr.is-today td { background: #faf8ff; }

@@ -200,7 +200,13 @@ def keys(request):
 @superuser_required
 def traffic(request):
     return _render(request, 'staff/traffic.html', {'tab': 'traffic', 'staff_title': 'Trafic & performances',
-                                                   't': insights.traffic()})
+                                                   't': insights.traffic(), 'live': insights.live()})
+
+
+@superuser_required
+def traffic_live(request):
+    from django.http import JsonResponse
+    return JsonResponse(insights.live())
 
 
 @superuser_required

@@ -85,6 +85,8 @@ MIDDLEWARE = [
     # Langue choisie (cookie) puis traduction des pages HTML — voir apps/translations.
     'apps.translations.middleware.LanguageMiddleware',
     'apps.translations.middleware.HtmlTranslationMiddleware',
+    # Bandeau de consentement aux cookies (UE / États-Unis) sur toutes les pages — voir apps.landing.consent.
+    'apps.landing.consent.ConsentMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Forfaits : quotas et options appliqués aux requêtes des utilisateurs connectés.
     'apps.subscriptions.middleware.EntitlementsMiddleware',
