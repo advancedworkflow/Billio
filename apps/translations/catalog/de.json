@@ -5496,5 +5496,20 @@
   "Textes": "Texte",
   "Type d'email": "E-Mail-Typ",
   "Vide : « — {} ».": "Leer: „— {}“.",
-  "{} (couleur principale)": "{} (Hauptfarbe)"
+  "{} (couleur principale)": "{} (Hauptfarbe)",
+  "Se connecter avec ": "Anmelden mit ",
+  "Reconnecter avec ": "Erneut verbinden mit ",
+  "Connecté : ": "Verbunden: ",
+  "Vous vous identifiez chez l'outil, vous autorisez Billio, et c'est tout : aucun code à copier.": "Sie melden sich beim Tool an, erlauben Billio den Zugriff, fertig: kein Code zu kopieren.",
+  "(administrateur, une seule fois)": "(Administrator, einmalig)",
+  "URL de redirection :": "Weiterleitungs-URL:",
+  "Ouvrir la console développeur": "Entwicklerkonsole öffnen",
+  "Connexion à Trello…": "Verbindung mit Trello…",
+  "Retour aux intégrations": "Zurück zu den Integrationen",
+  "Connexion annulée.": "Verbindung abgebrochen.",
+  "Lien de connexion expiré ou session différente : recommencez.": "Verbindungslink abgelaufen oder andere Sitzung: bitte erneut versuchen.",
+  "Connexion impossible : {}": "Verbindung nicht möglich: {}",
+  "{} connecté ({}).": "{} verbunden ({}).",
+  "La connexion en un clic n'est pas encore activée pour cet outil : utilisez le formulaire.": "Die Ein-Klick-Verbindung ist für dieses Tool noch nicht aktiviert: Nutzen Sie das Formular.",
+  "Jeton Trello manquant ou invalide.": "Trello-Token fehlt oder ist ungültig."
 }

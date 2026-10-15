@@ -688,7 +688,8 @@ def run_app_action(organization, app, operation_key, values, ctx, *, client=None
         rendered[f['name']] = render(value) if render and f['kind'] in ('text', 'textarea') else value
     event = event_payload(ctx, client)
     try:
-        detail = spec['run'](dict(instance.config or {}), rendered, event)
+        from .oauth import fresh_config
+        detail = spec['run'](fresh_config(instance), rendered, event)
     except KeyError as exc:
         message = f"{app_label(app)} : configuration incomplète ({exc.args[0]}), enregistrez à nouveau le plugin."
         instance.last_error = message

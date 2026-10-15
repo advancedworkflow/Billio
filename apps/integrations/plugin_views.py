@@ -119,7 +119,8 @@ def plugin_test(request, connector_key):
     if not instance or not instance.config:
         return _error("Enregistrez d'abord la configuration.")
     try:
-        detail = providers.test_connection(connector_key, dict(instance.config), request.user, organization=instance.organization)
+        from .oauth import fresh_config
+        detail = providers.test_connection(connector_key, fresh_config(instance), request.user, organization=instance.organization)
     except ProviderError as exc:
         if _can_manage_integrations(request.user, organization):
             instance.status, instance.last_error = 'error', str(exc)[:500]
@@ -210,6 +211,114 @@ def google_callback(request):
     instance.save()
     _notify_integration_event(instance, 'integration_connected', request.user)
     messages.success(request, f"Google Drive connecté ({tokens.get('account') or 'compte Google'}).")
+    return redirect(target)
+
+
+# --------------------------------------------------------------------------- #
+# « Se connecter avec… » : OAuth générique (Slack, Notion, Mailchimp, HubSpot, Trello)
+# --------------------------------------------------------------------------- #
+
+OAUTH_STATE_SALT = 'billio-oauth'
+
+
+def oauth_redirect_uri(request, key):
+    return request.build_absolute_uri(reverse('integrations:oauth-callback', args=[key]))
+
+
+def _oauth_target(key):
+    return f"{reverse('integrations:integrations-page')}?plugin={key}"
+
+
+@login_required
+def oauth_connect(request, connector_key):
+    from . import oauth
+    target = _oauth_target(connector_key)
+    organization = _get_user_primary_organization(request.user)
+    if not organization or not _can_manage_integrations(request.user, organization):
+        messages.error(request, "Vous n'avez pas les droits pour gérer les intégrations.")
+        return redirect(target)
+    if not oauth.configured(connector_key):
+        messages.error(request, "La connexion en un clic n'est pas encore activée pour cet outil : utilisez le formulaire.")
+        return redirect(target)
+    get_object_or_404(Connector, key=connector_key, is_active=True)
+    from apps.subscriptions.entitlements import require_quota
+    if not ConnectionInstance.objects.filter(organization=organization, connector__key=connector_key, status='connected').exists():
+        require_quota(organization, 'integrations')
+    nonce = uuid.uuid4().hex
+    request.session[f'oauth_nonce_{connector_key}'] = nonce
+    state = signing.dumps({'org': organization.id, 'user': request.user.id, 'nonce': nonce, 'key': connector_key},
+                          salt=OAUTH_STATE_SALT)
+    return redirect(oauth.authorize_url(connector_key, state, oauth_redirect_uri(request, connector_key)))
+
+
+def _check_state(request, connector_key, raw_state):
+    """Organisation si l'état signé correspond à cette session et à cet outil, sinon None."""
+    try:
+        state = signing.loads(raw_state or '', salt=OAUTH_STATE_SALT, max_age=900)
+    except signing.BadSignature:
+        return None
+    organization = _get_user_primary_organization(request.user)
+    if (not organization or state.get('org') != organization.id or state.get('user') != request.user.id
+            or state.get('key') != connector_key
+            or state.get('nonce') != request.session.pop(f'oauth_nonce_{connector_key}', None)
+            or not _can_manage_integrations(request.user, organization)):
+        return None
+    return organization
+
+
+def _save_oauth(request, organization, connector_key, config):
+    from . import oauth
+    connector = get_object_or_404(Connector, key=connector_key)
+    instance, _ = ConnectionInstance.objects.get_or_create(organization=organization, connector=connector)
+    instance.config = dict(instance.config or {}, **config)
+    instance.status, instance.last_error = 'connected', ''
+    instance.connected_by, instance.connected_at, instance.disconnected_at = request.user, timezone.now(), None
+    instance.save()
+    _notify_integration_event(instance, 'integration_connected', request.user)
+    messages.success(request, f"{oauth.OAUTH[connector_key]['name']} connecté ({config.get('account') or 'compte'}).")
+
+
+@login_required
+def oauth_callback(request, connector_key):
+    from . import oauth
+    if connector_key not in oauth.OAUTH:
+        return redirect('integrations:integrations-page')
+    target = _oauth_target(connector_key)
+    if connector_key == 'trello':
+        # Le jeton est dans le fragment (#token=…) : une page le lit et l'envoie à oauth_trello_finish.
+        from django.shortcuts import render
+        return render(request, 'integrations/oauth_trello.html', {'state': request.GET.get('state', ''), 'target': target})
+    if request.GET.get('error'):
+        messages.error(request, 'Connexion annulée.')
+        return redirect(target)
+    organization = _check_state(request, connector_key, request.GET.get('state'))
+    if not organization:
+        messages.error(request, 'Lien de connexion expiré ou session différente : recommencez.')
+        return redirect(target)
+    try:
+        config = oauth.exchange(connector_key, request.GET.get('code', ''), oauth_redirect_uri(request, connector_key))
+    except ProviderError as exc:
+        messages.error(request, f'Connexion impossible : {exc}')
+        return redirect(target)
+    _save_oauth(request, organization, connector_key, config)
+    return redirect(target)
+
+
+@login_required
+@require_POST
+def oauth_trello_finish(request):
+    from . import oauth
+    target = _oauth_target('trello')
+    organization = _check_state(request, 'trello', request.POST.get('state'))
+    if not organization:
+        messages.error(request, 'Lien de connexion expiré ou session différente : recommencez.')
+        return redirect(target)
+    try:
+        config = oauth.trello_config(request.POST.get('token'))
+    except ProviderError as exc:
+        messages.error(request, str(exc))
+        return redirect(target)
+    _save_oauth(request, organization, 'trello', config)
     return redirect(target)
 
 

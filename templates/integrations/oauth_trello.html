@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion Trello - Billio</title>
+<style>body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Inter, Arial, sans-serif; background: #f4f4f5; color: #3f3f46; }</style>
+</head>
+<body>
+<form method="post" action="{% url 'integrations:oauth-trello-finish' %}" id="trello-finish">
+    {% csrf_token %}
+    <input type="hidden" name="state" value="{{ state }}">
+    <input type="hidden" name="token" id="trello-token">
+    <p>Connexion à Trello…</p>
+    <noscript><a href="{{ target }}">Retour aux intégrations</a></noscript>
+</form>
+<script>
+// Trello renvoie le jeton dans le fragment de l'adresse (#token=…), jamais transmis au serveur : on le poste.
+(function () {
+    var match = /[#&]token=([A-Za-z0-9]+)/.exec(window.location.hash);
+    if (!match) { window.location.replace('{{ target|escapejs }}'); return; }
+    document.getElementById('trello-token').value = match[1];
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('trello-finish').submit();
+})();
+</script>
+</body>
+</html>

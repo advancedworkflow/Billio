@@ -155,7 +155,7 @@ def integrations_page(request):
         if items:
             categories.append({'key': key, 'label': label, 'items': items})
 
-    from . import providers
+    from . import oauth, providers
     from .plugin_views import plugin_state
     from .recipes import needs_for_page
     available = {c.key for c in connectors} | {c.key for c in internal}
@@ -174,6 +174,13 @@ def integrations_page(request):
             'state': plugin_state(organization),
             'googleReady': providers.google_configured(),
             'googleRedirect': request.build_absolute_uri(reverse('integrations:google-callback')),
+            # Connexion en un clic : prête (identifiants du serveur présents) ou consignes pour l'administrateur.
+            'oauth': {key: {'name': spec['name'], 'ready': oauth.configured(key), 'env': list(spec['env']),
+                            'steps': spec['steps'], 'console': spec['console'],
+                            'redirect': request.build_absolute_uri(reverse('integrations:oauth-callback', args=[key])),
+                            'origin': request.build_absolute_uri('/').rstrip('/')}
+                      for key, spec in oauth.OAUTH.items()},
+            'isAdmin': request.user.is_superuser,
             'open': request.GET.get('plugin', ''),
             'internal': INTERNAL_CONNECTORS,
             'clients': [{'id': str(c.id), 'name': c.name} for c in organization.clients.filter(is_active=True).order_by('name')] if organization else [],
