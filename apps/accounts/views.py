@@ -139,6 +139,23 @@ class BillioPasswordResetView(auth_views.PasswordResetView):
         return super().form_valid(form)
 
 
+def _send_welcome_email(user):
+    """Email de bienvenue après l'inscription. Un échec d'envoi ne bloque jamais la création du compte."""
+    import logging
+
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+    context = {'user': user, 'site_url': settings.SITE_URL}
+    message = EmailMultiAlternatives(
+        subject='Bienvenue sur Billio', body=render_to_string('auth/welcome_email.txt', context),
+        to=[user.email], reply_to=[settings.SUPPORT_EMAIL] if getattr(settings, 'SUPPORT_EMAIL', '') else None)
+    message.attach_alternative(render_to_string('auth/welcome_email.html', context), 'text/html')
+    try:
+        message.send()
+    except Exception:  # noqa: BLE001 — SMTP indisponible : le compte reste créé
+        logging.getLogger(__name__).exception("Email de bienvenue non envoyé à %s", user.email)
+
+
 def register_view(request):
     """HTML view for user registration."""
     if request.user.is_authenticated:
@@ -164,6 +181,7 @@ def register_view(request):
                                               **OrganizationMember.ROLE_PERMISSIONS['owner'])
             apply_trade_pack(organization, form.cleaned_data['trade'], user=user)
             auth_login(request, user)
+            _send_welcome_email(user)
             messages.success(request, f'Compte créé avec succès ! Bienvenue, {user.get_full_name() or user.email}!')
             return redirect(_safe_next(request) or 'dashboard:dashboard-home')
     else:
