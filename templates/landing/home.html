@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
     <link href="{% static 'css/landing.css' %}?v=2.6" rel="stylesheet">
-    <link href="{% static 'css/landing-motion.css' %}?v=2.9" rel="stylesheet">
+    <link href="{% static 'css/landing-motion.css' %}?v=3.0" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -155,52 +155,46 @@
 
     <!-- 3. Problem -->
     <section id="problem" class="landing-section landing-section-alt">
-        <div class="max-w-3xl mx-auto reveal">
-            <div class="text-center max-w-2xl mx-auto mb-14">
-                <p class="landing-label mb-3">Le problème</p>
-                <h2 class="landing-display text-4xl sm:text-5xl mb-4">La facturation manuelle vous coûte du temps</h2>
-                <p class="text-base" style="color: var(--billio-text-muted);">
-                    Entre les tableurs, les relances oubliées et les retards de paiement, gérer sa facturation à la main devient vite un frein à la croissance.
-                </p>
-            </div>
-            <div class="landing-workflow">
-                <div class="landing-workflow-step">
-                    <div class="landing-workflow-marker">
-                        <div class="landing-workflow-dot"><i data-lucide="file-x" class="w-4 h-4"></i></div>
-                        <div class="landing-workflow-line"></div>
-                    </div>
-                    <div class="landing-workflow-content">
-                        <h4>Factures créées à la main</h4>
-                        <p>Un tableur, un modèle Word, des calculs de TVA refaits à chaque fois — source d'erreurs et de temps perdu.</p>
-                    </div>
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="pb-grid">
+                <div>
+                    <p class="landing-label mb-3">Le problème</p>
+                    <h2 class="landing-display text-4xl sm:text-5xl mb-4">La facturation manuelle vous coûte du temps</h2>
+                    <p class="text-base mb-8" style="color: var(--billio-text-muted);">Billio s'en occupe pour vous.</p>
+                    <ul class="pb-list">
+                        <li><span class="pb-icon"><i data-lucide="file-x" class="w-4 h-4"></i></span><div><strong>Factures créées à la main</strong><span>Tableurs, modèles Word, TVA recalculée à chaque fois.</span></div></li>
+                        <li><span class="pb-icon"><i data-lucide="bell-off" class="w-4 h-4"></i></span><div><strong>Relances oubliées</strong><span>Les impayés s'accumulent sans rappel automatique.</span></div></li>
+                        <li><span class="pb-icon"><i data-lucide="clock-alert" class="w-4 h-4"></i></span><div><strong>Paiements en retard</strong><span>Les échéances passent inaperçues, la trésorerie trinque.</span></div></li>
+                        <li><span class="pb-icon"><i data-lucide="eye-off" class="w-4 h-4"></i></span><div><strong>Aucune visibilité</strong><span>Qui doit quoi ? Impossible de le voir d'un coup d'œil.</span></div></li>
+                    </ul>
                 </div>
-                <div class="landing-workflow-step">
-                    <div class="landing-workflow-marker">
-                        <div class="landing-workflow-dot"><i data-lucide="bell-off" class="w-4 h-4"></i></div>
-                        <div class="landing-workflow-line"></div>
+
+                <!-- Tableau de bord animé : relances envoyées, factures qui passent « Payée » -->
+                <div class="pb-dash" aria-hidden="true">
+                    <div class="hero-window-chrome">
+                        <span class="hero-window-dot hero-window-dot--red"></span>
+                        <span class="hero-window-dot hero-window-dot--yellow"></span>
+                        <span class="hero-window-dot hero-window-dot--green"></span>
+                        <span class="hero-window-title">Tableau de bord</span>
                     </div>
-                    <div class="landing-workflow-content">
-                        <h4>Relances oubliées</h4>
-                        <p>Sans rappel automatique, les impayés s'accumulent et il faut penser à relancer soi-même chaque client.</p>
-                    </div>
-                </div>
-                <div class="landing-workflow-step">
-                    <div class="landing-workflow-marker">
-                        <div class="landing-workflow-dot"><i data-lucide="clock-alert" class="w-4 h-4"></i></div>
-                        <div class="landing-workflow-line"></div>
-                    </div>
-                    <div class="landing-workflow-content">
-                        <h4>Paiements en retard</h4>
-                        <p>Pas de suivi centralisé des échéances : la trésorerie souffre et les retards passent inaperçus trop longtemps.</p>
-                    </div>
-                </div>
-                <div class="landing-workflow-step">
-                    <div class="landing-workflow-marker">
-                        <div class="landing-workflow-dot"><i data-lucide="eye-off" class="w-4 h-4"></i></div>
-                    </div>
-                    <div class="landing-workflow-content">
-                        <h4>Aucune visibilité</h4>
-                        <p>Impossible de savoir en un coup d'œil qui doit quoi, ni comment évolue le chiffre d'affaires du mois.</p>
+                    <div class="pb-dash-body">
+                        <div class="pb-kpis">
+                            <div class="pb-kpi"><span>Encaissé ce mois</span><strong data-count="12480" data-suffix=" €">0 €</strong></div>
+                            <div class="pb-kpi"><span>Relances envoyées</span><strong data-count="18">0</strong></div>
+                            <div class="pb-kpi"><span>Délai moyen</span><strong data-count="9" data-suffix=" j">0 j</strong></div>
+                        </div>
+                        <div class="pb-chart">
+                            <span style="--h: 38%"></span><span style="--h: 52%"></span><span style="--h: 45%"></span><span style="--h: 64%"></span>
+                            <span style="--h: 58%"></span><span style="--h: 76%"></span><span style="--h: 70%"></span><span style="--h: 92%"></span>
+                        </div>
+                        <div class="pb-rows">
+                            <div class="pb-row"><span class="pb-client">Studio Nova</span><span class="pb-amount">1 200 €</span>
+                                <span class="pb-status"><em class="pb-s1">En retard</em><em class="pb-s2">Relancée</em><em class="pb-s3">Payée</em></span></div>
+                            <div class="pb-row"><span class="pb-client">Atelier Lumen</span><span class="pb-amount">860 €</span>
+                                <span class="pb-status"><em class="pb-s1">En retard</em><em class="pb-s2">Relancée</em><em class="pb-s3">Payée</em></span></div>
+                            <div class="pb-row"><span class="pb-client">Maison Durand</span><span class="pb-amount">2 340 €</span>
+                                <span class="pb-status"><em class="pb-s1">En retard</em><em class="pb-s2">Relancée</em><em class="pb-s3">Payée</em></span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -569,7 +563,8 @@
                         <li><span class="landing-check">✓</span> Paiement en ligne sécurisé via Stripe</li>
                     </ul>
                 </div>
-                <div class="client-portal-mock">
+                <!-- Espace client animé : avancement du projet, facture réglée en un clic -->
+                <div class="client-portal-mock cp-dash" aria-hidden="true">
                     <div class="hero-window-chrome" style="border-radius: 1rem 1rem 0 0;">
                         <span class="hero-window-dot hero-window-dot--red"></span>
                         <span class="hero-window-dot hero-window-dot--yellow"></span>
@@ -584,21 +579,17 @@
                                 <p class="text-xs" style="color: var(--billio-muted);">Espace client</p>
                             </div>
                         </div>
-                        <div class="bento-payment-visual">
-                            <div class="bento-payment-row">
-                                <div class="bento-payment-icon"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
-                                <span class="bento-payment-label">Facture #042</span>
-                                <span class="bento-payment-amount">Payée</span>
-                            </div>
-                            <div class="bento-payment-row">
-                                <div class="bento-payment-icon bento-payment-icon--pending"><i data-lucide="clock" class="w-3.5 h-3.5"></i></div>
-                                <span class="bento-payment-label">Facture #051</span>
-                                <span class="bento-payment-amount bento-payment-amount--pending">Due le 12/09</span>
-                            </div>
+                        <div class="cp-progress">
+                            <div class="cp-progress-head"><span>Refonte du site</span><strong data-count="72" data-suffix=" %">0 %</strong></div>
+                            <div class="cp-bar"><span></span></div>
+                            <div class="cp-steps"><span class="is-done">Maquettes</span><span class="is-done">Développement</span><span>Mise en ligne</span></div>
                         </div>
-                        <button type="button" class="landing-btn-primary w-full mt-5" disabled style="opacity:0.85; cursor:default;">
-                            <i data-lucide="credit-card" class="w-4 h-4"></i> Payer maintenant
-                        </button>
+                        <div class="cp-invoices">
+                            <div class="cp-invoice"><span class="cp-dot cp-dot--paid"></span><span class="cp-label">Facture #042</span><span class="cp-state cp-state--paid">Payée</span></div>
+                            <div class="cp-invoice cp-invoice--live"><span class="cp-dot"></span><span class="cp-label">Facture #051</span>
+                                <span class="cp-state"><em class="cp-due">Due le 12/09</em><em class="cp-paid">Payée</em></span></div>
+                        </div>
+                        <div class="cp-pay"><i data-lucide="credit-card" class="w-4 h-4"></i> Payer maintenant</div>
                     </div>
                 </div>
             </div>
@@ -751,8 +742,8 @@
             </div>
 
             <div class="grid sm:grid-cols-2 gap-4 mt-8 text-xs text-center max-w-3xl mx-auto" style="color: var(--billio-muted);">
-                <p>💳 <strong style="color: var(--billio-text);">Paiements</strong> — l'abonnement Billio est séparé des frais de paiement en ligne : aucune commission sur vos transactions.</p>
-                <p>🔓 <strong style="color: var(--billio-text);">Sans engagement</strong> — changez de forfait au prorata ou résiliez à tout moment ; vos données restent exportables.</p>
+                <p><strong style="color: var(--billio-text);">Paiements</strong> — l'abonnement Billio est séparé des frais de paiement en ligne : aucune commission sur vos transactions.</p>
+                <p><strong style="color: var(--billio-text);">Sans engagement</strong> — changez de forfait au prorata ou résiliez à tout moment ; vos données restent exportables.</p>
             </div>
         </div>
     </section>
@@ -865,6 +856,6 @@
         </div>
     </footer>
 
-    <script src="{% static 'js/landing.js' %}?v=1.2"></script>
+    <script src="{% static 'js/landing.js' %}?v=1.3"></script>
 </body>
 </html>

@@ -60,7 +60,7 @@
       });
     });
   }, { threshold: 0.35 });
-  document.querySelectorAll('.stats-section, .analytics-dashboard').forEach((el) => counterObserver.observe(el));
+  document.querySelectorAll('.stats-section, .analytics-dashboard, .pb-dash, .cp-dash').forEach((el) => counterObserver.observe(el));
 
   document.querySelectorAll('.tilt-card').forEach((card) => {
     card.addEventListener('mousemove', (e) => {

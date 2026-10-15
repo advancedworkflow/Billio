@@ -128,8 +128,11 @@ class ConsentTests(TestCase):
         self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr')
 
     def test_banner_injected_on_pages(self):
-        for url in ('/', reverse('landing:cookies'), reverse('accounts:login')):
+        for url in ('/', reverse('landing:cookies'), reverse('landing:terms')):
             self.assertContains(self.http.get(url), 'js/consent.js')
+        # Connexion et inscription : pas de bandeau (accord donné par la case de l'inscription).
+        for url in (reverse('accounts:login'), reverse('accounts:register')):
+            self.assertNotContains(self.http.get(url), 'js/consent.js')
 
     def test_no_banner_in_admin_areas_or_app(self):
         admin = get_user_model().objects.create_superuser(username='c', email='c@test.fr', password='x-Test-1234')

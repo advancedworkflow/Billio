@@ -10,7 +10,8 @@ On applique partout la règle la plus stricte (consentement préalable, « opt-i
   données personnelles (lien « Ne pas vendre ou partager mes informations ») ;
 - chaque choix est journalisé sans donnée identifiante (ConsentRecord) pour pouvoir le prouver.
 
-Le bandeau (static/js/consent.js) est ajouté par ConsentMiddleware aux pages du site public, pour les
+Le bandeau (static/js/consent.js) est ajouté par ConsentMiddleware uniquement à la page d'accueil et à ses
+pages annexes (mentions légales, CGU, confidentialité, cookies : vues de l'app « landing »), pour les
 visiteurs non connectés. Les utilisateurs de l'application ont accepté les conditions d'utilisation, la
 politique de confidentialité et la politique cookies en cochant la case obligatoire de l'inscription
 (User.terms_accepted_at) ; ils n'ont donc pas de bandeau dans le tableau de bord. Les
@@ -33,6 +34,8 @@ CATEGORIES = ('analytics',)
 SKIP_PATHS = re.compile(r'^/(?:static|media|healthz|i18n/catalog)/')
 # Espaces d'administration (Administration Billio et admin Django) : pas de bandeau.
 ADMIN_PREFIXES = ('/staff/', '/' + getattr(settings, 'ADMIN_URL', 'admin/').lstrip('/'))
+# Seules les pages du site vitrine reçoivent le bandeau (pas la connexion, l'inscription ni l'application).
+BANNER_APPS = ('landing',)
 
 
 def gpc(request):
@@ -72,6 +75,7 @@ class ConsentMiddleware:
         if (response.streaming or response.status_code != 200 or SKIP_PATHS.search(request.path)
                 or request.path.startswith(ADMIN_PREFIXES)
                 or getattr(getattr(request, 'user', None), 'is_authenticated', False)
+                or getattr(getattr(request, 'resolver_match', None), 'app_name', '') not in BANNER_APPS
                 or 'text/html' not in response.get('Content-Type', '') or response.get('Content-Encoding')):
             return response
         markup = response.content.decode(response.charset or 'utf-8', errors='replace')

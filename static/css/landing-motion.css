@@ -1356,3 +1356,101 @@
 }
 
 .hidden { display: none !important; }
+
+
+/* ---------------------------------------------------------------------------
+   Le problème : liste épurée + tableau de bord animé
+--------------------------------------------------------------------------- */
+.pb-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 3.5rem; align-items: center; }
+@media (max-width: 1023px) { .pb-grid { grid-template-columns: 1fr; gap: 2.5rem; } }
+.pb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.1rem; }
+.pb-list li { display: flex; gap: 0.9rem; align-items: flex-start; }
+.pb-list strong { display: block; font-size: 0.98rem; font-weight: 700; color: var(--billio-text); }
+.pb-list span:not(.pb-icon) { display: block; font-size: 0.9rem; color: var(--billio-text-muted); margin-top: 0.1rem; }
+.pb-icon { flex-shrink: 0; width: 2.1rem; height: 2.1rem; border-radius: 0.65rem; display: grid; place-items: center;
+  background: var(--billio-card); border: 1px solid var(--billio-border); color: var(--billio-text-muted); }
+
+.pb-dash { background: var(--billio-card); border: 1px solid var(--billio-border); border-radius: 1.25rem; overflow: hidden;
+  box-shadow: 0 24px 64px rgba(109, 40, 217, 0.12); }
+.pb-dash .hero-window-chrome { border-radius: 1.25rem 1.25rem 0 0; }
+.pb-dash-body { padding: 1.25rem; display: grid; gap: 1rem; }
+.pb-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.pb-kpi { padding: 0.7rem 0.8rem; border-radius: 0.75rem; background: var(--billio-bg); border: 1px solid var(--billio-border); }
+.pb-kpi span { display: block; font-size: 0.68rem; font-weight: 600; color: var(--billio-text-muted); }
+.pb-kpi strong { display: block; margin-top: 0.15rem; font-size: 1.15rem; font-weight: 800; color: var(--billio-text); white-space: nowrap; }
+.pb-chart { display: flex; align-items: flex-end; gap: 0.45rem; height: 88px; padding: 0 0.2rem; }
+.pb-chart span { flex: 1; height: 4%; border-radius: 0.35rem 0.35rem 0 0; background: var(--billio-primary-soft, #ede9fe);
+  transition: height 0.9s cubic-bezier(0.34, 1.3, 0.64, 1); }
+.pb-chart span:last-child { background: var(--billio-primary); }
+.reveal.is-visible .pb-chart span { height: var(--h); }
+.pb-chart span:nth-child(2) { transition-delay: 0.06s; } .pb-chart span:nth-child(3) { transition-delay: 0.12s; }
+.pb-chart span:nth-child(4) { transition-delay: 0.18s; } .pb-chart span:nth-child(5) { transition-delay: 0.24s; }
+.pb-chart span:nth-child(6) { transition-delay: 0.3s; } .pb-chart span:nth-child(7) { transition-delay: 0.36s; }
+.pb-chart span:nth-child(8) { transition-delay: 0.42s; }
+.pb-rows { display: grid; gap: 0.5rem; }
+.pb-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.8rem; border-radius: 0.7rem; background: var(--billio-bg);
+  border: 1px solid var(--billio-border); font-size: 0.8rem; }
+.pb-client { flex: 1; font-weight: 600; color: var(--billio-text); }
+.pb-amount { font-weight: 700; color: var(--billio-text); }
+/* Statut qui passe En retard → Relancée → Payée, en boucle, décalé d'une ligne à l'autre */
+.pb-status { position: relative; width: 5.6rem; height: 1.45rem; }
+.pb-status em { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 999px; font-style: normal;
+  font-size: 0.68rem; font-weight: 700; opacity: 0; }
+.pb-s1 { background: #fee2e2; color: #b91c1c; }
+.pb-s2 { background: #fef3c7; color: #92400e; }
+.pb-s3 { background: #dcfce7; color: #166534; }
+.pb-s1 { opacity: 1; }
+.reveal.is-visible .pb-s1 { animation: pbStatus1 7.5s infinite; }
+.reveal.is-visible .pb-s2 { animation: pbStatus2 7.5s infinite; }
+.reveal.is-visible .pb-s3 { animation: pbStatus3 7.5s infinite; }
+.reveal.is-visible .pb-row:nth-child(2) em { animation-delay: 0.9s; }
+.reveal.is-visible .pb-row:nth-child(3) em { animation-delay: 1.8s; }
+@keyframes pbStatus1 { 0%, 22% { opacity: 1; } 27%, 95% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes pbStatus2 { 0%, 22% { opacity: 0; } 27%, 47% { opacity: 1; } 52%, 100% { opacity: 0; } }
+@keyframes pbStatus3 { 0%, 47% { opacity: 0; } 52%, 92% { opacity: 1; } 97%, 100% { opacity: 0; } }
+
+/* ---------------------------------------------------------------------------
+   Portail client : avancement du projet + facture réglée en un clic
+--------------------------------------------------------------------------- */
+.cp-progress { padding: 0.85rem 0.95rem; border-radius: 0.8rem; background: var(--billio-bg); border: 1px solid var(--billio-border); }
+.cp-progress-head { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; color: var(--billio-text); }
+.cp-progress-head strong { color: var(--billio-primary); }
+.cp-bar { margin: 0.55rem 0; height: 0.45rem; border-radius: 999px; background: var(--billio-border); overflow: hidden; }
+.cp-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--billio-gradient, var(--billio-primary));
+  transition: width 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
+.reveal.is-visible .cp-bar span { width: 72%; }
+.cp-steps { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.68rem; color: var(--billio-text-muted); }
+.cp-steps span::before { content: ''; display: inline-block; width: 0.45rem; height: 0.45rem; margin-right: 0.3rem; border-radius: 50%;
+  background: var(--billio-border); vertical-align: 0.05rem; }
+.cp-steps span.is-done { color: var(--billio-text); font-weight: 600; }
+.cp-steps span.is-done::before { background: var(--billio-success); }
+.cp-invoices { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
+.cp-invoice { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.85rem; border-radius: 0.7rem; border: 1px solid var(--billio-border);
+  font-size: 0.8rem; }
+.cp-label { flex: 1; font-weight: 600; color: var(--billio-text); }
+.cp-dot { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: #f59e0b; }
+.cp-dot--paid { background: var(--billio-success); }
+.cp-state { position: relative; min-width: 5.4rem; text-align: right; font-weight: 700; color: var(--billio-text-muted); }
+.cp-state--paid { color: #16a34a; }
+.cp-state em { font-style: normal; }
+.cp-paid { position: absolute; right: 0; top: 0; color: #16a34a; opacity: 0; }
+.cp-pay { margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; border-radius: 0.75rem;
+  background: var(--billio-primary); color: #fff; font-size: 0.88rem; font-weight: 700; }
+/* Boucle : le bouton est « cliqué », la facture #051 passe à « Payée » puis revient */
+.reveal.is-visible .cp-pay { animation: cpPress 6s infinite; }
+.reveal.is-visible .cp-invoice--live .cp-due { animation: cpDue 6s infinite; }
+.reveal.is-visible .cp-invoice--live .cp-paid { animation: cpPaid 6s infinite; }
+.reveal.is-visible .cp-invoice--live .cp-dot { animation: cpDot 6s infinite; }
+.reveal.is-visible .cp-invoice--live { animation: cpRow 6s infinite; }
+@keyframes cpPress { 0%, 30% { transform: none; box-shadow: none; } 34% { transform: scale(0.97); box-shadow: 0 0 0 6px rgba(109, 40, 217, 0.18); } 40%, 100% { transform: none; box-shadow: none; } }
+@keyframes cpDue { 0%, 38% { opacity: 1; } 42%, 92% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes cpPaid { 0%, 38% { opacity: 0; } 42%, 92% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes cpDot { 0%, 38% { background: #f59e0b; } 42%, 92% { background: var(--billio-success); } 96%, 100% { background: #f59e0b; } }
+@keyframes cpRow { 0%, 38% { background: transparent; } 42%, 60% { background: rgba(34, 197, 94, 0.08); } 70%, 100% { background: transparent; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-chart span, .cp-bar span { transition: none; }
+  .reveal.is-visible .pb-status em, .reveal.is-visible .cp-pay, .reveal.is-visible .cp-invoice--live,
+  .reveal.is-visible .cp-invoice--live * { animation: none !important; }
+  .pb-s1, .pb-s2 { opacity: 0 !important; } .pb-s3 { opacity: 1 !important; }
+}
