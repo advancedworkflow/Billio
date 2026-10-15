@@ -1,0 +1,37 @@
+{% extends "staff/base.html" %}
+{% block staff %}
+<p class="st-help">Une fois les clés d'un outil enregistrées, vos utilisateurs voient « Se connecter avec… » dans Intégrations : plus aucun code à copier. Une variable définie sur le serveur (.env.production) reste prioritaire sur ce qui est saisi ici.</p>
+<div class="st-keys">
+{% for t in tools %}
+    <section class="st-card" id="{{ t.key }}">
+        <header class="st-key-head">
+            <h2>{{ t.name }}</h2>
+            {% if t.ready %}<em class="st-tag st-tag--paid">Actif</em>{% else %}<em class="st-tag st-tag--off">À configurer</em>{% endif %}
+        </header>
+        <details {% if not t.ready %}open{% endif %}>
+            <summary>Comment obtenir les clés</summary>
+            <ol class="st-steps">
+                {% for s in t.steps %}<li>{{ s }}</li>{% endfor %}
+                {% if t.key == 'trello' %}<li>Origine autorisée : <code class="st-code" translate="no">{{ t.origin }}</code></li>
+                {% else %}<li>URL de redirection : <code class="st-code" translate="no">{{ t.redirect }}</code></li>{% endif %}
+            </ol>
+            <a href="{{ t.console }}" target="_blank" rel="noopener" class="st-more">Ouvrir la console développeur ↗</a>
+        </details>
+        <form method="post" class="st-key-form">
+            {% csrf_token %}<input type="hidden" name="tool" value="{{ t.key }}">
+            {% for f in t.fields %}
+                <label class="st-field"><span translate="no">{{ f.name }}</span>
+                    {% if f.source == 'env' %}
+                        <input type="text" value="Défini sur le serveur" disabled>
+                    {% else %}
+                        <input type="{% if f.secret %}password{% else %}text{% endif %}" name="{{ f.name }}" autocomplete="off" placeholder="{% if f.source %}Enregistrée : laisser vide pour la garder{% else %}Collez la valeur{% endif %}">
+                        {% if f.source %}<span class="st-check"><input type="checkbox" name="clear_{{ f.name }}" value="1"> Effacer</span>{% endif %}
+                    {% endif %}
+                </label>
+            {% endfor %}
+            <button type="submit" class="st-btn st-btn--primary">Enregistrer</button>
+        </form>
+    </section>
+{% endfor %}
+</div>
+{% endblock %}

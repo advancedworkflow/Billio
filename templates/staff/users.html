@@ -1,0 +1,48 @@
+{% extends "staff/base.html" %}
+{% block staff %}
+<form method="get" class="st-search">
+    <input type="search" name="q" value="{{ q }}" placeholder="Rechercher un email, un nom, une entreprise…">
+    <button type="submit" class="st-btn">Rechercher</button>
+</form>
+<section class="st-card st-card--flush">
+    <table class="st-table">
+        <thead><tr><th>Compte</th><th>Entreprise</th><th>Forfait</th><th>Inscrit le</th><th>Dernière connexion</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+            <tr class="{% if not r.user.is_active %}is-off{% endif %}">
+                <td><span translate="no"><strong>{{ r.user.get_full_name|default:"—" }}</strong><br><small>{{ r.user.email }}</small></span>
+                    {% if r.user.is_superuser %}<em class="st-tag">admin</em>{% endif %}{% if not r.user.is_active %}<em class="st-tag st-tag--off">désactivé</em>{% endif %}</td>
+                <td translate="no">{% for o in r.org %}{{ o.name }}{% empty %}—{% endfor %}</td>
+                <td>{% if r.plan %}<span translate="no">{{ r.plan.name }}</span>{% if r.comped %} <em class="st-tag">offert</em>{% elif r.stripe %} <em class="st-tag st-tag--paid">Stripe</em>{% endif %}{% else %}Gratuit{% endif %}</td>
+                <td>{{ r.user.date_joined|date:"d/m/Y" }}</td>
+                <td>{% if r.user.last_login %}{{ r.user.last_login|date:"d/m/Y H:i" }}{% else %}jamais{% endif %}</td>
+                <td>
+                    <div class="st-actions">
+                        <form method="post" action="{% url 'staff:user-action' r.user.id %}">
+                            {% csrf_token %}<input type="hidden" name="action" value="offer_plan"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="plan" onchange="this.form.submit()" aria-label="Offrir un forfait">
+                                <option value="">{% if r.comped %}Retirer le forfait offert{% else %}Offrir un forfait…{% endif %}</option>
+                                {% for p in plans %}<option value="{{ p.code }}">Offrir {{ p.name }}</option>{% endfor %}
+                            </select>
+                        </form>
+                        {% if r.user != request.user %}
+                        <form method="post" action="{% url 'staff:user-action' r.user.id %}">
+                            {% csrf_token %}<input type="hidden" name="action" value="toggle_active"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="st-btn st-btn--small">{% if r.user.is_active %}Désactiver{% else %}Réactiver{% endif %}</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% empty %}<tr><td colspan="6">Aucun compte trouvé.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</section>
+{% if page.has_other_pages %}
+<nav class="st-pager">
+    {% if page.has_previous %}<a href="?q={{ q|urlencode }}&page={{ page.previous_page_number }}">← Précédent</a>{% endif %}
+    <span>Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a href="?q={{ q|urlencode }}&page={{ page.next_page_number }}">Suivant →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

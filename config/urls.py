@@ -50,6 +50,7 @@ urlpatterns = [
     path('dashboard/', include('apps.dashboard.urls')),
     path('templates/', include('apps.templates_app.urls')),
     path('documents/', include('apps.documents.urls')),
+    path('staff/', include('apps.staff.urls')),
 ]
 
 # Outils de développement : jamais exposés en production.

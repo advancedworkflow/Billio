@@ -1,0 +1,34 @@
+{% extends "staff/base.html" %}
+{% block staff %}
+<section class="st-kpis">
+    <div class="st-kpi"><span>Comptes</span><strong>{{ stats.users }}</strong><small>+{{ stats.new_7 }} cette semaine · +{{ stats.new_30 }} en 30 jours</small></div>
+    <div class="st-kpi"><span>Actifs (30 jours)</span><strong>{{ stats.active_30 }}</strong><small>connectés au moins une fois</small></div>
+    <div class="st-kpi"><span>Revenu mensuel</span><strong>{{ stats.mrr|floatformat:0 }} €</strong><small>abonnements payants, HT</small></div>
+    <div class="st-kpi"><span>Organisations</span><strong>{{ stats.organizations }}</strong><small>Comptes en gratuit : {{ stats.free_users }}</small></div>
+    <div class="st-kpi"><span>Factures émises (30 jours)</span><strong>{{ stats.invoices_30 }}</strong><small>{{ stats.invoiced_30|floatformat:0 }} € au total</small></div>
+    <a class="st-kpi st-kpi--link" href="{% url 'dashboard:support' %}"><span>Tickets ouverts</span><strong>{{ stats.tickets_open }}</strong><small>Voir le support →</small></a>
+</section>
+
+<div class="st-grid">
+    <section class="st-card">
+        <h2>Forfaits</h2>
+        <table class="st-table">
+            <thead><tr><th>Forfait</th><th>Payants</th><th>Offerts</th><th>Revenu</th></tr></thead>
+            <tbody>
+            {% for p in plans %}
+                <tr><td><strong>{{ p.plan.name }}</strong> <small>{{ p.plan.price_monthly|floatformat:0 }} €/mois</small></td><td>{{ p.paying }}</td><td>{{ p.offered }}</td><td>{{ p.revenue|floatformat:0 }} €</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    <section class="st-card">
+        <h2>Dernières inscriptions</h2>
+        <ul class="st-list">
+            {% for u in recent %}
+                <li><span translate="no"><strong>{{ u.get_full_name|default:u.email }}</strong> <small>{{ u.email }}</small></span><time>{{ u.date_joined|date:"d/m/Y H:i" }}</time></li>
+            {% empty %}<li>Aucun compte.</li>{% endfor %}
+        </ul>
+        <a href="{% url 'staff:users' %}" class="st-more">Tous les comptes →</a>
+    </section>
+</div>
+{% endblock %}

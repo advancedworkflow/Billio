@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'apps.integrations',
     'apps.documents',
     'apps.translations',
+    'apps.staff',
 ]
 
 MIDDLEWARE = [

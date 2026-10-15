@@ -117,7 +117,7 @@ def _notify_integration_event(instance, notification_type, actor):
 
 # Outils affichés pour l'instant (dans cet ordre), avec leur vrai logo. Les autres connecteurs restent
 # en base et réapparaissent dès qu'ils sont ajoutés ici ; un outil déjà connecté reste toujours visible.
-VISIBLE_CONNECTORS = ['email', 'google-drive', 'slack', 'notion', 'whatsapp', 'telegram', 'trello', 'mailchimp']
+VISIBLE_CONNECTORS = ['email', 'google-drive', 'slack', 'notion', 'whatsapp', 'telegram', 'trello', 'mailchimp', 'hubspot']
 # Briques internes de Billio : jamais dans la grille ni dans le quota d'intégrations du forfait.
 # Stripe se règle dans Paramètres › Paiement (le panneau s'ouvre via ?plugin=stripe).
 INTERNAL_CONNECTORS = ['stripe']

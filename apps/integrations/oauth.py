@@ -7,11 +7,11 @@ access_token, api_key…), si bien que les tests de connexion, l'action « Envoy
 « Envoyer vers une app » fonctionnent sans changement.
 
 Chaque outil n'est proposé que si l'application OAuth de Billio est déclarée sur le serveur
-(variables <OUTIL>_CLIENT_ID / <OUTIL>_CLIENT_SECRET, ou TRELLO_API_KEY) ; sinon le formulaire
+(variables <OUTIL>_CLIENT_ID / <OUTIL>_CLIENT_SECRET, ou TRELLO_API_KEY, dans l'environnement ou
+saisies dans Administration › Clés des intégrations) ; sinon le formulaire
 manuel reste le seul chemin. Google Drive garde son propre flux (plugin_views.google_*).
 """
 import base64
-import os
 import urllib.parse
 
 from django.utils import timezone
@@ -24,7 +24,9 @@ providers.ALLOWED_HOSTS.update({'slack.com', 'login.mailchimp.com', 'api.hubapi.
 
 
 def _env(name):
-    return os.getenv(name, '').strip()
+    # Variable d'environnement, sinon clé saisie dans Administration › Clés des intégrations.
+    from apps.staff.platform import get_setting
+    return get_setting(name)
 
 
 def _basic(user, password):
