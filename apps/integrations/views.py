@@ -157,8 +157,13 @@ def integrations_page(request):
 
     from . import providers
     from .plugin_views import plugin_state
+    from .recipes import needs_for_page
+    available = {c.key for c in connectors} | {c.key for c in internal}
     context = {
         'categories': categories,
+        # « Que voulez-vous faire ? » : on part du besoin, avec des recettes prêtes à l'emploi.
+        'needs': needs_for_page(available),
+        'tool_names': {c.key: c.name for c in list(connectors) + internal},
         'internal_connectors': [{'connector': c, 'instance': instances_by_connector.get(c.id)} for c in internal],
         'organization': organization,
         'can_manage': bool(organization) and _can_manage_integrations(request.user, organization),

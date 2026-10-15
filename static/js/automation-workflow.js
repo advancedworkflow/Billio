@@ -2088,8 +2088,33 @@
     toastTimer = setTimeout(() => { toastEl.hidden = true; }, 3200);
   }
 
+  // ------------------------------------------------------------------ recettes (page Intégrations)
+  function openRecipe(key) {
+    const recipe = (cfg.recipes || {})[key];
+    if (!recipe) return;
+    const g = clone(recipe.graph);
+    g.nodes = g.nodes.map((node) => {
+      let params;
+      if (node.key === 'app_action') {
+        const o = appOp(node.params);
+        params = Object.assign(appActionDefaults(node.params.app), node.params, { values: Object.assign(opDefaults(o), node.params.values || {}) });
+      } else {
+        params = Object.assign(defaultParams(node.type, node.key), node.params);
+      }
+      return Object.assign({}, node, { id: uid(), params, _old: node.id });
+    });
+    const ids = Object.fromEntries(g.nodes.map((node) => [node._old, node.id]));
+    g.nodes.forEach((node) => { delete node._old; });
+    g.edges = g.edges.map((edge) => Object.assign({}, edge, { from: ids[edge.from], to: ids[edge.to] }));
+    autoLayout(g);
+    openEditor({ name: recipe.name, description: recipe.desc, graph: g });
+    toast('Recette prête : vérifiez les blocs puis cliquez sur « Enregistrer ».');
+  }
+
   // ------------------------------------------------------------------ init
   renderList();
   applyView();
+  const recipeKey = new URLSearchParams(window.location.search).get('recipe');
+  if (recipeKey) openRecipe(recipeKey);
   window.addEventListener('resize', () => { if (current) renderEdges(); });
 })();

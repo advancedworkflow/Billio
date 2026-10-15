@@ -768,6 +768,7 @@ def condition_references(organization, clients, limit=300):
 
 @login_required
 def automation_builder(request):
+    from apps.integrations.recipes import RECIPES
     """Centre d'automatisation — board de workflow (nœuds reliés) avec un moteur d'exécution réel."""
     from .models import AutomationRule, AutomationRun, ProjectProcess, ProjectTemplate
     from .automation_graph import CONDITION_FIELDS, CONDITION_OPS
@@ -850,6 +851,8 @@ def automation_builder(request):
             "conditionFields": CONDITION_FIELDS,
             # Suggestions des conditions « Si » : valeurs réelles de l'organisation (texte libre toujours possible).
             "conditionRefs": condition_references(organization, clients),
+            # Recettes de la page Intégrations, ouvertes pré-remplies via ?recipe=<clé>.
+            "recipes": {key: {'name': r['name'], 'desc': r['desc'], 'graph': r['graph']} for key, r in RECIPES.items()},
             "conditionOps": {kind: sorted(ops) for kind, ops in CONDITION_OPS.items()},
             "driveConnected": ConnectionInstance.objects.filter(organization=organization, connector__key="google-drive", status="connected").exists() if organization else False,
             "messagingChannels": [

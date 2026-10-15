@@ -6,7 +6,7 @@
 {% block page_subtitle %}Connectez vos outils de messagerie, de productivité et d’emailing{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.3">
+<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.4">
 {% endblock %}
 
 {% block content %}
@@ -26,7 +26,57 @@
     <div class="ig-msg is-warn">Vous pouvez consulter les intégrations mais pas les modifier (droits d'édition de l'organisation requis).</div>
     {% endif %}
 
+    {% if needs %}
+    <section class="ig-needs" aria-labelledby="ig-needs-title">
+        <header class="ig-needs-head">
+            <h2 id="ig-needs-title">Que voulez-vous faire ?</h2>
+            <p>Choisissez un besoin : on vous montre l'outil à connecter et des automatisations prêtes à l'emploi.</p>
+        </header>
+        <div class="ig-needs-grid">
+            {% for need in needs %}
+            <button type="button" class="ig-need" :class="need === '{{ need.key }}' ? 'is-on' : ''" @click="need = (need === '{{ need.key }}' ? '' : '{{ need.key }}')" :aria-pressed="need === '{{ need.key }}'">
+                <span class="ig-need-icon"><i data-lucide="{{ need.icon }}" class="w-5 h-5"></i></span>
+                <strong>{{ need.label }}</strong>
+                <small>{{ need.desc }}</small>
+            </button>
+            {% endfor %}
+        </div>
+        {% for need in needs %}
+        <div class="ig-need-panel" x-show="need === '{{ need.key }}'" x-cloak>
+            <div class="ig-need-step">
+                <h3><span class="ig-step-num">1</span> Connectez l'outil</h3>
+                <div class="ig-need-tools">
+                    {% for key in need.tools %}
+                    <button type="button" class="ig-need-tool" @click="openByKey('{{ key }}')">
+                        <span class="ig-logo has-brand" data-need-logo="{{ key }}">{% include "integrations/icons/"|add:key|add:".svg.html" %}</span>
+                        <span>{% for k, name in tool_names.items %}{% if k == key %}{{ name }}{% endif %}{% endfor %}</span>
+                        <em :class="statusOf('{{ key }}', 'not_connected') === 'connected' ? 'is-on' : ''" x-text="statusOf('{{ key }}', 'not_connected') === 'connected' ? 'Connecté' : 'Connecter'"></em>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% if need.recipes %}
+            <div class="ig-need-step">
+                <h3><span class="ig-step-num">2</span> Choisissez une automatisation toute prête</h3>
+                <div class="ig-recipes">
+                    {% for r in need.recipes %}
+                    <a class="ig-recipe" href="{% url 'dashboard:automation-builder' %}?recipe={{ r.key }}">
+                        <strong>{{ r.name }}</strong>
+                        <small>{{ r.desc }}</small>
+                        <span class="ig-recipe-cta">Utiliser <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
+                    </a>
+                    {% endfor %}
+                </div>
+                <p class="ig-help">La recette s'ouvre déjà remplie : vérifiez-la puis cliquez sur « Enregistrer ». Vous pourrez la modifier ou la mettre en pause à tout moment.</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
     {% if categories %}
+    <h2 class="ig-all-title">Tous les outils</h2>
     <div class="ig-head">
         <div class="tabs-pills">
             <button type="button" class="tab-pill" :class="filter === 'all' ? 'tab-pill-active' : ''" @click="filter = 'all'">Tout</button>
@@ -88,7 +138,7 @@
                     <!-- Plugin sans configuration détaillée -->
                     <template x-if="!spec()">
                         <div>
-                            <p class="ig-summary" x-text="current.description || 'Connexion simple par clé API ou URL de webhook.'"></p>
+                            <p class="ig-summary" x-text="current.description || 'Connexion simple : copiez un code depuis l’outil puis collez-le ici.'"></p>
                             <form method="post" :action="'/integrations/connect/' + current.key + '/'" class="ig-form">
                                 <input type="hidden" name="csrfmiddlewaretoken" :value="csrf()">
                                 <label class="ig-field"><span>Clé API</span><input name="api_key" autocomplete="off"></label>
@@ -156,7 +206,7 @@
                                 <form class="ig-form" @submit.prevent="save()">
                                     <template x-for="f in spec().fields" :key="f.name">
                                         <label class="ig-field">
-                                            <span><span x-text="f.label"></span><b x-show="f.required" class="ig-req">*</b></span>
+                                            <span><span x-text="plainLabel(f.label)"></span><b x-show="f.required" class="ig-req">*</b><em x-show="f.secret" class="ig-secret-tag" title="Ce code est chiffré et n'est jamais réaffiché en entier">🔒 Gardé secret</em></span>
                                             <template x-if="f.type === 'select'">
                                                 <select x-model="form[f.name]"><template x-for="o in f.options" :key="o[0]"><option :value="o[0]" x-text="o[1]" :selected="form[f.name] === o[0]"></option></template></select>
                                             </template>
@@ -255,6 +305,7 @@ function integrationsPage() {
         cfg,
         filter: 'all',
         q: '',
+        need: '',
         current: null,
         form: {},
         result: { ok: false, text: '' },
@@ -272,6 +323,25 @@ function integrationsPage() {
             }
         },
         csrf() { const i = document.querySelector('[name=csrfmiddlewaretoken]'); return i ? i.value : ''; },
+        // Libellés techniques traduits en mots simples (le terme technique reste entre parenthèses pour suivre les guides).
+        plainLabel(label) {
+            const map = {
+                'URL du webhook': 'Lien de connexion (URL du webhook)',
+                'Secret du webhook': 'Code de vérification (secret du webhook)',
+                'Jeton du bot': 'Code du bot (jeton)',
+                'Clé secrète': 'Code secret (clé)',
+                'Clé API': 'Code de connexion (clé API)',
+                'Phone number ID': 'Identifiant du numéro (Phone number ID)',
+                'Conversation par défaut (chat ID)': 'Conversation où écrire (chat ID)',
+                'Serveur SMTP': "Serveur d'envoi (SMTP)",
+            };
+            return map[label] || label;
+        },
+        // Ouvre le panneau d'un outil depuis un besoin (même chemin que la tuile de la grille).
+        openByKey(key) {
+            const logo = [...document.querySelectorAll('.ig-tile .ig-logo')].find((n) => n.dataset.key === key);
+            if (logo) logo.closest('button').click();
+        },
         spec() { return this.current ? cfg.specs[this.current.key] : null; },
         state() { return (this.current && this.cfg.state[this.current.key]) || { status: 'not_connected', config: {}, error: '' }; },
         statusOf(key, fallback) { return (this.cfg.state[key] || {}).status || fallback; },
