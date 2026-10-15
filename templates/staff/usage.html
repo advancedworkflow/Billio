@@ -1,0 +1,37 @@
+{% extends "staff/base.html" %}
+{% block staff %}
+<section class="st-kpis">
+    <div class="st-kpi"><span>Utilisateurs actifs aujourd'hui</span><strong>{{ u.dau }}</strong><small>comptes connectés</small></div>
+    <div class="st-kpi"><span>Actifs sur 7 jours</span><strong>{{ u.wau }}</strong><small>sur {{ u.users_total }} comptes</small></div>
+    <div class="st-kpi"><span>Actifs sur 30 jours</span><strong>{{ u.mau }}</strong><small>fidélité (jour / mois) : {{ u.stickiness }} %</small></div>
+    <div class="st-kpi"><span>Inscriptions (30 jours)</span><strong>{{ u.signups_30 }}</strong><small>ont créé une facture : {{ u.activated_30 }} ({{ u.activation_rate }} %)</small></div>
+    <div class="st-kpi {% if u.never_logged %}st-kpi--warn{% endif %}"><span>Jamais connectés</span><strong>{{ u.never_logged }}</strong><small>comptes créés sans connexion</small></div>
+    <div class="st-kpi"><span>Inactifs depuis 30 jours</span><strong>{{ u.dormant }}</strong><small>à relancer</small></div>
+</section>
+
+<section class="st-card">
+    <h2>Inscriptions par jour <small>30 jours</small></h2>
+    <div class="st-bars st-bars--alt">{% for d in u.signups_series %}<span style="--h: {{ d.pct }}%" title="{{ d.day|date:'d/m' }} : {{ d.value }}"></span>{% endfor %}</div>
+</section>
+
+<section class="st-card st-card--flush">
+    <h2 class="st-pad">Objets créés</h2>
+    <table class="st-table">
+        <thead><tr><th>Objet</th><th>Total</th><th>7 jours</th><th>30 jours</th><th>Tendance</th><th>Organisations qui l'utilisent</th></tr></thead>
+        <tbody>{% for o in u.objects %}
+            <tr><td><strong>{{ o.label }}</strong></td><td>{{ o.total }}</td><td>{{ o.last_7 }}</td><td>{{ o.last_30 }}</td>
+                <td>{% if o.trend is None %}<small>—</small>{% elif o.trend >= 0 %}<span class="st-good">+{{ o.trend }} %</span>{% else %}<span class="st-bad">{{ o.trend }} %</span>{% endif %}</td>
+                <td>{% if o.adoption is not None %}<div class="st-meter"><span style="width: {{ o.adoption }}%"></span></div><small>{{ o.adoption }} %</small>{% else %}<small>—</small>{% endif %}</td></tr>
+        {% endfor %}</tbody>
+    </table>
+</section>
+<p class="st-help">Tendance : 30 derniers jours comparés aux 30 précédents.</p>
+
+<section class="st-card st-card--flush">
+    <h2 class="st-pad">Organisations les plus actives <small>factures créées en 30 jours</small></h2>
+    <table class="st-table">
+        <thead><tr><th>Organisation</th><th>Factures</th><th>Montant</th></tr></thead>
+        <tbody>{% for o in u.top_orgs %}<tr><td translate="no">{{ o.organization__name }}</td><td>{{ o.n }}</td><td>{{ o.total|floatformat:0 }} €</td></tr>{% empty %}<tr><td colspan="3">Aucune facture sur la période.</td></tr>{% endfor %}</tbody>
+    </table>
+</section>
+{% endblock %}

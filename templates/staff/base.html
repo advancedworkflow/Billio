@@ -1,22 +1,49 @@
 {% extends "dashboard/base.html" %}
 {% load static %}
 {% block title %}Administration - Billio{% endblock %}
-{% block page_title %}Administration{% endblock %}
+{% block page_title %}{{ staff_title|default:"Administration" }}{% endblock %}
 {% block page_subtitle %}Pilotage de la plateforme Billio (réservé aux super-administrateurs){% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/staff.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/staff.css' %}?v=1.1">
+{% endblock %}
+
+{% block sidebar_nav %}
+<nav class="flex-1 overflow-y-auto overflow-x-hidden pt-2 pb-3 st-nav">
+    <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Administration</div>
+    {% for item in staff_nav %}
+        <a href="{{ item.url }}" title="{{ item.label }}" class="{% if tab == item.key %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+            <i data-lucide="{{ item.icon }}" class="w-4 h-4 shrink-0"></i>
+            <span class="sidebar-nav-text text-sm font-medium">{{ item.label }}</span>
+            {% if item.badge %}<span class="st-nav-badge st-nav-badge--{{ item.badge_level }}" x-show="!sidebarCollapsed">{{ item.badge }}</span>{% endif %}
+        </a>
+    {% endfor %}
+
+    <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
+    <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Outils</div>
+    <a href="{% url 'dashboard:support' %}" title="Support" class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+        <i data-lucide="message-circle-question" class="w-4 h-4 shrink-0"></i>
+        <span class="sidebar-nav-text text-sm font-medium">Support</span>
+    </a>
+    <a href="{% url 'admin:index' %}" title="Admin Django" class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+        <i data-lucide="database" class="w-4 h-4 shrink-0"></i>
+        <span class="sidebar-nav-text text-sm font-medium">Admin Django</span>
+    </a>
+    <a href="/healthz/?worker=1" target="_blank" rel="noopener" title="État du service" class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+        <i data-lucide="heart-pulse" class="w-4 h-4 shrink-0"></i>
+        <span class="sidebar-nav-text text-sm font-medium">État du service</span>
+    </a>
+
+    <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
+    <a href="{% url 'dashboard:dashboard-home' %}" title="Retour à l'application" class="billio-nav-link sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4 shrink-0"></i>
+        <span class="sidebar-nav-text text-sm font-medium">Retour à l'application</span>
+    </a>
+</nav>
 {% endblock %}
 
 {% block content %}
 <div class="st">
-    <nav class="st-tabs">
-        <a href="{% url 'staff:overview' %}" class="{% if tab == 'overview' %}is-on{% endif %}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Vue d'ensemble</a>
-        <a href="{% url 'staff:users' %}" class="{% if tab == 'users' %}is-on{% endif %}"><i data-lucide="users" class="w-4 h-4"></i> Comptes</a>
-        <a href="{% url 'staff:keys' %}" class="{% if tab == 'keys' %}is-on{% endif %}"><i data-lucide="key-round" class="w-4 h-4"></i> Clés des intégrations</a>
-        <a href="{% url 'dashboard:support' %}"><i data-lucide="message-circle-question" class="w-4 h-4"></i> Support</a>
-        <a href="{% url 'admin:index' %}" class="st-tabs-end"><i data-lucide="database" class="w-4 h-4"></i> Admin Django</a>
-    </nav>
     {% if messages %}{% for m in messages %}<p class="st-flash st-flash--{{ m.tags }}">{{ m }}</p>{% endfor %}{% endif %}
     {% block staff %}{% endblock %}
 </div>

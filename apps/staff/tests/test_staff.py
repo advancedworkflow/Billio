@@ -19,12 +19,12 @@ class StaffTests(TestCase):
 
     def test_pages_hidden_from_regular_users(self):
         self.http.force_login(self.user)
-        for name in ('staff:overview', 'staff:users', 'staff:keys'):
+        for name in ('staff:overview', 'staff:users', 'staff:keys', 'staff:traffic', 'staff:usage'):
             self.assertEqual(self.http.get(reverse(name)).status_code, 404)
 
     def test_pages_render_for_superuser(self):
         self.http.force_login(self.admin)
-        for name in ('staff:overview', 'staff:users', 'staff:keys'):
+        for name in ('staff:overview', 'staff:users', 'staff:keys', 'staff:traffic', 'staff:usage'):
             self.assertEqual(self.http.get(reverse(name)).status_code, 200)
         self.assertContains(self.http.get(reverse('staff:users'), {'q': 'u@test'}), 'u@test.fr')
 
@@ -57,3 +57,45 @@ class StaffTests(TestCase):
         self.assertTrue(oauth.configured('slack'))
         self.http.post(reverse('staff:keys'), {'tool': 'slack', 'clear_SLACK_CLIENT_ID': '1'})
         self.assertFalse(oauth.configured('slack'))
+
+
+class MetricsTests(TestCase):
+    def setUp(self):
+        from apps.staff import metrics
+        from apps.staff.models import RequestMetric
+        cache.clear()
+        metrics.flush()  # vide le cumul en mémoire laissé par les autres tests
+        RequestMetric.objects.all().delete()
+        self.user = get_user_model().objects.create_user(username='m', email='m@test.fr', password='x-Test-1234')
+        self.http = HttpClient(HTTP_HOST='127.0.0.1', HTTP_ACCEPT_LANGUAGE='fr', HTTP_USER_AGENT='Mozilla/5.0 Test')
+
+    def test_requests_counted_per_route_and_visitors_once_per_day(self):
+        from apps.staff import metrics
+        from apps.staff.models import RequestMetric, VisitorDay
+        self.http.get('/')
+        self.http.get('/')
+        self.http.get('/page-qui-n-existe-pas/')
+        self.http.get('/static/css/app.css')
+        metrics.flush()
+        total = sum(RequestMetric.objects.values_list('count', flat=True))
+        self.assertEqual(total, 3)
+        self.assertEqual(sum(RequestMetric.objects.values_list('client_errors', flat=True)), 1)
+        self.assertEqual(VisitorDay.objects.filter(user__isnull=True).count(), 1)
+        self.http.force_login(self.user)
+        self.http.get(reverse('dashboard:dashboard-home'))
+        self.assertTrue(VisitorDay.objects.filter(user=self.user).exists())
+
+    def test_bots_are_not_visitors(self):
+        from apps.staff.models import VisitorDay
+        HttpClient(HTTP_HOST='127.0.0.1', HTTP_USER_AGENT='Googlebot/2.1').get('/')
+        self.assertFalse(VisitorDay.objects.exists())
+
+    def test_unhandled_exception_is_recorded(self):
+        from unittest import mock
+        from apps.staff.models import ServerError
+        http = HttpClient(HTTP_HOST='127.0.0.1', raise_request_exception=False)
+        with mock.patch('apps.landing.views.LandingPageView.get_context_data', side_effect=RuntimeError('boom')):
+            response = http.get('/')
+        self.assertEqual(response.status_code, 500)
+        error = ServerError.objects.get()
+        self.assertEqual((error.exception, error.message, error.path), ('RuntimeError', 'boom', '/'))

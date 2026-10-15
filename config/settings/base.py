@@ -73,6 +73,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'config.health.HealthCheckMiddleware',  # GET /healthz/ pour la surveillance (avant HTTPS / ALLOWED_HOSTS)
+    # Trafic et temps de réponse pour Administration › Trafic & performances.
+    'apps.staff.metrics.MetricsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'csp.middleware.CSPMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

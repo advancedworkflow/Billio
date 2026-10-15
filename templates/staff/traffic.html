@@ -1,0 +1,82 @@
+{% extends "staff/base.html" %}
+{% block staff %}
+<section class="st-kpis">
+    <div class="st-kpi"><span>Requêtes (24 h)</span><strong>{{ t.last_24h.count }}</strong><small>{{ t.last_7d.count }} sur 7 jours</small></div>
+    <div class="st-kpi"><span>Visiteurs uniques aujourd'hui</span><strong>{{ t.visitors_today }}</strong><small>dont non connectés : {{ t.visitors_today_anon }} · {{ t.visitors_7d }} sur 7 jours</small></div>
+    <div class="st-kpi"><span>Temps de réponse moyen</span><strong>{{ t.last_24h.avg_ms }} ms</strong><small>max {{ t.last_24h.max_ms }} ms en 24 h</small></div>
+    <div class="st-kpi {% if t.last_24h.slow_rate >= 5 %}st-kpi--warn{% endif %}"><span>Requêtes lentes (&gt; 1 s)</span><strong>{{ t.last_24h.slow_rate }} %</strong><small>{{ t.last_24h.slow }} en 24 h</small></div>
+    <div class="st-kpi {% if t.last_24h.errors %}st-kpi--bad{% endif %}"><span>Erreurs serveur (5xx)</span><strong>{{ t.last_24h.errors }}</strong><small>{{ t.last_24h.error_rate }} % en 24 h · {{ t.last_7d.errors }} sur 7 jours</small></div>
+    <div class="st-kpi"><span>Erreurs client (4xx)</span><strong>{{ t.last_24h.client_errors }}</strong><small>pages introuvables, accès refusés</small></div>
+</section>
+
+<div class="st-grid">
+    <section class="st-card">
+        <h2>Requêtes par jour <small>30 jours</small></h2>
+        <div class="st-bars">{% for d in t.requests_series %}<span style="--h: {{ d.pct }}%" title="{{ d.day|date:'d/m' }} : {{ d.value }}"></span>{% endfor %}</div>
+    </section>
+    <section class="st-card">
+        <h2>Visiteurs uniques par jour <small>30 jours</small></h2>
+        <div class="st-bars st-bars--alt">{% for d in t.visitors_series %}<span style="--h: {{ d.pct }}%" title="{{ d.day|date:'d/m' }} : {{ d.value }}"></span>{% endfor %}</div>
+    </section>
+    <section class="st-card">
+        <h2>Temps de réponse moyen par jour <small>ms</small></h2>
+        <div class="st-bars st-bars--warm">{% for d in t.latency_series %}<span style="--h: {{ d.pct }}%" title="{{ d.day|date:'d/m' }} : {{ d.value }} ms"></span>{% endfor %}</div>
+    </section>
+    <section class="st-card">
+        <h2>Requêtes par heure <small>24 dernières heures</small></h2>
+        <div class="st-bars">{% for h in t.hours %}<span style="--h: {{ h.pct }}%" title="{{ h.hour|date:'H' }} h : {{ h.count }}"></span>{% empty %}<em class="st-empty">Pas encore de données.</em>{% endfor %}</div>
+    </section>
+</div>
+
+<div class="st-grid">
+    <section class="st-card st-card--flush">
+        <h2 class="st-pad">Pages les plus demandées <small>7 jours</small></h2>
+        <table class="st-table">
+            <thead><tr><th>Route</th><th>Requêtes</th><th>Moyenne</th><th>Erreurs</th></tr></thead>
+            <tbody>{% for r in t.routes.top %}<tr><td translate="no"><code>{{ r.route }}</code></td><td>{{ r.count }}</td><td>{{ r.avg_ms }} ms</td><td>{{ r.errors }}</td></tr>{% empty %}<tr><td colspan="4">Pas encore de données.</td></tr>{% endfor %}</tbody>
+        </table>
+    </section>
+    <section class="st-card st-card--flush" id="slow">
+        <h2 class="st-pad">Pages les plus lentes <small>7 jours</small></h2>
+        <table class="st-table">
+            <thead><tr><th>Route</th><th>Moyenne</th><th>Max</th><th>Lentes</th></tr></thead>
+            <tbody>{% for r in t.routes.slowest %}<tr><td translate="no"><code>{{ r.route }}</code></td><td class="{% if r.avg_ms >= 1000 %}st-bad{% elif r.avg_ms >= 400 %}st-warn{% endif %}">{{ r.avg_ms }} ms</td><td>{{ r.max_ms }} ms</td><td>{{ r.slow }}</td></tr>{% empty %}<tr><td colspan="4">Pas encore de données.</td></tr>{% endfor %}</tbody>
+        </table>
+    </section>
+</div>
+
+<div class="st-grid" id="errors">
+    <section class="st-card st-card--flush">
+        <h2 class="st-pad">Erreurs serveur regroupées <small>7 jours</small></h2>
+        <table class="st-table">
+            <thead><tr><th>Erreur</th><th>Route</th><th>Nombre</th><th>Dernière</th></tr></thead>
+            <tbody>{% for g in t.error_groups %}<tr><td translate="no"><code>{{ g.exception }}</code></td><td translate="no"><code>{{ g.route }}</code></td><td>{{ g.n }}</td><td>{{ g.last|date:"d/m H:i" }}</td></tr>{% empty %}<tr><td colspan="4">Aucune erreur serveur.</td></tr>{% endfor %}</tbody>
+        </table>
+    </section>
+    <section class="st-card st-card--flush">
+        <h2 class="st-pad">Routes en erreur <small>7 jours</small></h2>
+        <table class="st-table">
+            <thead><tr><th>Route</th><th>Erreurs 5xx</th><th>Erreurs 4xx</th></tr></thead>
+            <tbody>{% for r in t.routes.failing %}<tr><td translate="no"><code>{{ r.route }}</code></td><td class="st-bad">{{ r.errors }}</td><td>{{ r.client_errors }}</td></tr>{% empty %}<tr><td colspan="3">Aucune route en erreur.</td></tr>{% endfor %}</tbody>
+        </table>
+    </section>
+</div>
+
+<section class="st-card st-card--flush">
+    <h2 class="st-pad">Dernières erreurs serveur</h2>
+    <table class="st-table">
+        <thead><tr><th>Date</th><th>Requête</th><th>Erreur</th><th>Compte</th></tr></thead>
+        <tbody>{% for e in t.errors %}
+            <tr><td>{{ e.created_at|date:"d/m H:i:s" }}</td><td translate="no"><code>{{ e.method }} {{ e.path }}</code></td>
+                <td translate="no"><strong>{{ e.exception }}</strong><br><small>{{ e.message|truncatechars:160 }}</small></td>
+                <td translate="no">{{ e.user.email|default:"—" }}</td></tr>
+        {% empty %}<tr><td colspan="4">Aucune erreur serveur enregistrée.</td></tr>{% endfor %}</tbody>
+    </table>
+</section>
+
+<section class="st-card">
+    <h2>Pages d'arrivée des visiteurs non connectés <small>7 jours</small></h2>
+    <ul class="st-list">{% for l in t.landings %}<li><code translate="no">{{ l.landing }}</code><span>{{ l.n }}</span></li>{% empty %}<li>Pas encore de données.</li>{% endfor %}</ul>
+</section>
+<p class="st-help">Mesure interne : chaque requête est chronométrée et cumulée par heure (écrite en base chaque minute). Les visiteurs anonymes sont comptés par une empreinte chiffrée, sans cookie ni donnée personnelle conservée. Historique gardé 90 jours.</p>
+{% endblock %}

@@ -1,10 +1,25 @@
 {% extends "staff/base.html" %}
 {% block staff %}
+<section class="st-alerts">
+    {% for a in alerts %}
+        <div class="st-alert st-alert--{{ a.level }}">
+            <i data-lucide="{% if a.level == 'critical' %}octagon-alert{% elif a.level == 'warning' %}triangle-alert{% else %}info{% endif %}" class="w-4 h-4 shrink-0"></i>
+            <div><strong>{{ a.title }}</strong>{% if a.detail %}<span>{{ a.detail }}</span>{% endif %}</div>
+            {% if a.link %}<a href="{{ a.link }}">Voir →</a>{% endif %}
+        </div>
+    {% empty %}
+        <div class="st-alert st-alert--ok"><i data-lucide="circle-check" class="w-4 h-4 shrink-0"></i><div><strong>Tout est normal</strong><span>Aucune alerte en cours.</span></div></div>
+    {% endfor %}
+    {% if checks %}
+        <div class="st-checks">{% for c in checks %}<span title="{{ c.detail }}"><i data-lucide="check" class="w-3 h-3"></i> {{ c.title }}</span>{% endfor %}</div>
+    {% endif %}
+</section>
+
 <section class="st-kpis">
     <div class="st-kpi"><span>Comptes</span><strong>{{ stats.users }}</strong><small>+{{ stats.new_7 }} cette semaine · +{{ stats.new_30 }} en 30 jours</small></div>
     <div class="st-kpi"><span>Actifs (30 jours)</span><strong>{{ stats.active_30 }}</strong><small>connectés au moins une fois</small></div>
     <div class="st-kpi"><span>Revenu mensuel</span><strong>{{ stats.mrr|floatformat:0 }} €</strong><small>abonnements payants, HT</small></div>
-    <div class="st-kpi"><span>Organisations</span><strong>{{ stats.organizations }}</strong><small>Comptes en gratuit : {{ stats.free_users }}</small></div>
+    <a class="st-kpi st-kpi--link" href="{% url 'staff:traffic' %}"><span>Requêtes (24 h)</span><strong>{{ traffic.day.count }}</strong><small>{{ traffic.day.avg_ms }} ms en moyenne · {{ traffic.day.error_rate }} % d'erreurs</small></a>
     <div class="st-kpi"><span>Factures émises (30 jours)</span><strong>{{ stats.invoices_30 }}</strong><small>{{ stats.invoiced_30|floatformat:0 }} € au total</small></div>
     <a class="st-kpi st-kpi--link" href="{% url 'dashboard:support' %}"><span>Tickets ouverts</span><strong>{{ stats.tickets_open }}</strong><small>Voir le support →</small></a>
 </section>
@@ -20,6 +35,7 @@
             {% endfor %}
             </tbody>
         </table>
+        <p class="st-help">Organisations : {{ stats.organizations }} · Comptes en gratuit : {{ stats.free_users }}</p>
     </section>
     <section class="st-card">
         <h2>Dernières inscriptions</h2>

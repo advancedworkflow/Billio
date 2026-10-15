@@ -1,7 +1,8 @@
 """Petit espace d'administration de la plateforme (super-administrateurs uniquement).
 
-Vue d'ensemble (inscriptions, abonnements, factures émises), gestion des comptes (activer, offrir un
-forfait) et clés des intégrations « Se connecter avec… » saisies sans toucher au serveur.
+Vue d'ensemble avec alertes critiques, trafic et performances (apps.staff.metrics), utilisation
+(objets créés, comptes actifs), gestion des comptes (activer, offrir un forfait) et clés des
+intégrations « Se connecter avec… » saisies sans toucher au serveur.
 """
 from datetime import timedelta
 from decimal import Decimal
@@ -18,6 +19,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from . import insights
+from .models import ServerError
 from .platform import set_setting, source
 
 
@@ -29,6 +32,23 @@ def superuser_required(view):
             raise Http404
         return view(request, *args, **kwargs)
     return wrapper
+
+
+def _render(request, template, context):
+    """Page de l'administration : ajoute la barre latérale propre à l'espace."""
+    from apps.dashboard.models import SupportTicket
+    errors_24h = ServerError.objects.filter(created_at__gte=timezone.now() - timedelta(hours=24)).count()
+    tickets = SupportTicket.objects.filter(status='open').count()
+    context['staff_nav'] = [
+        {'key': 'overview', 'label': "Vue d'ensemble", 'icon': 'layout-dashboard', 'url': reverse('staff:overview')},
+        {'key': 'traffic', 'label': 'Trafic & performances', 'icon': 'activity', 'url': reverse('staff:traffic'),
+         'badge': errors_24h, 'badge_level': 'critical'},
+        {'key': 'usage', 'label': 'Utilisation', 'icon': 'chart-column', 'url': reverse('staff:usage')},
+        {'key': 'users', 'label': 'Comptes', 'icon': 'users', 'url': reverse('staff:users')},
+        {'key': 'keys', 'label': 'Clés des intégrations', 'icon': 'key-round', 'url': reverse('staff:keys')},
+    ]
+    context['staff_tickets'] = tickets
+    return render(request, template, context)
 
 
 @superuser_required
@@ -54,8 +74,11 @@ def overview(request):
         plans.append({'plan': plan, 'paying': paying, 'offered': offered, 'revenue': plan.price_monthly * paying})
     with_plan = sum(p['paying'] + p['offered'] for p in plans if p['plan'].code != 'free')
 
-    return render(request, 'staff/overview.html', {
-        'tab': 'overview',
+    alerts = insights.alerts()
+    return _render(request, 'staff/overview.html', {
+        'tab': 'overview', 'staff_title': "Vue d'ensemble",
+        'alerts': [a for a in alerts if a['level'] != 'ok'], 'checks': [a for a in alerts if a['level'] == 'ok'],
+        'traffic': {'day': insights.summary(now - timedelta(hours=24))},
         'stats': {
             'users': users.count(),
             'new_7': users.filter(date_joined__gte=now - timedelta(days=7)).count(),
@@ -92,8 +115,8 @@ def users(request):
             'plan': sub.plan if sub and sub.grants_plan else None,
             'comped': bool(sub and sub.comped), 'stripe': bool(sub and sub.stripe_subscription_id),
         })
-    return render(request, 'staff/users.html', {
-        'tab': 'users', 'rows': rows, 'page': page, 'q': q,
+    return _render(request, 'staff/users.html', {
+        'tab': 'users', 'staff_title': 'Comptes', 'rows': rows, 'page': page, 'q': q,
         'plans': Plan.objects.filter(is_active=True).exclude(code='free').order_by('order', 'price_monthly'),
     })
 
@@ -171,4 +194,15 @@ def keys(request):
                 messages.success(request, f"Clés {tool['name']} enregistrées.")
         return redirect(f"{reverse('staff:keys')}#{request.POST.get('tool', '')}")
 
-    return render(request, 'staff/keys.html', {'tab': 'keys', 'tools': tools})
+    return _render(request, 'staff/keys.html', {'tab': 'keys', 'staff_title': 'Clés des intégrations', 'tools': tools})
+
+
+@superuser_required
+def traffic(request):
+    return _render(request, 'staff/traffic.html', {'tab': 'traffic', 'staff_title': 'Trafic & performances',
+                                                   't': insights.traffic()})
+
+
+@superuser_required
+def usage(request):
+    return _render(request, 'staff/usage.html', {'tab': 'usage', 'staff_title': 'Utilisation', 'u': insights.usage()})
