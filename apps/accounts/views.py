@@ -105,6 +105,14 @@ def login_view(request):
                 record_login_failure(request, form.cleaned_data.get('email'))
             else:
                 clear_login_failures(request, form.cleaned_data.get('email'))
+            if user is not None and user.totp_enabled_at:
+                # Mot de passe correct : la session n'est ouverte qu'après le code de double authentification.
+                import time
+                from . import two_factor
+                request.session[two_factor.SESSION_PENDING] = {
+                    'user': user.pk, 'backend': user.backend, 'next': _safe_next(request) or '',
+                    'at': int(time.time())}
+                return redirect('accounts:login-2fa')
             if user is not None:
                 auth_login(request, user)
                 messages.success(request, f'Bienvenue, {user.get_full_name() or user.email}!')
@@ -117,6 +125,38 @@ def login_view(request):
         form = LoginForm()
 
     return render(request, 'auth/login.html', {'form': form})
+
+
+def login_2fa_view(request):
+    """Deuxième étape de la connexion : code de l'application d'authentification ou code de secours."""
+    import time
+    from . import two_factor
+    from .throttle import BLOCKED_MESSAGE, login_blocked, record_login_failure
+    pending = request.session.get(two_factor.SESSION_PENDING) or {}
+    user = User.objects.filter(pk=pending.get('user'), is_active=True).first() if pending else None
+    if user is None or not user.totp_enabled_at or time.time() - pending.get('at', 0) > two_factor.PENDING_TTL:
+        request.session.pop(two_factor.SESSION_PENDING, None)
+        if pending:
+            messages.info(request, 'Session expirée : reconnectez-vous.')
+        return redirect('accounts:login')
+
+    error = ''
+    if request.method == 'POST':
+        if login_blocked(request, user.email):
+            error = BLOCKED_MESSAGE
+        else:
+            used = two_factor.check(user, request.POST.get('code'))
+            if used:
+                request.session.pop(two_factor.SESSION_PENDING, None)
+                auth_login(request, user, backend=pending.get('backend'))
+                messages.success(request, f'Bienvenue, {user.get_full_name() or user.email}!')
+                if used == 'recovery':
+                    left = len(user.totp_recovery_codes)
+                    messages.warning(request, f'Code de secours utilisé : il vous en reste {left}. Générez-en de nouveaux dans Paramètres › Sécurité.')
+                return redirect(pending.get('next') or 'dashboard:dashboard-home')
+            record_login_failure(request, user.email)
+            error = 'Code incorrect ou expiré.'
+    return render(request, 'auth/login_2fa.html', {'error': error})
 
 
 class BillioPasswordResetView(auth_views.PasswordResetView):
@@ -401,6 +441,34 @@ def settings_view(request):
             messages.success(request, 'Photo de profil supprimée.')
         return redirect(f'{settings_url}?tab=profil')
 
+    if action and action.startswith('2fa_'):
+        from . import two_factor
+        user = request.user
+        if action == '2fa_start' and not user.totp_enabled_at:
+            request.session[two_factor.SESSION_SETUP] = two_factor.generate_secret()
+        elif action == '2fa_cancel':
+            request.session.pop(two_factor.SESSION_SETUP, None)
+        elif action == '2fa_confirm' and not user.totp_enabled_at:
+            secret = request.session.get(two_factor.SESSION_SETUP)
+            step = two_factor.matching_step(secret, request.POST.get('code'))
+            if step is None:
+                messages.error(request, "Code incorrect : vérifiez l'heure de votre téléphone et saisissez le code affiché.")
+            else:
+                request.session.pop(two_factor.SESSION_SETUP, None)
+                request.session[two_factor.SESSION_NEW_CODES] = two_factor.enable(user, secret, step)
+                messages.success(request, 'Double authentification activée.')
+        elif action in ('2fa_disable', '2fa_new_codes') and user.totp_enabled_at:
+            if not two_factor.check(user, request.POST.get('code')):
+                messages.error(request, 'Code incorrect ou expiré.')
+            elif action == '2fa_disable':
+                two_factor.disable(user)
+                messages.success(request, 'Double authentification désactivée.')
+            else:
+                request.session[two_factor.SESSION_NEW_CODES] = two_factor.new_recovery_codes(user)
+                user.save(update_fields=['totp_recovery_codes'])
+                messages.success(request, 'Nouveaux codes de secours générés : les anciens ne fonctionnent plus.')
+        return redirect(f'{settings_url}?tab=securite')
+
     if action == 'change_password':
         from django.contrib.auth import update_session_auth_hash
         from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
@@ -513,7 +581,15 @@ def settings_view(request):
     from apps.organizations.views import _can_manage_team
     from apps.dashboard.client_notifications import event_settings
 
+    from . import two_factor
+    setup_secret = request.session.get(two_factor.SESSION_SETUP) if not request.user.totp_enabled_at else None
     context = {
+        'two_factor_setup': {
+            'secret': ' '.join(setup_secret[i:i + 4] for i in range(0, len(setup_secret), 4)),
+            'qr': two_factor.qr_svg(two_factor.provisioning_uri(request.user, setup_secret)),
+        } if setup_secret else None,
+        'two_factor_new_codes': request.session.pop(two_factor.SESSION_NEW_CODES, None),
+        'recovery_codes_left': len(request.user.totp_recovery_codes or []),
         'profile': profile,
         'page_title': 'Paramètres',
         'page_subtitle': 'Gérez vos préférences et paramètres de compte',
@@ -665,6 +741,15 @@ class LoginView(generics.GenericAPIView):
             record_login_failure(request, email)
             serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+        if user.totp_enabled_at:
+            from . import two_factor
+            if not request.data.get('otp'):
+                return Response({'otp_required': True, 'detail': 'Code de double authentification requis (champ « otp »).'},
+                                status=status.HTTP_401_UNAUTHORIZED)
+            if not two_factor.check(user, request.data.get('otp')):
+                record_login_failure(request, email)
+                return Response({'otp_required': True, 'detail': 'Code incorrect ou expiré.'},
+                                status=status.HTTP_401_UNAUTHORIZED)
         clear_login_failures(request, email)
 
         login(request, user)

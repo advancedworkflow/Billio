@@ -20,11 +20,21 @@ from django.conf import settings
 from django.shortcuts import render
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
 
+def admin_login_redirect(request):
+    """La connexion à l'admin Django passe par la page Billio (mot de passe, limitation, double authentification)."""
+    from urllib.parse import urlencode
+
+    from django.shortcuts import redirect
+    from django.urls import reverse
+    return redirect(f"{reverse('accounts:login')}?{urlencode({'next': request.GET.get('next') or reverse('admin:index')})}")
+
+
 def dev_tools_view(request):
     """Page de documentation des outils de développement."""
     return render(request, 'dev-tools.html')
 
 urlpatterns = [
+    path(getattr(settings, 'ADMIN_URL', 'admin/') + 'login/', admin_login_redirect),
     path(getattr(settings, 'ADMIN_URL', 'admin/'), admin.site.urls),
 
     # API documentation (schema + ReDoc)

@@ -37,6 +37,12 @@ class User(AbstractUser):
     # Acceptation des CGU, de la politique de confidentialité et des cookies (case cochée à l'inscription)
     terms_accepted_at = models.DateTimeField(blank=True, null=True)
 
+    # Double authentification (apps/accounts/two_factor.py) : active si totp_enabled_at est renseigné
+    totp_secret = models.CharField(max_length=64, blank=True, default='')
+    totp_enabled_at = models.DateTimeField(blank=True, null=True)
+    totp_last_step = models.BigIntegerField(default=0)
+    totp_recovery_codes = models.JSONField(default=list, blank=True)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

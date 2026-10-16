@@ -25,6 +25,7 @@ urlpatterns = [
 
     # HTML views
     path('login/', views.login_view, name='login'),
+    path('login/verification/', views.login_2fa_view, name='login-2fa'),
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
     path('google/login/', views.GoogleLoginView.as_view(), name='google-login'),

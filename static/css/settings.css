@@ -207,3 +207,16 @@
 .st-currency-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
 .st-currency-list label { margin-left: 10px; color: var(--billio-text-muted, #52525b); font-size: 12.5px; }
 .st-link { display: inline-block; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--billio-primary, #6d28d9); text-decoration: none; } .st-link:hover { text-decoration: underline; }
+
+/* Double authentification */
+.st-card.st-2fa { margin-top: 16px; }
+.st-badge--ok { background: #dcfce7; color: #166534; }
+.st-2fa-status { font-size: 13px; color: #3f3f46; margin-bottom: 14px; }
+.st-2fa-steps { font-size: 13.5px; color: #3f3f46; padding-left: 18px; list-style: decimal; margin-bottom: 14px; line-height: 1.7; }
+.st-2fa-setup { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.st-2fa-setup .st-form { flex: 1; min-width: 220px; max-width: 380px; }
+.st-2fa-qr { flex: none; padding: 6px; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 12px; background: #fff; line-height: 0; }
+.st-2fa-secret { font-size: 12.5px; color: #71717a; line-height: 1.6; }
+.st-2fa-secret code { white-space: nowrap; }
+.st-2fa-codes { border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; font-size: 13px; color: #78350f; }
+.st-2fa-codes ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px 14px; margin: 12px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: #18181b; }

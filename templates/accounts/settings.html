@@ -6,7 +6,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.0">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.1">
 {% endblock %}
 
 {% block content %}
@@ -23,7 +23,7 @@
     <nav class="st-nav">
         <p class="st-nav-title">Compte</p>
         <button type="button" :class="tab === 'profil' && 'is-active'" @click="go('profil')"><i data-lucide="user-round" class="w-4 h-4"></i> Profil</button>
-        <button type="button" :class="tab === 'securite' && 'is-active'" @click="go('securite')"><i data-lucide="lock-keyhole" class="w-4 h-4"></i> Mot de passe</button>
+        <button type="button" :class="tab === 'securite' && 'is-active'" @click="go('securite')"><i data-lucide="lock-keyhole" class="w-4 h-4"></i> Sécurité{% if user.totp_enabled_at %} <span class="st-nav-badge">2FA</span>{% endif %}</button>
         <button type="button" :class="tab === 'langue' && 'is-active'" @click="go('langue')"><i data-lucide="languages" class="w-4 h-4"></i> Langue <span class="st-nav-badge" translate="no">{{ current_language|upper }}</span></button>
         {% if org %}
         <p class="st-nav-title">Entreprise</p>
@@ -119,6 +119,54 @@
                 <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Modifier le mot de passe</button></div>
             </form>
             <p class="st-meta">Dernière connexion : {{ user.last_login|date:"d/m/Y à H:i"|default:"—" }}</p>
+        </section>
+
+        <!-- ================= Double authentification ================= -->
+        <section class="st-card st-2fa" x-show="tab === 'securite'" x-cloak>
+            <header>
+                <h2>Double authentification {% if user.totp_enabled_at %}<em class="st-badge st-badge--ok">Activée</em>{% endif %}</h2>
+                <p>À la connexion, Billio demande en plus de votre mot de passe un code à 6 chiffres donné par une application d'authentification (Google Authenticator, Microsoft Authenticator, 1Password…).</p>
+            </header>
+            {% if two_factor_new_codes %}
+            <div class="st-2fa-codes" x-data="{ copied: false }">
+                <p><strong>Vos codes de secours</strong> — notez-les maintenant, ils ne seront plus affichés. Chacun permet une connexion si vous perdez votre téléphone.</p>
+                <ul translate="no">{% for code in two_factor_new_codes %}<li>{{ code }}</li>{% endfor %}</ul>
+                <button type="button" class="st-btn" data-codes="{{ two_factor_new_codes|join:' ' }}" @click="navigator.clipboard.writeText($el.dataset.codes.split(' ').join('\n')); copied = true"><i data-lucide="copy" class="w-4 h-4"></i> <span x-text="copied ? 'Copiés' : 'Copier les codes'">Copier les codes</span></button>
+            </div>
+            {% endif %}
+            {% if user.totp_enabled_at %}
+            <p class="st-2fa-status">Activée le {{ user.totp_enabled_at|date:"d/m/Y" }}. Codes de secours restants : {{ recovery_codes_left }}.</p>
+            <form method="post" class="st-form st-form--narrow">
+                {% csrf_token %}
+                <label class="st-field"><span>Code de l'application (ou code de secours)</span><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" required></label>
+                <div class="st-actions">
+                    <button type="submit" name="form_action" value="2fa_new_codes" class="st-btn">Nouveaux codes de secours</button>
+                    <button type="submit" name="form_action" value="2fa_disable" class="st-btn st-btn--danger">Désactiver</button>
+                </div>
+            </form>
+            {% elif two_factor_setup %}
+            <ol class="st-2fa-steps">
+                <li>Ouvrez votre application d'authentification et scannez ce QR code.</li>
+                <li>Saisissez le code à 6 chiffres qu'elle affiche.</li>
+            </ol>
+            <div class="st-2fa-setup">
+                <div class="st-2fa-qr" aria-label="QR code à scanner">{{ two_factor_setup.qr|safe }}</div>
+                <form method="post" class="st-form">
+                    {% csrf_token %}
+                    <p class="st-2fa-secret">Pas de scan possible ? Saisissez cette clé : <code translate="no">{{ two_factor_setup.secret }}</code></p>
+                    <label class="st-field"><span>Code à 6 chiffres</span><input type="text" name="code" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required autofocus></label>
+                    <div class="st-actions">
+                        <button type="submit" name="form_action" value="2fa_confirm" class="st-btn st-btn--primary">Activer</button>
+                        <button type="submit" name="form_action" value="2fa_cancel" class="st-btn st-btn--ghost" formnovalidate>Annuler</button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <form method="post">
+                {% csrf_token %}<input type="hidden" name="form_action" value="2fa_start">
+                <button type="submit" class="st-btn st-btn--primary"><i data-lucide="shield-check" class="w-4 h-4"></i> Activer la double authentification</button>
+            </form>
+            {% endif %}
         </section>
 
         {% if org %}
