@@ -74,11 +74,14 @@ def overview(request):
         plans.append({'plan': plan, 'paying': paying, 'offered': offered, 'revenue': plan.price_monthly * paying})
     with_plan = sum(p['paying'] + p['offered'] for p in plans if p['plan'].code != 'free')
 
-    alerts = insights.alerts()
+    from . import server
+    server_snapshot = server.snapshot(insights.summary(now - timedelta(hours=1)))
+    alerts = insights.alerts(server_snapshot)
     return _render(request, 'staff/overview.html', {
         'tab': 'overview', 'staff_title': "Vue d'ensemble",
         'alerts': [a for a in alerts if a['level'] != 'ok'], 'checks': [a for a in alerts if a['level'] == 'ok'],
         'traffic': {'day': insights.summary(now - timedelta(hours=24))},
+        'server': server_snapshot,
         'stats': {
             'users': users.count(),
             'new_7': users.filter(date_joined__gte=now - timedelta(days=7)).count(),

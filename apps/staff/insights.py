@@ -1,13 +1,11 @@
 """Calcul des indicateurs de l'espace d'administration : alertes, trafic, utilisation."""
 import os
-import shutil
 import time
 from datetime import timedelta
 
 from django.apps import apps
 from django.conf import settings
 from django.core.cache import cache
-from django.db import connection
 from django.db.models import Count, Max, Sum
 from django.db.models.functions import TruncDate, TruncHour
 from django.urls import reverse
@@ -209,24 +207,10 @@ def usage():
 
 # --------------------------------------------------------------------------- alertes
 
-def _disk():
-    try:
-        usage_ = shutil.disk_usage(getattr(settings, 'MEDIA_ROOT', None) or '/')
-    except OSError:
-        return None
-    return round(usage_.used * 100 / usage_.total), round(usage_.free / 1024 ** 3, 1)
-
-
-def _db_size_mb():
-    if connection.vendor != 'postgresql':
-        return None
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT pg_database_size(current_database())')
-        return round(cursor.fetchone()[0] / 1024 ** 2)
-
-
-def alerts():
+def alerts(server_snapshot=None):
     from config.health import WORKER_HEARTBEAT_KEY, WORKER_MAX_DELAY
+
+    from . import server
     now = timezone.now()
     items = []
 
@@ -252,13 +236,10 @@ def alerts():
     if day['count'] and day['slow_rate'] >= 5:
         add('warning', 'Requêtes lentes', f"{day['slow_rate']} % au-dessus d'1 seconde en 24 h.", reverse('staff:traffic') + '#slow')
 
-    disk = _disk()
-    if disk:
-        used, free = disk
-        add('critical' if used >= 95 else 'warning' if used >= 85 else 'ok', f'Disque utilisé à {used} %', f'{free} Go libres.')
-    size = _db_size_mb()
-    if size is not None:
-        add('ok', f'Base de données : {size} Mo')
+    # Surcharge du VPS : processeur, mémoire, swap, disque, base, workers web et worker planifié
+    if server_snapshot is None:
+        server_snapshot = server.snapshot(summary(now - timedelta(hours=1)))
+    items.extend(server.alerts(server_snapshot))
 
     if not settings.DEBUG:
         if not getattr(settings, 'EMAIL_HOST_PASSWORD', ''):

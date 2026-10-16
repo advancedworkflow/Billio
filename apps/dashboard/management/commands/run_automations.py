@@ -46,6 +46,12 @@ class Command(BaseCommand):
             except Exception:  # noqa: BLE001 — le worker ne doit jamais s'arrêter
                 logger.exception('Passage des automatisations interrompu.')
             self.daily_backup()
+            try:
+                from apps.staff import server
+                server.record_worker_run(time.monotonic() - started, interval)
+                server.record_sample()
+            except Exception:  # noqa: BLE001 — les relevés ne doivent jamais arrêter le worker
+                logger.exception('Relevé de santé du serveur impossible.')
             time.sleep(max(30, interval - (time.monotonic() - started)))
 
     def daily_backup(self):

@@ -15,6 +15,22 @@
     {% endif %}
 </section>
 
+<section class="st-card st-server" id="serveur">
+    <h2>Serveur (VPS) <small>{% if server.history_count %}pics sur {{ server.history_count }} relevé{{ server.history_count|pluralize }} des dernières 24 h{% else %}les pics sur 24 h apparaîtront après les premiers passages du worker{% endif %}</small></h2>
+    <div class="st-gauges">
+        {% for g in server.gauges %}
+        <div class="st-gauge st-gauge--{{ g.level }}">
+            <div class="st-gauge-head"><span>{{ g.label }}</span><strong>{{ g.display }}</strong></div>
+            <div class="st-gauge-bar"><i style="width: {{ g.bar }}%"></i></div>
+            <small>{{ g.detail }}</small>
+            {% if g.peak is not None %}<small class="st-gauge-peak st-gauge-peak--{{ g.peak_level }}">Pic 24 h : {{ g.peak }}{% if g.key != 'load' %} %{% endif %}</small>{% endif %}
+            {% if g.series|length > 1 %}<div class="st-spark" aria-hidden="true">{% for v in g.series %}<i style="height: {% if g.key == 'load' %}{% widthratio v 2 100 %}{% else %}{{ v }}{% endif %}%"></i>{% endfor %}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <p class="st-help">Orange : à surveiller. Rouge : surcharge, le service ralentit ou risque de tomber.</p>
+</section>
+
 <section class="st-kpis">
     <div class="st-kpi"><span>Comptes</span><strong>{{ stats.users }}</strong><small>+{{ stats.new_7 }} cette semaine · +{{ stats.new_30 }} en 30 jours</small></div>
     <div class="st-kpi"><span>Actifs (30 jours)</span><strong>{{ stats.active_30 }}</strong><small>connectés au moins une fois</small></div>
