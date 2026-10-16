@@ -1,4 +1,5 @@
 {% extends "auth/_layout.html" %}
+{% load static %}
 {% block title %}Créer un compte{% endblock %}
 {% block content %}
 <h1 class="auth-title">Créer votre compte</h1>
@@ -29,19 +30,32 @@
         {% if form.password.errors %}{% for error in form.password.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
         {% else %}<p class="auth-help" id="password-help">8 caractères minimum, pas uniquement des chiffres.</p>{% endif %}
     </div>
-    <label class="auth-field" for="country">
-        <span>Pays</span>
+    <div class="auth-field">
+        <span><label for="country">Pays</label></span>
+        {# Liste native (sans JavaScript) remplacée par une liste avec drapeaux ; la valeur reste dans le select. #}
         <select class="auth-input" id="country" name="country" autocomplete="country" required>
             {% for code, name, dial in countries %}
             <option value="{{ code }}" data-dial="+{{ dial }}" {% if form.country.value == code %}selected{% endif %}>{{ name }}</option>
             {% endfor %}
         </select>
+        <div class="auth-country" id="country-picker" hidden>
+            <button type="button" class="auth-input auth-country-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="country-label country-current">
+                <img class="auth-flag" alt="" width="22" height="16"><span id="country-current"></span>
+                <svg class="auth-country-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <span id="country-label" hidden>Pays</span>
+            <ul class="auth-country-list" role="listbox" tabindex="-1" aria-labelledby="country-label" hidden>
+                {% for code, name, dial in countries %}
+                <li role="option" data-code="{{ code }}" aria-selected="false"><img class="auth-flag" src="{% static 'images/flags/'|add:code|lower|add:'.svg' %}" alt="" width="22" height="16" loading="lazy"><span class="auth-country-name">{{ name }}</span><span class="auth-country-dial" translate="no">+{{ dial }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
         {% for error in form.country.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
-    </label>
+    </div>
     <label class="auth-field" for="phone">
         <span>Téléphone</span>
         <div class="auth-phone">
-            <span class="auth-phone-dial" id="phone-dial" translate="no">+33</span>
+            <span class="auth-phone-dial" translate="no"><img class="auth-flag" id="phone-flag" alt="" width="20" height="15" hidden><span id="phone-dial">+33</span></span>
             <input class="auth-input" id="phone" name="phone" type="tel" value="{{ form.phone.value|default:'' }}" autocomplete="tel-national" inputmode="tel" placeholder="6 12 34 56 78" maxlength="30" required>
         </div>
         {% for error in form.phone.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
@@ -68,14 +82,88 @@
 </form>
 <style>
     .auth-phone { display: flex; align-items: stretch; }
-    .auth-phone-dial { display: flex; align-items: center; padding: 0 12px; font-size: 15px; color: var(--billio-text-muted); background: #f4f4f5; border: 1px solid var(--billio-border-strong); border-right: 0; border-radius: 10px 0 0 10px; }
+    .auth-phone-dial { display: flex; align-items: center; gap: 7px; padding: 0 12px; font-size: 15px; color: var(--billio-text-muted); background: #f4f4f5; border: 1px solid var(--billio-border-strong); border-right: 0; border-radius: 10px 0 0 10px; }
     .auth-phone .auth-input { border-radius: 0 10px 10px 0; }
+    .auth-flag { flex: none; width: 22px; height: 16px; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+    .auth-phone-dial .auth-flag { width: 20px; height: 15px; }
+    .auth-country { position: relative; }
+    .auth-country-btn { display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; }
+    .auth-country-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .auth-country-chevron { flex: none; color: var(--billio-text-muted); transition: transform .15s; }
+    .auth-country-btn[aria-expanded="true"] .auth-country-chevron { transform: rotate(180deg); }
+    .auth-country-list { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; max-height: 280px; overflow-y: auto; margin: 0; padding: 6px; list-style: none; background: #fff; border: 1px solid var(--billio-border-strong); border-radius: 12px; box-shadow: 0 12px 32px rgba(24,24,27,.12); }
+    .auth-country-list:focus { outline: none; }
+    .auth-country-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 14.5px; cursor: pointer; }
+    .auth-country-list li.is-active { background: var(--billio-primary-soft, #f3f0ff); }
+    .auth-country-list li[aria-selected="true"] { font-weight: 600; }
+    .auth-country-name { flex: 1; }
+    .auth-country-dial { font-size: 13px; color: var(--billio-text-muted); }
 </style>
 <script>
     (function () {
-        var country = document.getElementById('country'), dial = document.getElementById('phone-dial');
-        function sync() { dial.textContent = country.options[country.selectedIndex].dataset.dial; }
-        country.addEventListener('change', sync); sync();
+        var select = document.getElementById('country'), picker = document.getElementById('country-picker');
+        var button = picker.querySelector('button'), list = picker.querySelector('ul');
+        var items = Array.prototype.slice.call(list.querySelectorAll('li'));
+        var dial = document.getElementById('phone-dial'), phoneFlag = document.getElementById('phone-flag');
+        var active = 0;
+
+        select.hidden = true; picker.hidden = false;
+        document.querySelector('label[for="country"]').htmlFor = '';
+        button.id = 'country-button';
+
+        function current() { return items.filter(function (li) { return li.dataset.code === select.value; })[0] || items[0]; }
+        function render() {
+            var li = current(), flag = li.querySelector('img').getAttribute('src');
+            items.forEach(function (item) { item.setAttribute('aria-selected', item === li ? 'true' : 'false'); });
+            button.querySelector('img').src = flag;
+            button.querySelector('span').textContent = li.querySelector('.auth-country-name').textContent;
+            dial.textContent = li.querySelector('.auth-country-dial').textContent;
+            phoneFlag.src = flag; phoneFlag.hidden = false;
+        }
+        function highlight(index) {
+            active = Math.max(0, Math.min(items.length - 1, index));
+            items.forEach(function (item, i) { item.classList.toggle('is-active', i === active); });
+            list.setAttribute('aria-activedescendant', 'country-opt-' + active);
+            items[active].scrollIntoView({ block: 'nearest' });
+        }
+        function open() {
+            list.hidden = false; button.setAttribute('aria-expanded', 'true');
+            highlight(items.indexOf(current())); list.focus();
+        }
+        function close(focusButton) {
+            list.hidden = true; button.setAttribute('aria-expanded', 'false');
+            if (focusButton) button.focus();
+        }
+        function choose(index) { select.value = items[index].dataset.code; render(); close(true); }
+
+        items.forEach(function (li, i) {
+            li.id = 'country-opt-' + i;
+            li.addEventListener('click', function () { choose(i); });
+            li.addEventListener('mousemove', function () { if (active !== i) highlight(i); });
+        });
+        button.addEventListener('click', function () { list.hidden ? open() : close(true); });
+        button.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
+        });
+        list.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); highlight(active + 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); highlight(active - 1); }
+            else if (e.key === 'Home') { e.preventDefault(); highlight(0); }
+            else if (e.key === 'End') { e.preventDefault(); highlight(items.length - 1); }
+            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(active); }
+            else if (e.key === 'Escape') { e.preventDefault(); close(true); }
+            else if (e.key === 'Tab') { close(false); }
+            else if (e.key.length === 1) {
+                // Saisie d'une lettre : premier pays suivant qui commence par elle
+                var letter = e.key.toLowerCase();
+                for (var n = 1; n <= items.length; n++) {
+                    var i = (active + n) % items.length;
+                    if (items[i].querySelector('.auth-country-name').textContent.trim().toLowerCase().indexOf(letter) === 0) { highlight(i); break; }
+                }
+            }
+        });
+        document.addEventListener('click', function (e) { if (!picker.contains(e.target)) close(false); });
+        render();
     })();
 </script>
 {% endblock %}
