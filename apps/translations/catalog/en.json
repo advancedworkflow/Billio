@@ -5767,5 +5767,10 @@
   "Saisissez le code à 6 chiffres affiché par votre application d'authentification.": "Enter the 6-digit code shown in your authenticator app.",
   "Téléphone perdu ? Saisissez à la place l'un de vos codes de secours (format xxxx-xxxx).": "Lost your phone? Enter one of your backup codes instead (format xxxx-xxxx).",
   "Valider": "Confirm",
-  "Vérification": "Verification"
+  "Vérification": "Verification",
+  "Ce numéro de téléphone ne semble pas valide.": "This phone number doesn't look valid.",
+  "Choisissez votre pays.": "Choose your country.",
+  "Indiquez votre numéro de téléphone.": "Enter your phone number.",
+  "Monaco": "Monaco",
+  "Irlande": "Ireland"
 }

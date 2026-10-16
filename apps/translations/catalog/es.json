@@ -5767,5 +5767,10 @@
   "Saisissez le code à 6 chiffres affiché par votre application d'authentification.": "Introduce el código de 6 dígitos que muestra tu app de autenticación.",
   "Téléphone perdu ? Saisissez à la place l'un de vos codes de secours (format xxxx-xxxx).": "¿Perdiste tu teléfono? Introduce uno de tus códigos de respaldo (formato xxxx-xxxx).",
   "Valider": "Validar",
-  "Vérification": "Verificación"
+  "Vérification": "Verificación",
+  "Ce numéro de téléphone ne semble pas valide.": "Este número de teléfono no parece válido.",
+  "Choisissez votre pays.": "Elige tu país.",
+  "Indiquez votre numéro de téléphone.": "Indica tu número de teléfono.",
+  "Monaco": "Mónaco",
+  "Irlande": "Irlanda"
 }

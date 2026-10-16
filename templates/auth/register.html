@@ -29,6 +29,23 @@
         {% if form.password.errors %}{% for error in form.password.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
         {% else %}<p class="auth-help" id="password-help">8 caractères minimum, pas uniquement des chiffres.</p>{% endif %}
     </div>
+    <label class="auth-field" for="country">
+        <span>Pays</span>
+        <select class="auth-input" id="country" name="country" autocomplete="country" required>
+            {% for code, name, dial in countries %}
+            <option value="{{ code }}" data-dial="+{{ dial }}" {% if form.country.value == code %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+        {% for error in form.country.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+    </label>
+    <label class="auth-field" for="phone">
+        <span>Téléphone</span>
+        <div class="auth-phone">
+            <span class="auth-phone-dial" id="phone-dial" translate="no">+33</span>
+            <input class="auth-input" id="phone" name="phone" type="tel" value="{{ form.phone.value|default:'' }}" autocomplete="tel-national" inputmode="tel" placeholder="6 12 34 56 78" maxlength="30" required>
+        </div>
+        {% for error in form.phone.errors %}<p class="auth-error">{{ error }}</p>{% endfor %}
+    </label>
     <label class="auth-field" for="trade">
         <span>Votre activité</span>
         <select class="auth-input" id="trade" name="trade" required>
@@ -49,6 +66,18 @@
     </div>
     <button type="submit" class="auth-submit-btn">Créer mon compte</button>
 </form>
+<style>
+    .auth-phone { display: flex; align-items: stretch; }
+    .auth-phone-dial { display: flex; align-items: center; padding: 0 12px; font-size: 15px; color: var(--billio-text-muted); background: #f4f4f5; border: 1px solid var(--billio-border-strong); border-right: 0; border-radius: 10px 0 0 10px; }
+    .auth-phone .auth-input { border-radius: 0 10px 10px 0; }
+</style>
+<script>
+    (function () {
+        var country = document.getElementById('country'), dial = document.getElementById('phone-dial');
+        function sync() { dial.textContent = country.options[country.selectedIndex].dataset.dial; }
+        country.addEventListener('change', sync); sync();
+    })();
+</script>
 {% endblock %}
 
 {% block after_card %}

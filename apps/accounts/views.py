@@ -210,11 +210,13 @@ def register_view(request):
             user.terms_accepted_at = timezone.now()
             user.save(update_fields=['language', 'terms_accepted_at'])
             # Create user profile
-            UserProfile.objects.create(user=user, industry=form.cleaned_data['trade'])
+            from .countries import BY_CODE
+            country_name = BY_CODE[form.cleaned_data['country']][0]
+            UserProfile.objects.create(user=user, industry=form.cleaned_data['trade'], country=country_name)
             # Entreprise créée d'emblée, préparée pour le métier choisi (phases, modèles de projet, mentions).
             from apps.organizations.trade_packs import apply_trade_pack
             organization = Organization.objects.create(
-                owner=user, email=user.email,
+                owner=user, email=user.email, phone=user.phone, country=country_name,
                 name=(user.get_full_name() or user.email).strip()[:200],
             )
             OrganizationMember.objects.create(organization=organization, user=user, role='owner',
@@ -225,9 +227,10 @@ def register_view(request):
             messages.success(request, f'Compte créé avec succès ! Bienvenue, {user.get_full_name() or user.email}!')
             return redirect(_safe_next(request) or 'dashboard:dashboard-home')
     else:
-        form = RegisterForm(initial={'email': (request.GET.get('email') or '').strip()[:254]})
+        form = RegisterForm(initial={'email': (request.GET.get('email') or '').strip()[:254], 'country': 'FR'})
 
-    return render(request, 'auth/register.html', {'form': form})
+    from .countries import COUNTRIES
+    return render(request, 'auth/register.html', {'form': form, 'countries': COUNTRIES})
 
 
 @login_required

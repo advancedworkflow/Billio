@@ -53,7 +53,7 @@ class SignupTests(TestCase):
 
     def signup(self, **overrides):
         data = {'name': 'Julie Moreau', 'email': 'Julie@Moreau-Photo.fr', 'password': 'Photo-Lumiere-2026', 'trade': 'audiovisuel',
-                'accept_terms': '1'}
+                'country': 'BE', 'phone': '0470 12 34 56', 'accept_terms': '1'}
         data.update(overrides)
         return self.http.post(reverse('accounts:register'), data)
 
@@ -64,6 +64,24 @@ class SignupTests(TestCase):
         self.assertFalse(User.objects.filter(email='julie@moreau-photo.fr').exists())
         self.signup()
         self.assertIsNotNone(User.objects.get(email='julie@moreau-photo.fr').terms_accepted_at)
+
+    def test_country_and_phone_are_saved(self):
+        from apps.organizations.models import Organization
+        self.signup()
+        user = User.objects.get(email='julie@moreau-photo.fr')
+        self.assertEqual(user.phone, '+32 470123456')  # indicatif du pays ajouté, 0 national retiré
+        self.assertEqual(user.profile.country, 'Belgique')
+        organization = Organization.objects.get(owner=user)
+        self.assertEqual((organization.country, organization.phone), ('Belgique', '+32 470123456'))
+
+    def test_phone_is_required_and_checked(self):
+        for phone, error in (('', 'Indiquez votre numéro de téléphone.'), ('12', 'ne semble pas valide')):
+            response = self.signup(phone=phone)
+            self.assertContains(response, error)
+        self.assertFalse(User.objects.exists())
+        # Un numéro saisi avec un autre indicatif est gardé tel quel
+        self.signup(phone='+33 6 12 34 56 78')
+        self.assertEqual(User.objects.get().phone, '+33 612345678')
 
     def test_four_fields_create_account_and_organization(self):
         from apps.organizations.models import Organization

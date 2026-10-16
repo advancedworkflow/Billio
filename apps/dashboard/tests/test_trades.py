@@ -22,7 +22,7 @@ class RegistrationTests(TestCase):
         http = HttpClient(HTTP_HOST='127.0.0.1')
         response = http.post(reverse('accounts:register'), {
             'name': 'Inès Martin', 'email': 'ines@atelier.test', 'password': 'Tr3s-Solide-2026', 'trade': 'btp',
-            'accept_terms': '1',
+            'country': 'FR', 'phone': '06 12 34 56 78', 'accept_terms': '1',
         })
         self.assertEqual(response.status_code, 302, response.content[:500])
         user = User.objects.get(email='ines@atelier.test')

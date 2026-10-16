@@ -11,12 +11,14 @@ User = get_user_model()
 
 class RegisterForm(forms.Form):
     """
-    Inscription en quatre champs : nom, email, mot de passe, activité.
+    Inscription : nom, email, mot de passe, pays, téléphone, activité.
     Le nom de l'entreprise reprend le nom saisi ; il se change ensuite dans Paramètres.
     """
     name = forms.CharField(max_length=60, error_messages={'required': 'Indiquez votre nom.'})
     email = forms.EmailField(error_messages={'required': 'Indiquez votre email.', 'invalid': 'Cette adresse email ne semble pas valide.'})
     password = forms.CharField(strip=False, error_messages={'required': 'Choisissez un mot de passe.'})
+    country = forms.ChoiceField(error_messages={'required': 'Choisissez votre pays.'})
+    phone = forms.CharField(max_length=30, error_messages={'required': 'Indiquez votre numéro de téléphone.'})
     trade = forms.ChoiceField(error_messages={'required': 'Choisissez votre activité.'})
     accept_terms = forms.BooleanField(error_messages={
         'required': "Cochez la case pour accepter les conditions d'utilisation."})
@@ -25,6 +27,8 @@ class RegisterForm(forms.Form):
         super().__init__(*args, **kwargs)
         from apps.organizations.trade_packs import TRADE_CHOICES
         self.fields['trade'].choices = TRADE_CHOICES
+        from .countries import COUNTRIES
+        self.fields['country'].choices = [(code, name) for code, name, _ in COUNTRIES]
 
     def clean_email(self):
         email = self.cleaned_data['email'].strip().lower()
@@ -34,6 +38,13 @@ class RegisterForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get('phone') and cleaned.get('country'):
+            from .countries import normalize_phone
+            phone = normalize_phone(cleaned['phone'], cleaned['country'])
+            if phone:
+                cleaned['phone'] = phone
+            else:
+                self.add_error('phone', "Ce numéro de téléphone ne semble pas valide.")
         password = cleaned.get('password')
         if password:
             from django.contrib.auth.password_validation import validate_password
@@ -53,7 +64,8 @@ class RegisterForm(forms.Form):
             suffix += 1
             username = f"{base}{suffix}"
         return User.objects.create_user(username=username, email=email, password=self.cleaned_data['password'],
-                                         first_name=first[:30], last_name=last.strip()[:30])
+                                         first_name=first[:30], last_name=last.strip()[:30],
+                                         phone=self.cleaned_data['phone'])
 
 
 class LoginForm(AuthenticationForm):
