@@ -33,6 +33,8 @@ class AccountEmailTests(TestCase):
         self.assertIn(f"{SITE}{reverse('dashboard:dashboard-home')}", email.body)
         html = email.alternatives[0][0]
         self.assertIn(f'href="{SITE}{reverse("dashboard:dashboard-home")}"', html)
+        # Logo Billio en tête, en URL absolue (les messageries ne résolvent pas les chemins relatifs)
+        self.assertIn(f'src="{SITE}/static/images/logo/app-tile-512.png"', html)
 
     def test_signup_still_works_when_smtp_fails(self):
         with mock.patch('django.core.mail.EmailMultiAlternatives.send', side_effect=OSError('SMTP down')):
@@ -52,6 +54,7 @@ class AccountEmailTests(TestCase):
         # Lien absolu bâti sur SITE_URL (jamais sur l'en-tête Host), identique en texte et en HTML
         link = re.search(rf'{re.escape(SITE)}(/accounts/password-reset/[^/\s]+/[^/\s]+/)', email.body).group(1)
         self.assertIn(f'{SITE}{link}', email.alternatives[0][0])
+        self.assertIn(f'src="{SITE}/static/images/logo/app-tile-512.png"', email.alternatives[0][0])
 
         # Le lien ouvre le formulaire, le nouveau mot de passe est accepté, l'ancien ne marche plus
         form_url = self.http.get(link, follow=True).redirect_chain[-1][0]
