@@ -1,0 +1,130 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Reliez l'argent reçu sur votre compte à vos factures{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.1">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 rec">
+    <a href="{% url 'payments:payments-page' %}" class="rec-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Paiements</a>
+
+    <!-- Comment ça marche + ajout des encaissements -->
+    <section class="pay-card">
+        <div class="rec-steps">
+            <div><span>1</span><p><strong>Importez votre relevé</strong>Le fichier CSV exporté depuis votre banque, ou ajoutez un encaissement à la main.</p></div>
+            <div><span>2</span><p><strong>Vérifiez la facture proposée</strong>Billio cherche le numéro de facture, le montant et le nom du client.</p></div>
+            <div><span>3</span><p><strong>Validez</strong>Le paiement est enregistré et la facture passe à « payée ».</p></div>
+        </div>
+        <div class="rec-add" x-data="{ manual: false }">
+            <form method="post" action="{% url 'payments:reconcile-import' %}" enctype="multipart/form-data" class="rec-import" x-ref="importForm">
+                {% csrf_token %}
+                <label class="btn-primary-black px-4 py-2 text-sm rounded-lg inline-flex items-center gap-2 cursor-pointer">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Importer un relevé (CSV)
+                    <input type="file" name="statement" accept=".csv,text/csv,text/plain" class="sr-only" @change="if ($event.target.files[0]) $refs.importForm.submit()">
+                </label>
+                <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2" @click="manual = !manual">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Ajouter à la main
+                </button>
+                <span class="rec-hint">Les sorties d'argent du relevé sont ignorées ; réimporter le même fichier ne crée pas de doublon.</span>
+            </form>
+            <form method="post" action="{% url 'payments:reconcile-add' %}" class="rec-manual" x-show="manual" x-cloak>
+                {% csrf_token %}
+                <label><span>Date</span><input type="date" name="date" value="{{ today }}" max="{{ today }}" required></label>
+                <label><span>Montant reçu</span><input type="text" name="amount" inputmode="decimal" placeholder="1 200,00" required></label>
+                <label class="rec-manual-label"><span>Libellé (facultatif)</span><input type="text" name="label" maxlength="200" placeholder="Chèque Atelier Rive"></label>
+                <button type="submit" class="btn-primary-black px-4 py-2 text-sm rounded-lg">Ajouter</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Onglets -->
+    <nav class="rec-tabs">
+        <a href="?tab=pending" class="{% if tab == 'pending' %}is-active{% endif %}">À rapprocher <span>{{ counts.pending }}</span></a>
+        <a href="?tab=matched" class="{% if tab == 'matched' %}is-active{% endif %}">Rapprochés <span>{{ counts.matched }}</span></a>
+        <a href="?tab=ignored" class="{% if tab == 'ignored' %}is-active{% endif %}">Ignorés <span>{{ counts.ignored }}</span></a>
+    </nav>
+
+    {% if tab == 'pending' and sure_count %}
+    <form method="post" action="{% url 'payments:reconcile-match-sure' %}" class="rec-sure-bar">
+        {% csrf_token %}
+        <span><i data-lucide="sparkles" class="w-4 h-4"></i> Correspondances sûres : {{ sure_count }}</span>
+        <button type="submit" class="btn-primary-black px-4 py-2 text-sm rounded-lg">Tout valider</button>
+    </form>
+    {% endif %}
+
+    <section class="rec-list">
+        {% for row in rows %}
+        {% with line=row.line suggestion=row.suggestion %}
+        <article class="rec-line">
+            <div class="rec-line-head">
+                <div>
+                    <p class="rec-date">{{ line.date|date:"d/m/Y" }}</p>
+                    <p class="rec-label" translate="no">{{ line.label|default:"—" }}</p>
+                </div>
+                <p class="rec-amount">{{ line.amount|money:currency }}</p>
+            </div>
+
+            {% if tab == 'pending' %}
+            <div class="rec-line-body">
+                {% if suggestion %}
+                <p class="rec-suggest">
+                    {% if suggestion.sure %}<span class="rec-badge is-sure">Correspondance sûre</span>{% else %}<span class="rec-badge">À vérifier</span>{% endif %}
+                    <span class="rec-reasons">{% for reason in suggestion.reasons %}<span>{{ reason }}</span>{% endfor %}</span>
+                </p>
+                {% else %}
+                <p class="rec-suggest"><span class="rec-badge is-none">Aucune facture trouvée</span> <span class="rec-reasons">Choisissez-la dans la liste, ou ignorez la ligne si ce n'est pas un paiement client.</span></p>
+                {% endif %}
+                <div class="rec-actions">
+                    <form method="post" action="{% url 'payments:reconcile-match' line.id %}" class="rec-match">
+                        {% csrf_token %}
+                        <select name="invoice_id" required>
+                            <option value="">Choisir la facture…</option>
+                            {% for inv in invoice_choices %}
+                            <option value="{{ inv.id }}" {% if suggestion and suggestion.invoice.id|stringformat:'s' == inv.id %}selected{% endif %} translate="no">{{ inv.number }} · {{ inv.client }} · reste {{ inv.remaining|money:inv.currency }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn-primary-black px-4 py-2 text-sm rounded-lg">Valider</button>
+                    </form>
+                    <form method="post" action="{% url 'payments:reconcile-ignore' line.id %}">
+                        {% csrf_token %}<button type="submit" class="rec-link">Ignorer</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="rec-line-body rec-done">
+                {% if tab == 'matched' and line.payment %}
+                <p><i data-lucide="check-circle-2" class="w-4 h-4"></i> Facture <a href="{% url 'invoices:invoice-preview' line.payment.invoice.id %}" translate="no">{{ line.payment.invoice.invoice_number }}</a> · <span translate="no">{{ line.payment.invoice.client.name }}</span> · {{ line.payment.invoice.get_status_display }}</p>
+                {% elif tab == 'matched' %}
+                <p>Paiement supprimé depuis.</p>
+                {% else %}
+                <p class="text-gray-500">Pas un paiement client.</p>
+                {% endif %}
+                <form method="post" action="{% url 'payments:reconcile-undo' line.id %}">
+                    {% csrf_token %}<button type="submit" class="rec-link">{% if tab == 'matched' %}Annuler le rapprochement{% else %}Remettre à rapprocher{% endif %}</button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+        {% endwith %}
+        {% empty %}
+        <div class="rec-empty">
+            {% if tab == 'pending' and not counts.matched and not counts.ignored %}
+            <i data-lucide="landmark" class="w-8 h-8"></i>
+            <p><strong>Aucun encaissement pour l'instant</strong></p>
+            <p>Exportez le relevé de votre compte au format CSV depuis l'espace en ligne de votre banque, puis importez-le ici.</p>
+            {% elif tab == 'pending' %}
+            <i data-lucide="party-popper" class="w-8 h-8"></i>
+            <p><strong>Tout est rapproché</strong></p>
+            {% else %}
+            <p>Rien ici pour l'instant.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

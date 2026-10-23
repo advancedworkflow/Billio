@@ -149,68 +149,26 @@ def record_payment(request):
     La facture passe à « payée » quand le reste dû est couvert ; chaque paiement déclenche
     les automatisations « Paiement reçu ».
     """
-    from datetime import datetime, time
+    from datetime import datetime
     from decimal import InvalidOperation
-    from . import cashflow
+    from .recording import PaymentError, record_manual_payment
 
     invoice = _get_open_invoice_for_user(request.user, request.POST.get('invoice_id'))
-    if invoice.status not in cashflow.OPEN_STATUSES:
-        return JsonResponse({'ok': False, 'error': "Cette facture n'attend pas de paiement."}, status=400)
-
-    paid = invoice.payments.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
-    remaining = invoice.amount_due(paid)
     try:
         amount = Decimal((request.POST.get('amount') or '').replace(',', '.').replace(' ', '')).quantize(Decimal('0.01'))
     except InvalidOperation:
         return JsonResponse({'ok': False, 'error': 'Montant invalide.'}, status=400)
-    if amount <= 0:
-        return JsonResponse({'ok': False, 'error': 'Le montant doit être positif.'}, status=400)
-    if amount > remaining + Decimal('0.01'):
-        return JsonResponse({'ok': False, 'error': f'Le montant dépasse le reste dû ({remaining:.2f} €).'.replace('.', ',', 1)}, status=400)
-
     try:
         day = datetime.strptime(request.POST.get('date') or '', '%Y-%m-%d').date()
     except ValueError:
         day = timezone.localdate()
-    if day > timezone.localdate():
-        return JsonResponse({'ok': False, 'error': 'La date ne peut pas être dans le futur.'}, status=400)
-    paid_at = timezone.make_aware(datetime.combine(day, time(12, 0)))
-
-    method_type = request.POST.get('method_type') or 'bank_transfer'
-    if method_type not in dict(PaymentMethod.METHOD_CHOICES):
-        method_type = 'bank_transfer'
-    payment_method = PaymentMethod.objects.filter(
-        organization=invoice.organization, method_type=method_type, is_active=True,
-    ).order_by('-is_default').first() or PaymentMethod.objects.create(
-        organization=invoice.organization, method_type=method_type, is_active=True,
-        name=f"Paiement manuel — {dict(PaymentMethod.METHOD_CHOICES)[method_type]}",
-    )
-
-    payment = Payment.objects.create(
-        invoice=invoice, payment_method=payment_method, amount=amount, currency=invoice.currency,
-        status='completed', provider='manual', provider_payment_id=(request.POST.get('reference') or '').strip()[:255] or None,
-        payment_date=paid_at, processed_at=timezone.now(),
-        notes=(request.POST.get('notes') or '').strip()[:2000], created_by=request.user,
-    )
-
-    fully_paid = amount >= remaining - Decimal('0.009')
-    if fully_paid:
-        invoice.mark_as_paid()
-        Invoice = type(invoice)
-        Invoice.objects.filter(id=invoice.id).update(paid_at=paid_at)
-
-    from apps.dashboard.automation_engine import run_automations
-    run_automations(
-        invoice.organization, 'payment_received',
-        source='manual',
-        target_type='payment', target_id=payment.id, amount=amount, client_id=invoice.client_id,
-        variables={'numero': invoice.invoice_number},
-        context_label=(
-            f"Paiement de {amount:.2f} € reçu pour la facture {invoice.invoice_number}"
-            + (" (soldée)." if fully_paid else f" — reste {remaining - amount:.2f} €.")
-        ),
-    )
-    message = 'Facture soldée.' if fully_paid else f'Paiement partiel enregistré — reste {remaining - amount:.2f} €.'.replace('.', ',', 1)
+    try:
+        _payment, fully_paid, left = record_manual_payment(
+            invoice, amount, day, method_type=request.POST.get('method_type') or 'bank_transfer',
+            reference=request.POST.get('reference') or '', notes=request.POST.get('notes') or '', user=request.user)
+    except PaymentError as exc:
+        return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
+    message = 'Facture soldée.' if fully_paid else f'Paiement partiel enregistré — reste {left:.2f} €.'.replace('.', ',', 1)
     return JsonResponse({'ok': True, 'fully_paid': fully_paid, 'message': message})
 
 

@@ -221,3 +221,35 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} - {self.amount} - {'Success' if self.success else 'Failed'}"
+
+
+class BankLine(models.Model):
+    """
+    Encaissement lu sur un relevé bancaire (ou saisi à la main), à rapprocher d'une facture
+    (apps/payments/reconciliation.py). Une fois validé, il pointe vers le paiement créé.
+    """
+    STATUS_CHOICES = [
+        ('pending', _('À rapprocher')),
+        ('matched', _('Rapproché')),
+        ('ignored', _('Ignoré')),
+    ]
+
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='bank_lines')
+    date = models.DateField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    label = models.CharField(max_length=500, blank=True, default='')
+    # Empreinte date + montant + libellé : réimporter le même relevé ne crée pas de doublon.
+    fingerprint = models.CharField(max_length=64)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_lines')
+    imported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('Ligne de relevé')
+        verbose_name_plural = _('Lignes de relevé')
+        ordering = ['-date', '-id']
+        constraints = [models.UniqueConstraint(fields=['organization', 'fingerprint'], name='uniq_bank_line_per_org')]
+
+    def __str__(self):
+        return f'{self.date} {self.amount} {self.label[:40]}'

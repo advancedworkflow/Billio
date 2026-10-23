@@ -6,7 +6,7 @@
 {% block page_subtitle %}Ce qui est encaissé, ce qui reste à encaisser, et quoi faire maintenant{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.1">
 {% endblock %}
 
 {% block content %}
@@ -16,6 +16,9 @@
 
     <div class="flex items-center justify-end gap-2">
         {% include "components/export_menu.html" with table="payments" %}
+        <a href="{% url 'payments:reconcile' %}" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2">
+            <i data-lucide="git-compare-arrows" class="w-4 h-4"></i> Rapprocher mes encaissements
+        </a>
         <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2" @click="newMethodModal = true">
             <i data-lucide="landmark" class="w-4 h-4"></i> Moyen de paiement
         </button>
