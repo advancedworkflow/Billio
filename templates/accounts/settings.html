@@ -6,7 +6,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.1">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.2">
 {% endblock %}
 
 {% block content %}
@@ -25,6 +25,7 @@
         <button type="button" :class="tab === 'profil' && 'is-active'" @click="go('profil')"><i data-lucide="user-round" class="w-4 h-4"></i> Profil</button>
         <button type="button" :class="tab === 'securite' && 'is-active'" @click="go('securite')"><i data-lucide="lock-keyhole" class="w-4 h-4"></i> Sécurité{% if user.totp_enabled_at %} <span class="st-nav-badge">2FA</span>{% endif %}</button>
         <button type="button" :class="tab === 'langue' && 'is-active'" @click="go('langue')"><i data-lucide="languages" class="w-4 h-4"></i> Langue <span class="st-nav-badge" translate="no">{{ current_language|upper }}</span></button>
+        <button type="button" :class="tab === 'donnees' && 'is-active'" @click="go('donnees')"><i data-lucide="database" class="w-4 h-4"></i> Mes données</button>
         {% if org %}
         <p class="st-nav-title">Entreprise</p>
         <button type="button" :class="tab === 'entreprise' && 'is-active'" @click="go('entreprise')"><i data-lucide="building-2" class="w-4 h-4"></i> Identité & mentions</button>
@@ -106,6 +107,42 @@
                     <li class="is-off"><i data-lucide="minus" class="w-3.5 h-3.5"></i> Vos clients voient leur espace et leurs pages de paiement dans la langue de leur navigateur.</li>
                 </ul>
             </div>
+        </section>
+
+        <!-- ================= Mes données (RGPD) ================= -->
+        <section class="st-card" x-show="tab === 'donnees'" x-cloak>
+            <header><h2>Exporter mes données</h2><p>Une archive ZIP avec toutes vos données (compte, clients, factures, devis, paiements, projets) en JSON et en CSV, avec les fichiers déposés (PDF, pièces jointes, logos).</p></header>
+            <form method="post">
+                {% csrf_token %}<input type="hidden" name="form_action" value="export_data">
+                <div class="st-actions st-actions--left"><button type="submit" class="st-btn st-btn--primary"><i data-lucide="download" class="w-4 h-4"></i> Télécharger mes données</button></div>
+            </form>
+            <p class="st-meta">Mots de passe et clés d'API ne sont pas inclus.{% if payment_organizations %} Organisations exportées : {% for o in payment_organizations %}{{ o.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}</p>
+        </section>
+
+        <section class="st-card st-close" x-show="tab === 'donnees'" x-cloak x-data="{ open: false }">
+            <header><h2>Fermer mon compte</h2><p>Votre abonnement est résilié tout de suite, sans remboursement de la période en cours, et plus aucun email n'est envoyé à vos clients. Vos données sont effacées définitivement {{ closure_grace_days }} jours plus tard : d'ici là, le support peut rouvrir le compte.</p></header>
+            <p class="st-help">Pensez à exporter vos données avant : vous devez conserver vos factures 10 ans. <a href="{% url 'subscriptions:billing' %}">Arrêter seulement mon forfait payant</a></p>
+            {% if closure_shared_organizations %}
+            <div class="st-close-warn">
+                <strong>D'autres personnes travaillent dans vos organisations.</strong> Elles en perdront l'accès et leurs données seront effacées :
+                <ul>{% for row in closure_shared_organizations %}<li translate="no">{{ row.organization.name }} ({{ row.members }} membre{{ row.members|pluralize }})</li>{% endfor %}</ul>
+            </div>
+            {% endif %}
+            <div class="st-actions st-actions--left" x-show="!open"><button type="button" class="st-btn st-btn--danger" @click="open = true">Fermer mon compte…</button></div>
+            <form method="post" class="st-form st-form--narrow" x-show="open" x-cloak>
+                {% csrf_token %}<input type="hidden" name="form_action" value="close_account">
+                {% if user.has_usable_password %}
+                <label class="st-field"><span>Mot de passe</span><input type="password" name="password" autocomplete="current-password" required></label>
+                {% else %}
+                <label class="st-field"><span>Votre adresse email</span><input type="email" name="email" autocomplete="off" required></label>
+                {% endif %}
+                {% if user.totp_enabled_at %}<label class="st-field"><span>Code de double authentification</span><input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" required></label>{% endif %}
+                <label class="st-field"><span>Écrivez FERMER pour confirmer</span><input type="text" name="confirm" autocomplete="off" required></label>
+                <div class="st-actions st-actions--left">
+                    <button type="submit" class="st-btn st-btn--danger-solid">Fermer définitivement mon compte</button>
+                    <button type="button" class="st-btn st-btn--ghost" @click="open = false">Annuler</button>
+                </div>
+            </form>
         </section>
 
         <!-- ================= Mot de passe ================= -->
@@ -529,14 +566,14 @@
 
 <script>
 function settingsPage() {
-    const TABS = ['profil', 'securite', 'langue', 'entreprise', 'facturation', 'paiement', 'equipe', 'rdv', 'metier', 'notifications', 'dev'];
+    const TABS = ['profil', 'securite', 'langue', 'donnees', 'entreprise', 'facturation', 'paiement', 'equipe', 'rdv', 'metier', 'notifications', 'dev'];
     return {
         tab: '{% if entreprise_organization %}entreprise{% else %}profil{% endif %}',
         logoUrl: '{% if entreprise_organization.logo %}{{ entreprise_organization.logo.url }}{% endif %}',
         logoMsg: '',
         copied: false,
         init() {
-            const legacy = { tva: 'facturation', donnees: 'profil', branding: 'entreprise' };
+            const legacy = { tva: 'facturation', branding: 'entreprise' };
             let t = new URLSearchParams(location.search).get('tab') || location.hash.slice(1);
             t = legacy[t] || t;
             if (TABS.includes(t)) this.tab = t;

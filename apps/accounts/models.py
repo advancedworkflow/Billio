@@ -43,6 +43,9 @@ class User(AbstractUser):
     totp_last_step = models.BigIntegerField(default=0)
     totp_recovery_codes = models.JSONField(default=list, blank=True)
 
+    # Fermeture demandée par l'utilisateur (apps/accounts/closure.py) : compte désactivé, effacé après le délai de grâce
+    closed_at = models.DateTimeField(blank=True, null=True)
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

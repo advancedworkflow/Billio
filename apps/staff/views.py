@@ -141,8 +141,12 @@ def user_action(request, user_id):
         if target == request.user:
             messages.error(request, 'Vous ne pouvez pas désactiver votre propre compte.')
         else:
-            target.is_active = not target.is_active
-            target.save(update_fields=['is_active'])
+            if target.closed_at:
+                from apps.accounts.closure import reopen_account
+                reopen_account(target)
+            else:
+                target.is_active = not target.is_active
+                target.save(update_fields=['is_active'])
             if target.is_active:
                 messages.success(request, f'Compte réactivé : {target.email}.')
             else:

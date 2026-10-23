@@ -220,3 +220,12 @@
 .st-2fa-secret code { white-space: nowrap; }
 .st-2fa-codes { border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; font-size: 13px; color: #78350f; }
 .st-2fa-codes ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px 14px; margin: 12px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; color: #18181b; }
+
+/* Mes données : fermeture du compte */
+.st-card.st-close { margin-top: 16px; }
+.st-close .st-help { margin-bottom: 14px; }
+.st-close .st-help a { color: #6d28d9; text-decoration: underline; }
+.st-close-warn { border: 1px solid #fecaca; background: #fef2f2; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; color: #7f1d1d; line-height: 1.5; }
+.st-close-warn ul { margin: 6px 0 0; padding-left: 18px; list-style: disc; }
+.st-btn--danger-solid { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.st-btn--danger-solid:hover { background: #991b1b; border-color: #991b1b; color: #fff; }

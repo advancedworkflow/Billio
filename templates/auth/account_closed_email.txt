@@ -1,0 +1,10 @@
+{% autoescape off %}Bonjour{% if user.first_name %} {{ user.first_name }}{% endif %},
+
+Votre compte Billio ({{ user.email }}) est fermé. Votre abonnement est résilié et plus aucun email n'est envoyé à vos clients depuis Billio.
+
+Vos données seront définitivement effacées le {{ deletion_date|date:"d/m/Y" }}. D'ici là, si vous avez fermé le compte par erreur, {% if support_email %}écrivez-nous à {{ support_email }}{% else %}répondez à cet email{% endif %} pour le rouvrir.
+
+Merci d'avoir utilisé Billio.
+
+L'équipe Billio
+{% endautoescape %}

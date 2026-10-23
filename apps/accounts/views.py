@@ -472,6 +472,44 @@ def settings_view(request):
                 messages.success(request, 'Nouveaux codes de secours générés : les anciens ne fonctionnent plus.')
         return redirect(f'{settings_url}?tab=securite')
 
+    if action == 'export_data':
+        from django.core.cache import cache
+        from django.http import FileResponse
+        from .personal_data import build_export
+        key = f'data-export:{request.user.pk}'
+        cache.add(key, 0, 3600)
+        if cache.incr(key) > 5:
+            messages.error(request, "Vous avez déjà demandé plusieurs exports cette heure-ci : réessayez un peu plus tard.")
+            return redirect(f'{settings_url}?tab=donnees')
+        archive = build_export(request.user, payment_organizations)
+        return FileResponse(archive, as_attachment=True, content_type='application/zip',
+                            filename=f'billio-export-{timezone.localdate():%Y-%m-%d}.zip')
+
+    if action == 'close_account':
+        from . import closure, two_factor
+        from apps.subscriptions.billing import BillingError
+        user = request.user
+        if user.has_usable_password():
+            identity_ok = user.check_password(request.POST.get('password') or '')
+        else:
+            identity_ok = (request.POST.get('email') or '').strip().lower() == user.email.lower()
+        if not identity_ok:
+            messages.error(request, 'Mot de passe incorrect.' if user.has_usable_password() else 'Adresse email incorrecte.')
+        elif user.totp_enabled_at and not two_factor.check(user, request.POST.get('code')):
+            messages.error(request, 'Code de double authentification incorrect ou expiré.')
+        elif (request.POST.get('confirm') or '').strip().upper() != 'FERMER':
+            messages.error(request, 'Écrivez FERMER pour confirmer.')
+        else:
+            try:
+                closure.close_account(user)
+            except BillingError as exc:
+                messages.error(request, f"Votre abonnement n'a pas pu être résilié, le compte reste ouvert : {exc}")
+            else:
+                auth_logout(request)
+                messages.success(request, f"Votre compte est fermé. Vos données seront effacées le {closure.deletion_date(user):%d/%m/%Y}.")
+                return redirect('accounts:login')
+        return redirect(f'{settings_url}?tab=donnees')
+
     if action == 'change_password':
         from django.contrib.auth import update_session_auth_hash
         from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
@@ -621,6 +659,8 @@ def settings_view(request):
         'currency_choices': __import__('apps.organizations.currencies', fromlist=['choices']).choices(entreprise_organization),
         'custom_currencies': ((entreprise_organization.billing_preferences or {}).get('custom_currencies') or []) if entreprise_organization else [],
         'billing_texts': entreprise_organization.billing_texts() if entreprise_organization else {},
+        'closure_shared_organizations': __import__('apps.accounts.closure', fromlist=['shared_organizations']).shared_organizations(request.user),
+        'closure_grace_days': __import__('apps.accounts.closure', fromlist=['grace_days']).grace_days(),
     }
 
     return render(request, 'accounts/settings.html', context)

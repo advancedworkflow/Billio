@@ -1,6 +1,7 @@
 """
 Exécute les automatisations planifiées (dates du calendrier, factures/devis/tâches
-en retard, attentes écoulées, relances J+7/14/30, factures récurrentes) sans attendre
+en retard, attentes écoulées, relances J+7/14/30, factures récurrentes, effacement des
+comptes fermés) sans attendre
 qu'un utilisateur ouvre le tableau de bord.
 
 Une fois (cron, Planificateur de tâches Windows…), toutes les 5 à 15 minutes :
@@ -98,6 +99,13 @@ class Command(BaseCommand):
             run_pending_waits()
         except Exception:  # noqa: BLE001
             logger.exception('Attentes de workflow en échec.')
+        try:
+            from apps.accounts.closure import purge_closed_accounts
+            purged = purge_closed_accounts()
+            if purged:
+                logger.info('%s compte(s) fermé(s) effacé(s).', purged)
+        except Exception:  # noqa: BLE001
+            logger.exception('Effacement des comptes fermés en échec.')
         record_worker_heartbeat()
         message = f"Automatisations vérifiées pour {count} organisation(s)."
         if failed:

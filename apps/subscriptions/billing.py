@@ -163,6 +163,12 @@ def cancel(subscription):
     return sync_subscription(updated, user=subscription.user)
 
 
+def cancel_now(subscription):
+    """Résiliation immédiate, sans remboursement (fermeture du compte, apps/accounts/closure.py)."""
+    updated = _call('DELETE', f'/subscriptions/{subscription.stripe_subscription_id}')
+    return sync_subscription(updated, user=subscription.user)
+
+
 def resume(subscription):
     updated = _call('POST', f'/subscriptions/{subscription.stripe_subscription_id}', {'cancel_at_period_end': 'false'})
     return sync_subscription(updated, user=subscription.user)

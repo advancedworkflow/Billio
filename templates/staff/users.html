@@ -11,7 +11,7 @@
         {% for r in rows %}
             <tr class="{% if not r.user.is_active %}is-off{% endif %}">
                 <td><span translate="no"><strong>{{ r.user.get_full_name|default:"—" }}</strong><br><small>{{ r.user.email }}</small></span>
-                    {% if r.user.is_superuser %}<em class="st-tag">admin</em>{% endif %}{% if not r.user.is_active %}<em class="st-tag st-tag--off">désactivé</em>{% endif %}</td>
+                    {% if r.user.is_superuser %}<em class="st-tag">admin</em>{% endif %}{% if r.user.closed_at %}<em class="st-tag st-tag--off" title="Fermé par l'utilisateur le {{ r.user.closed_at|date:'d/m/Y' }}">fermé</em>{% elif not r.user.is_active %}<em class="st-tag st-tag--off">désactivé</em>{% endif %}</td>
                 <td translate="no">{% for o in r.org %}{{ o.name }}{% empty %}—{% endfor %}</td>
                 <td>{% if r.plan %}<span translate="no">{{ r.plan.name }}</span>{% if r.comped %} <em class="st-tag">offert</em>{% elif r.stripe %} <em class="st-tag st-tag--paid">Stripe</em>{% endif %}{% else %}Gratuit{% endif %}</td>
                 <td>{{ r.user.date_joined|date:"d/m/Y" }}</td>
