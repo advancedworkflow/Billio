@@ -72,6 +72,22 @@
             </form>
             {% endif %}
         </div>
+        {% if compliance_checks %}
+        <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5 text-sm">
+            <div class="flex items-center justify-between gap-3">
+                <p class="font-semibold text-gray-900">Vérification de conformité</p>
+                <a href="{% url 'accounts:user-settings' %}?tab=conformite" class="text-xs font-semibold text-violet-700 hover:underline">Mes règles de facturation</a>
+            </div>
+            <ul class="mt-3 flex flex-col gap-2">
+                {% for check in compliance_checks %}
+                <li class="flex gap-2 items-start {% if check.level == 'error' %}text-red-700{% elif check.level == 'warning' %}text-amber-800{% elif check.level == 'ok' %}text-green-700{% else %}text-gray-600{% endif %}">
+                    <i data-lucide="{% if check.level == 'error' %}alert-circle{% elif check.level == 'warning' %}alert-triangle{% elif check.level == 'ok' %}check-circle-2{% else %}info{% endif %}" class="w-4 h-4 mt-0.5 flex-none"></i>
+                    <span>{{ check.message }}{% if check.tab %} <a href="{% url 'accounts:user-settings' %}?tab={{ check.tab }}" class="underline">Corriger</a>{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         {% if einvoice %}
         <div class="mt-6 bg-white rounded-xl border {% if einvoice.ready %}border-green-200{% else %}border-amber-200{% endif %} p-5 text-sm">
             <p class="font-semibold text-gray-900">Facture électronique (Factur-X)</p>

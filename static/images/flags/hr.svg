@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-hr" viewBox="0 0 640 480">
+  <path fill="#ff0000" d="M0 0h640v160H0z"/>
+  <path fill="#fff" d="M0 160h640v160H0z"/>
+  <path fill="#171796" d="M0 320h640v160H0z"/>
+  <path fill="#ff0000" d="M260 130h24v24h-24z"/>
+  <path fill="#fff" d="M284 130h24v24h-24z"/>
+  <path fill="#ff0000" d="M308 130h24v24h-24z"/>
+  <path fill="#fff" d="M332 130h24v24h-24z"/>
+  <path fill="#ff0000" d="M356 130h24v24h-24z"/>
+  <path fill="#fff" d="M260 154h24v24h-24z"/>
+  <path fill="#ff0000" d="M284 154h24v24h-24z"/>
+  <path fill="#fff" d="M308 154h24v24h-24z"/>
+  <path fill="#ff0000" d="M332 154h24v24h-24z"/>
+  <path fill="#fff" d="M356 154h24v24h-24z"/>
+  <path fill="#ff0000" d="M260 178h24v24h-24z"/>
+  <path fill="#fff" d="M284 178h24v24h-24z"/>
+  <path fill="#ff0000" d="M308 178h24v24h-24z"/>
+  <path fill="#fff" d="M332 178h24v24h-24z"/>
+  <path fill="#ff0000" d="M356 178h24v24h-24z"/>
+  <path fill="#fff" d="M260 202h24v24h-24z"/>
+  <path fill="#ff0000" d="M284 202h24v24h-24z"/>
+  <path fill="#fff" d="M308 202h24v24h-24z"/>
+  <path fill="#ff0000" d="M332 202h24v24h-24z"/>
+  <path fill="#fff" d="M356 202h24v24h-24z"/>
+  <path fill="#ff0000" d="M260 226h24v24h-24z"/>
+  <path fill="#fff" d="M284 226h24v24h-24z"/>
+  <path fill="#ff0000" d="M308 226h24v24h-24z"/>
+  <path fill="#fff" d="M332 226h24v24h-24z"/>
+  <path fill="#ff0000" d="M356 226h24v24h-24z"/>
+  <path fill="#fff" d="M260 250h24v24h-24z"/>
+  <path fill="#ff0000" d="M284 250h24v24h-24z"/>
+  <path fill="#fff" d="M308 250h24v24h-24z"/>
+  <path fill="#ff0000" d="M332 250h24v24h-24z"/>
+  <path fill="#fff" d="M356 250h24v24h-24z"/>
+</svg>

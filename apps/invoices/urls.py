@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/create/', views.invoice_create_api, name='invoice-create-api'),
     path('<uuid:invoice_id>/send/', views.send_invoice, name='send-invoice'),
     path('export/fec/', views.fec_export, name='fec-export'),
+    path('export/compta/', views.accounting_export, name='accounting-export'),
     path('<uuid:invoice_id>/schedule-send/', views.schedule_invoice_send, name='schedule-invoice-send'),
     path('<uuid:invoice_id>/duplicate/', views.duplicate_invoice, name='duplicate-invoice'),
     path('<uuid:invoice_id>/toggle-favorite/', views.invoice_toggle_favorite, name='invoice-toggle-favorite'),

@@ -233,3 +233,38 @@
 /* Export comptable (FEC) */
 .st-card.st-fec { margin-top: 16px; }
 .st-fec-warn { border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #92400e; }
+
+/* Pays & conformité */
+.st-nav-dot { width: 7px; height: 7px; border-radius: 999px; margin-left: auto; background: #d4d4d8; }
+.st-nav-dot.is-ready { background: #16a34a; }
+.st-nav-dot.is-almost { background: #f59e0b; }
+.st-nav-dot.is-todo { background: #dc2626; }
+.st-comp-step { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid #f4f4f5; }
+.st-comp-step > .st-field, .st-comp-step > label { flex: 1; }
+.st-comp-num { flex: none; width: 26px; height: 26px; border-radius: 999px; background: #18181b; color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.st-comp-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+.st-comp-choice { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid #e4e4e7; border-radius: 12px; cursor: pointer; }
+.st-comp-choice input, .st-comp-yesno input { position: absolute; opacity: 0; pointer-events: none; }
+.st-comp-choice strong { font-size: 13.5px; color: #18181b; }
+.st-comp-choice small { font-size: 12px; color: #71717a; }
+.st-comp-choice.is-active, .st-comp-yesno label.is-active { border-color: #18181b; box-shadow: 0 0 0 1px #18181b; }
+.st-comp-yesno { display: flex; gap: 8px; margin-top: 6px; }
+.st-comp-yesno label { position: relative; padding: 9px 22px; border: 1px solid #e4e4e7; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500; }
+.st-comp-hint { display: block; margin-top: 8px; font-size: 12.5px; color: #71717a; line-height: 1.5; }
+.st-comp-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding-top: 14px; }
+.st-comp-note { border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 10px 14px; margin: 12px 0; font-size: 13px; color: #92400e; line-height: 1.5; }
+.st-card.st-comp-check, .st-card.st-comp-auto { margin-top: 16px; }
+.st-comp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.st-comp-pill { flex: none; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.st-comp-pill.is-ready { background: #dcfce7; color: #166534; }
+.st-comp-pill.is-almost { background: #fef3c7; color: #92400e; }
+.st-comp-pill.is-todo { background: #fee2e2; color: #991b1b; }
+.st-comp-list { display: flex; flex-direction: column; }
+.st-comp-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 2px; border-bottom: 1px solid #f4f4f5; font-size: 13.5px; }
+.st-comp-list li:last-child { border-bottom: none; }
+.st-comp-list li > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.st-comp-list small { color: #71717a; font-size: 12.5px; line-height: 1.5; }
+.st-comp-list li.is-ok > i { color: #16a34a; }
+.st-comp-list li.is-todo > i { color: #dc2626; }
+.st-comp-list li.is-tip > i { color: #f59e0b; }
+.st-comp-list .st-link { flex: none; margin-top: 0; font-size: 12.5px; font-weight: 600; color: #6d28d9; background: none; border: none; cursor: pointer; }

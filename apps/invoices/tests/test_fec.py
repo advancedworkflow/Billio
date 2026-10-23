@@ -173,5 +173,5 @@ class FecTests(TestCase):
         http = HttpClient(HTTP_HOST='127.0.0.1')
         http.force_login(self.user)
         page = http.get(reverse('accounts:user-settings') + '?tab=facturation')
-        self.assertContains(page, 'Export comptable (FEC)')
+        self.assertContains(page, 'Télécharger le FEC')
         self.assertContains(page, reverse('invoices:fec-export'))

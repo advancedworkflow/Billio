@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-cy" viewBox="0 0 640 480">
+  <path fill="#fff" d="M0 0h640v480H0z"/>
+  <path fill="#d57800" d="M150 210c40-30 120-60 200-55s140-20 170-40c-20 40-80 60-120 90s-90 40-150 35-80 0-100-30z"/>
+  <path fill="none" stroke="#4e5b31" stroke-width="10" d="M230 330c40 30 140 30 180 0"/>
+</svg>

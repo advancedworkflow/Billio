@@ -137,6 +137,10 @@ class Organization(models.Model):
         prefs = self.billing_preferences or {}
         if not prefs:
             return {}
+        from .jurisdictions import legal_texts
+        localized = legal_texts(self, prefs)  # autres pays / autres langues que le français
+        if localized is not None:
+            return localized
         from decimal import Decimal, InvalidOperation
         raw_days = prefs.get('payment_days')
         days = int(raw_days if raw_days is not None else (self.default_payment_terms or 30))

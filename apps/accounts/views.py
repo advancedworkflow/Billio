@@ -226,6 +226,10 @@ def register_view(request):
             OrganizationMember.objects.create(organization=organization, user=user, role='owner',
                                               **OrganizationMember.ROLE_PERMISSIONS['owner'])
             apply_trade_pack(organization, form.cleaned_data['trade'], user=user)
+            # Règles du pays (devise, taux, mentions) ; le statut et la TVA se confirment dans Paramètres.
+            from apps.organizations.jurisdictions import apply_profile
+            apply_profile(organization, {'country': form.cleaned_data['country'], 'status': 'freelance',
+                                         'tax_registered': False, 'confirmed': False})
             auth_login(request, user)
             _send_welcome_email(user)
             messages.success(request, f'Compte créé avec succès ! Bienvenue, {user.get_full_name() or user.email}!')
@@ -287,6 +291,30 @@ def profile_view(request):
         profile = UserProfile.objects.create(user=request.user)
 
     return render(request, 'accounts/profile.html', {'profile': profile})
+
+
+def _compliance_context(organization):
+    """Assistant de conformité : profil, liste de contrôle et données des pays (Pays & conformité)."""
+    if organization is None:
+        return {}
+    import json
+    from apps.organizations import jurisdictions as j
+    prof = j.profile(organization)
+    pack = j.pack_for(prof['country'])
+    items = j.checklist(organization, prof)
+    return {
+        'compliance': prof,
+        'compliance_pack': pack,
+        'compliance_country_value': prof['country'] if prof['country'] in j.PACKS else 'OTHER',
+        'compliance_items': items,
+        'compliance_readiness': j.readiness(items),
+        'compliance_countries': [(code, j.PACKS[code]['name']) for code in j.SUPPORTED],
+        'compliance_data_json': json.dumps(j.assistant_data(), ensure_ascii=False),
+        'compliance_provinces': sorted(((code, name) for code, (name, _r) in j.CA_PROVINCES.items()), key=lambda p: p[1]),
+        'compliance_languages': list(j.DOC_LANGUAGES.items()),
+        'compliance_rates': j.tax_rates(pack, prof) if pack['supported'] else [],
+        'compliance_title': j.document_title(organization),
+    }
 
 
 @login_required
@@ -562,6 +590,20 @@ def settings_view(request):
                     messages.error(request, error)
         return redirect(f'{settings_url}?tab=securite')
 
+    if action == 'save_compliance' and payment_organizations:
+        from apps.organizations import jurisdictions
+        target = payment_organizations[0]
+        country = (request.POST.get('country') or '').upper()
+        if country == 'OTHER':
+            country = jurisdictions.profile(target)['country'] if jurisdictions.profile(target)['country'] not in jurisdictions.PACKS else ''
+        jurisdictions.apply_profile(target, {
+            'country': country, 'status': request.POST.get('status'),
+            'tax_registered': request.POST.get('tax_registered') == 'yes', 'region': request.POST.get('region'),
+            'doc_language': request.POST.get('doc_language'), 'company_details': request.POST.get('company_details'),
+        })
+        messages.success(request, 'Règles de facturation enregistrées : taux, mentions et devise sont à jour.')
+        return redirect(f'{settings_url}?tab=conformite')
+
     if action == 'save_billing' and payment_organizations:
         target = payment_organizations[0]
         errors = []
@@ -697,6 +739,7 @@ def settings_view(request):
         'custom_currencies': ((entreprise_organization.billing_preferences or {}).get('custom_currencies') or []) if entreprise_organization else [],
         'billing_texts': entreprise_organization.billing_texts() if entreprise_organization else {},
         'closure_shared_organizations': __import__('apps.accounts.closure', fromlist=['shared_organizations']).shared_organizations(request.user),
+        **_compliance_context(entreprise_organization),
         'fec_start': timezone.localdate().replace(month=1, day=1),
         'fec_end': timezone.localdate().replace(month=12, day=31),
         'closure_grace_days': __import__('apps.accounts.closure', fromlist=['grace_days']).grace_days(),

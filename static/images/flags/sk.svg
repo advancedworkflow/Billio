@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-sk" viewBox="0 0 640 480">
+  <path fill="#fff" d="M0 0h640v160H0z"/>
+  <path fill="#0b4ea2" d="M0 160h640v160H0z"/>
+  <path fill="#ee1c25" d="M0 320h640v160H0z"/>
+  <path fill="#ee1c25" stroke="#fff" stroke-width="6" d="M150 110h150v156c0 65-75 104-75 104s-75-39-75-104z"/>
+  <path fill="#fff" d="M215 150h20v40h30v20h-30v40h40v20h-40v60h-20v-60h-40v-20h40v-40h-30v-20h30z"/>
+</svg>

@@ -7,7 +7,12 @@ COUNTRIES = [
     ('TN', 'Tunisie', '216'), ('SN', 'Sénégal', '221'), ('CI', "Côte d'Ivoire", '225'), ('CM', 'Cameroun', '237'),
     ('MG', 'Madagascar', '261'), ('MU', 'Maurice', '230'), ('DE', 'Allemagne', '49'), ('ES', 'Espagne', '34'),
     ('IT', 'Italie', '39'), ('PT', 'Portugal', '351'), ('NL', 'Pays-Bas', '31'), ('IE', 'Irlande', '353'),
-    ('GB', 'Royaume-Uni', '44'), ('US', 'États-Unis', '1'),
+    ('GB', 'Royaume-Uni', '44'), ('US', 'États-Unis', '1'), ('AU', 'Australie', '61'), ('NZ', 'Nouvelle-Zélande', '64'),
+    ('AT', 'Autriche', '43'), ('BG', 'Bulgarie', '359'), ('HR', 'Croatie', '385'), ('CY', 'Chypre', '357'),
+    ('CZ', 'Tchéquie', '420'), ('DK', 'Danemark', '45'), ('EE', 'Estonie', '372'), ('FI', 'Finlande', '358'),
+    ('GR', 'Grèce', '30'), ('HU', 'Hongrie', '36'), ('LV', 'Lettonie', '371'), ('LT', 'Lituanie', '370'),
+    ('MT', 'Malte', '356'), ('PL', 'Pologne', '48'), ('RO', 'Roumanie', '40'), ('SK', 'Slovaquie', '421'),
+    ('SI', 'Slovénie', '386'), ('SE', 'Suède', '46'),
 ]
 BY_CODE = {code: (name, dial) for code, name, dial in COUNTRIES}
 

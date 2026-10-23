@@ -1201,6 +1201,11 @@ def invoice_edit(request, invoice_id):
     return render(request, 'invoices/create.html', context)
 
 
+def _seller_country(invoice):
+    from apps.organizations.jurisdictions import profile
+    return profile(invoice.organization)['country']
+
+
 @login_required
 def invoice_preview(request, invoice_id):
     """
@@ -1228,7 +1233,9 @@ def invoice_preview(request, invoice_id):
         'amount_due': invoice.amount_due() if invoice.invoice_type == 'sale' and invoice.status != 'draft' else None,
         'recurrence_choices': Invoice.RECURRENCE_CHOICES,
         'einvoice': __import__('apps.invoices.facturx', fromlist=['readiness']).readiness(invoice)
-                    if invoice.invoice_type in ('sale', 'credit_note') else None,
+                    if invoice.invoice_type in ('sale', 'credit_note') and _seller_country(invoice) == 'FR' else None,
+        'compliance_checks': __import__('apps.organizations.jurisdictions', fromlist=['invoice_checks']).invoice_checks(invoice)
+                             if invoice.invoice_type in ('sale', 'credit_note') else [],
     }
 
     return render(request, 'invoices/preview.html', context)
@@ -1705,15 +1712,13 @@ def product_quick_delete(request, product_id):
     return JsonResponse({'ok': True})
 
 
-@login_required
-def fec_export(request):
-    """Fichier des écritures comptables (FEC) d'une organisation sur une période (apps/invoices/fec.py)."""
+def _export_request(request):
+    """(organisation, début, fin) d'une demande d'export comptable, ou une redirection d'erreur."""
     from datetime import date
 
     from apps.accounts.views import list_editable_organizations_for_payment
-    from . import fec
 
-    back = f"{reverse('accounts:user-settings')}?tab=facturation"
+    back = redirect(f"{reverse('accounts:user-settings')}?tab=facturation")
     organizations = {str(o.pk): o for o in list_editable_organizations_for_payment(request.user)}
     organization = organizations.get(request.GET.get('organization', ''))
     try:
@@ -1723,10 +1728,36 @@ def fec_export(request):
         start = end = None
     if organization is None:
         messages.error(request, "Seuls le propriétaire et les administrateurs peuvent exporter la comptabilité.")
-        return redirect(back)
+        return back
     if not start or not end or start > end or (end - start).days > 731:
         messages.error(request, 'Choisissez une période valide (24 mois au plus), par exemple votre exercice comptable.')
-        return redirect(back)
+        return back
+    return organization, start, end
+
+
+@login_required
+def accounting_export(request):
+    """Export comptable universel (ZIP de CSV : factures, lignes, paiements), pour tous les pays."""
+    from . import accounting_export as export
+
+    result = _export_request(request)
+    if not isinstance(result, tuple):
+        return result
+    organization, start, end = result
+    response = HttpResponse(export.build(organization, start, end), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="billio-compta-{start:%Y%m%d}-{end:%Y%m%d}.zip"'
+    return response
+
+
+@login_required
+def fec_export(request):
+    """Fichier des écritures comptables (FEC) d'une organisation sur une période (apps/invoices/fec.py)."""
+    from . import fec
+
+    result = _export_request(request)
+    if not isinstance(result, tuple):
+        return result
+    organization, start, end = result
     content, _count = fec.render(organization, start, end, request.GET.get('sales_account', '706000'))
     response = HttpResponse(content, content_type='text/plain; charset=iso-8859-15')
     response['Content-Disposition'] = f'attachment; filename="{fec.filename(organization, end)}"'

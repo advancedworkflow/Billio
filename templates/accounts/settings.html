@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.3">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.4">
 {% endblock %}
 
 {% block content %}
@@ -29,6 +29,7 @@
         <button type="button" :class="tab === 'donnees' && 'is-active'" @click="go('donnees')"><i data-lucide="database" class="w-4 h-4"></i> Mes données</button>
         {% if org %}
         <p class="st-nav-title">Entreprise</p>
+        <button type="button" :class="tab === 'conformite' && 'is-active'" @click="go('conformite')"><i data-lucide="shield-check" class="w-4 h-4"></i> Pays & conformité <span class="st-nav-dot is-{{ compliance_readiness }}"></span></button>
         <button type="button" :class="tab === 'entreprise' && 'is-active'" @click="go('entreprise')"><i data-lucide="building-2" class="w-4 h-4"></i> Identité & mentions</button>
         <button type="button" :class="tab === 'facturation' && 'is-active'" @click="go('facturation')"><i data-lucide="receipt" class="w-4 h-4"></i> Facturation</button>
         <button type="button" :class="tab === 'paiement' && 'is-active'" @click="go('paiement')"><i data-lucide="landmark" class="w-4 h-4"></i> Coordonnées de paiement</button>
@@ -109,6 +110,101 @@
                 </ul>
             </div>
         </section>
+
+        <!-- ================= Pays & conformité ================= -->
+        {% if org %}
+        <section class="st-card st-comp" x-show="tab === 'conformite'" x-cloak
+                 x-data="{ countries: {{ compliance_data_json|safe }}, country: '{{ compliance_country_value }}', status: '{{ compliance.status }}', taxed: '{% if compliance.tax_registered %}yes{% else %}no{% endif %}', get c() { return this.countries[this.country] || this.countries.OTHER; } }">
+            <header><h2>Vos règles de facturation</h2><p>Trois réponses, et Billio règle pour vous les taux, les mentions obligatoires et la devise de vos factures.</p></header>
+            <form method="post" class="st-form">
+                {% csrf_token %}<input type="hidden" name="form_action" value="save_compliance">
+
+                <div class="st-comp-step">
+                    <span class="st-comp-num">1</span>
+                    <label class="st-field"><span>Où est installée votre activité ?</span>
+                        <select name="country" x-model="country" @change="if (countries[country]) $refs.lang.value = countries[country].language">
+                            {% for code, name in compliance_countries %}<option value="{{ code }}">{{ name }}</option>{% endfor %}
+                            <option value="OTHER">Autre pays{% if compliance_country_value == 'OTHER' and org.country %} ({{ org.country }}){% endif %}</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="st-comp-step">
+                    <span class="st-comp-num">2</span>
+                    <div class="st-field"><span>Vous êtes…</span>
+                        <div class="st-comp-choices">
+                            <label class="st-comp-choice" :class="status === 'freelance' && 'is-active'"><input type="radio" name="status" value="freelance" x-model="status"><strong>Freelance / indépendant</strong><small x-text="c.examples.freelance"></small></label>
+                            <label class="st-comp-choice" :class="status === 'pme' && 'is-active'"><input type="radio" name="status" value="pme" x-model="status"><strong>PME / petite société</strong><small x-text="c.examples.pme"></small></label>
+                            <label class="st-comp-choice" :class="status === 'entreprise' && 'is-active'"><input type="radio" name="status" value="entreprise" x-model="status"><strong>Entreprise</strong><small x-text="c.examples.entreprise"></small></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="st-comp-step">
+                    <span class="st-comp-num">3</span>
+                    <div class="st-field"><span>Facturez-vous <span x-text="c.tax"></span> à vos clients ?</span>
+                        <div class="st-comp-yesno">
+                            <label :class="taxed === 'yes' && 'is-active'"><input type="radio" name="tax_registered" value="yes" x-model="taxed"> Oui</label>
+                            <label :class="taxed === 'no' && 'is-active'"><input type="radio" name="tax_registered" value="no" x-model="taxed"> Non</label>
+                        </div>
+                        <small class="st-comp-hint" x-show="c.threshold" x-text="c.threshold"></small>
+                    </div>
+                </div>
+
+                <div class="st-comp-more">
+                    <label class="st-field" x-show="country === 'CA'" x-cloak><span>Province</span>
+                        <select name="region">
+                            <option value="">—</option>
+                            {% for code, name in compliance_provinces %}<option value="{{ code }}" {% if compliance.region == code %}selected{% endif %}>{{ name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label class="st-field" x-show="status !== 'freelance'" x-cloak><span>Mentions de votre société</span>
+                        <input name="company_details" value="{{ compliance.company_details }}" maxlength="300" :placeholder="c.company_hint">
+                        <small>Imprimées en bas de vos factures.</small>
+                    </label>
+                    <label class="st-field"><span>Langue de vos factures</span>
+                        <select name="doc_language" x-ref="lang">
+                            {% for code, label in compliance_languages %}<option value="{{ code }}" {% if compliance.doc_language == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                <p class="st-comp-note" x-show="!c.supported" x-text="c.note"></p>
+                <div class="st-actions st-actions--left"><button type="submit" class="st-btn st-btn--primary">Enregistrer et appliquer</button></div>
+            </form>
+        </section>
+
+        <section class="st-card st-comp-check" x-show="tab === 'conformite'" x-cloak>
+            <header class="st-comp-head">
+                <div><h2>Votre conformité</h2><p>Ce qu'il faut sur vos factures pour {% if compliance_pack.supported %}{{ compliance_pack.name }}{% else %}votre pays{% endif %}.</p></div>
+                {% if compliance_readiness == 'ready' %}<span class="st-comp-pill is-ready">Prêt à facturer</span>
+                {% elif compliance_readiness == 'almost' %}<span class="st-comp-pill is-almost">Presque prêt</span>
+                {% else %}<span class="st-comp-pill is-todo">À compléter</span>{% endif %}
+            </header>
+            {% if not compliance.confirmed %}<p class="st-comp-note">Vérifiez vos trois réponses ci-dessus et enregistrez : elles ont été devinées à partir de votre inscription.</p>{% endif %}
+            <ul class="st-comp-list">
+                {% for item in compliance_items %}
+                <li class="{% if item.ok %}is-ok{% elif item.level == 'required' %}is-todo{% else %}is-tip{% endif %}">
+                    <i data-lucide="{% if item.ok %}check{% elif item.level == 'required' %}alert-circle{% else %}lightbulb{% endif %}" class="w-4 h-4"></i>
+                    <span><strong>{{ item.label }}</strong>{% if item.detail %}<small>{{ item.detail }}</small>{% endif %}</span>
+                    {% if not item.ok %}<button type="button" class="st-link" @click="go('{{ item.tab }}')">Compléter</button>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="st-card st-comp-auto" x-show="tab === 'conformite'" x-cloak>
+            <header><h2>Ce que Billio fait pour vous</h2></header>
+            <ul class="st-lang-list">
+                <li><i data-lucide="check" class="w-3.5 h-3.5"></i> Titre du document : <strong translate="no">{{ compliance_title }}</strong></li>
+                {% if compliance_rates %}<li><i data-lucide="check" class="w-3.5 h-3.5"></i> Taux prêts dans l'éditeur : <span translate="no">{% for name, rate in compliance_rates %}{{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></li>{% endif %}
+                <li><i data-lucide="check" class="w-3.5 h-3.5"></i> Numérotation continue, sans trou, et factures émises verrouillées (corrections par avoir).</li>
+                {% if billing_texts.legal_mentions %}<li><i data-lucide="check" class="w-3.5 h-3.5"></i> Mentions imprimées : <em translate="no">{{ billing_texts.legal_mentions }}</em></li>{% endif %}
+                <li><i data-lucide="check" class="w-3.5 h-3.5"></i> Avant chaque envoi, Billio vérifie la facture (client étranger, numéro de TVA du client, mentions).</li>
+            </ul>
+            <p class="st-meta">Billio vous aide à respecter les règles courantes de votre pays, sans remplacer l'avis d'un comptable pour les cas particuliers.</p>
+        </section>
+        {% endif %}
 
         <!-- ================= Mes données (RGPD) ================= -->
         <section class="st-card" x-show="tab === 'donnees'" x-cloak>
@@ -334,25 +430,34 @@
             <p class="st-meta">TJM, pénalités et franchise se règlent aussi depuis le <a href="{% url 'dashboard:resources-center' %}">Centre de ressources</a>.</p>
         </section>
 
-        <!-- ================= Export comptable (FEC) ================= -->
+        <!-- ================= Export comptable ================= -->
         <section class="st-card st-fec" x-show="tab === 'facturation'" x-cloak>
-            <header><h2>Export comptable (FEC)</h2><p>Le fichier des écritures comptables demandé en cas de contrôle fiscal, à transmettre aussi à votre expert-comptable : factures, avoirs, achats et règlements de la période, avec la TVA par taux.</p></header>
+            {% if compliance.country == 'FR' %}
+            <header><h2>Export comptable</h2><p>Le FEC (fichier des écritures comptables) demandé en cas de contrôle fiscal, ou un export CSV pour votre expert-comptable : factures, avoirs, achats et règlements de la période.</p></header>
             {% if not org.registration_number %}<p class="st-fec-warn">Renseignez votre SIRET dans Identité & mentions : il donne son nom au fichier.</p>{% endif %}
-            <form method="get" action="{% url 'invoices:fec-export' %}" class="st-form">
+            {% else %}
+            <header><h2>Export comptable</h2><p>Vos factures, lignes et paiements de la période en CSV, à importer dans votre logiciel comptable (Xero, QuickBooks, Sage…) ou à envoyer à votre comptable.</p></header>
+            {% endif %}
+            <form method="get" action="{% url 'invoices:accounting-export' %}" class="st-form">
                 <input type="hidden" name="organization" value="{{ org.id }}">
                 <div class="st-grid-2">
                     <label class="st-field"><span>Début de l'exercice</span><input type="date" name="start" value="{{ fec_start|date:'Y-m-d' }}" required></label>
                     <label class="st-field"><span>Fin de l'exercice</span><input type="date" name="end" value="{{ fec_end|date:'Y-m-d' }}" required></label>
                 </div>
-                <label class="st-field"><span>Compte de ventes</span>
+                {% if compliance.country == 'FR' %}
+                <label class="st-field"><span>Compte de ventes (FEC)</span>
                     <select name="sales_account">
                         <option value="706000">706000 — Prestations de services</option>
                         <option value="707000">707000 — Ventes de marchandises</option>
                     </select>
                 </label>
-                <div class="st-actions st-actions--left"><button type="submit" class="st-btn st-btn--primary"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le FEC</button></div>
+                {% endif %}
+                <div class="st-actions st-actions--left">
+                    {% if compliance.country == 'FR' %}<button type="submit" formaction="{% url 'invoices:fec-export' %}" class="st-btn st-btn--primary"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le FEC</button>{% endif %}
+                    <button type="submit" class="st-btn{% if compliance.country != 'FR' %} st-btn--primary{% endif %}"><i data-lucide="download" class="w-4 h-4"></i> Télécharger l'export CSV</button>
+                </div>
             </form>
-            <p class="st-meta">Comptes utilisés : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.</p>
+            {% if compliance.country == 'FR' %}<p class="st-meta">Comptes du FEC : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.</p>{% endif %}
         </section>
 
         <!-- ================= Paiement ================= -->
@@ -588,7 +693,7 @@
 
 <script>
 function settingsPage() {
-    const TABS = ['profil', 'securite', 'langue', 'donnees', 'entreprise', 'facturation', 'paiement', 'equipe', 'rdv', 'metier', 'notifications', 'dev'];
+    const TABS = ['profil', 'securite', 'langue', 'donnees', 'conformite', 'entreprise', 'facturation', 'paiement', 'equipe', 'rdv', 'metier', 'notifications', 'dev'];
     return {
         tab: '{% if entreprise_organization %}entreprise{% else %}profil{% endif %}',
         logoUrl: '{% if entreprise_organization.logo %}{{ entreprise_organization.logo.url }}{% endif %}',

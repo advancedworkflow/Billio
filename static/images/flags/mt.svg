@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" id="flag-icons-mt" viewBox="0 0 640 480">
+  <path fill="#fff" d="M0 0h320v480H0z"/>
+  <path fill="#cf142b" d="M320 0h320v480H320z"/>
+  <path fill="#aaa" stroke="#cf142b" stroke-width="4" d="M70 50h30v30h30v30h-30v30H70v-30H40V80h30z"/>
+</svg>

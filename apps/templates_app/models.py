@@ -110,7 +110,10 @@ class InvoiceTemplate(models.Model):
         context = Context(context_data)
         rendered_html = template.render(context)
 
-        return rendered_html
+        # Libellés fixes dans la langue et la taxe du pays (Paramètres › Pays & conformité).
+        from apps.invoices.document_language import localize
+        return localize(rendered_html, document.organization,
+                        credit_note=getattr(document, 'invoice_type', '') == 'credit_note')
 
     def _flat_document_context(self, document):
         """
@@ -121,8 +124,12 @@ class InvoiceTemplate(models.Model):
         org = document.organization
         cl = document.client
 
+        from apps.organizations.jurisdictions import profile
+        prof = profile(org) if org is not None else {'country': '', 'doc_language': 'fr'}
+        date_format = '%m/%d/%Y' if prof['country'] == 'US' else ('%d.%m.%Y' if prof['doc_language'] == 'de' else '%d/%m/%Y')
+
         def df(d):
-            return d.strftime('%d/%m/%Y') if d else ''
+            return d.strftime(date_format) if d else ''
 
         is_quote = hasattr(document, 'quote_number')
         number = getattr(document, 'invoice_number', None) or getattr(document, 'quote_number', None) or ''
@@ -298,6 +305,11 @@ class InvoiceTemplate(models.Model):
         # Valeurs par défaut éditables (couleurs, libellés, textes légaux) — ne peuvent pas écraser les clés métier
         style_cfg = self.style_config or {}
         defaults = apply_billing_texts(dict(style_cfg.get('variables_defaults') or {}), document.organization)
+        # Mentions propres à ce document (autoliquidation intra-UE, export) : apps/organizations/jurisdictions.py
+        from apps.organizations.jurisdictions import invoice_mentions
+        extra = invoice_mentions(document)
+        if extra:
+            defaults['legal_mentions'] = ' '.join(filter(None, [(defaults.get('legal_mentions') or '').strip(), *extra]))
         context.update(defaults)
 
         context.update({
