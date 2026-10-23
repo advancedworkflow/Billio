@@ -5811,5 +5811,17 @@
   "Cliquez sur le lien envoyé à": "Click the link sent to",
   "Confirmez votre adresse email.": "Confirm your email address.",
   "Renvoyer l'email": "Resend the email",
-  "pour pouvoir envoyer factures et devis à vos clients.": "to be able to send invoices and quotes to your clients."
+  "pour pouvoir envoyer factures et devis à vos clients.": "to be able to send invoices and quotes to your clients.",
+  "Choisissez une période valide (24 mois au plus), par exemple votre exercice comptable.": "Choose a valid period (24 months at most), for example your financial year.",
+  "Seuls le propriétaire et les administrateurs peuvent exporter la comptabilité.": "Only the owner and administrators can export the accounting.",
+  "706000 — Prestations de services": "706000 — Services",
+  "707000 — Ventes de marchandises": "707000 — Sales of goods",
+  "Compte de ventes": "Sales account",
+  "Comptes utilisés : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.": "Accounts used: 411 clients, 401 suppliers, 4457x output VAT, 44566 deductible VAT, 606 purchases, 512 bank, 627 Stripe fees. Your accountant can remap them on import.",
+  "Début de l'exercice": "Start of financial year",
+  "Export comptable (FEC)": "Accounting export (FEC)",
+  "Fin de l'exercice": "End of financial year",
+  "Le fichier des écritures comptables demandé en cas de contrôle fiscal, à transmettre aussi à votre expert-comptable : factures, avoirs, achats et règlements de la période, avec la TVA par taux.": "The accounting entries file (FEC) required by French tax audits, also for your accountant: invoices, credit notes, purchases and payments for the period, with VAT by rate.",
+  "Renseignez votre SIRET dans Identité & mentions : il donne son nom au fichier.": "Enter your SIRET in Identity & legal notices: it names the file.",
+  "Télécharger le FEC": "Download the FEC"
 }

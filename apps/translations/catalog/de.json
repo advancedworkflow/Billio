@@ -5811,5 +5811,17 @@
   "Cliquez sur le lien envoyé à": "Klicken Sie auf den Link, der gesendet wurde an",
   "Confirmez votre adresse email.": "Bestätigen Sie Ihre E-Mail-Adresse.",
   "Renvoyer l'email": "E-Mail erneut senden",
-  "pour pouvoir envoyer factures et devis à vos clients.": "um Ihren Kunden Rechnungen und Angebote senden zu können."
+  "pour pouvoir envoyer factures et devis à vos clients.": "um Ihren Kunden Rechnungen und Angebote senden zu können.",
+  "Choisissez une période valide (24 mois au plus), par exemple votre exercice comptable.": "Wählen Sie einen gültigen Zeitraum (höchstens 24 Monate), zum Beispiel Ihr Geschäftsjahr.",
+  "Seuls le propriétaire et les administrateurs peuvent exporter la comptabilité.": "Nur der Inhaber und Administratoren können die Buchhaltung exportieren.",
+  "706000 — Prestations de services": "706000 — Dienstleistungen",
+  "707000 — Ventes de marchandises": "707000 — Warenverkäufe",
+  "Compte de ventes": "Erlöskonto",
+  "Comptes utilisés : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.": "Verwendete Konten: 411 Kunden, 401 Lieferanten, 4457x Umsatzsteuer, 44566 Vorsteuer, 606 Einkäufe, 512 Bank, 627 Stripe-Gebühren. Ihr Steuerberater kann sie beim Import neu zuordnen.",
+  "Début de l'exercice": "Beginn des Geschäftsjahres",
+  "Export comptable (FEC)": "Buchhaltungsexport (FEC)",
+  "Fin de l'exercice": "Ende des Geschäftsjahres",
+  "Le fichier des écritures comptables demandé en cas de contrôle fiscal, à transmettre aussi à votre expert-comptable : factures, avoirs, achats et règlements de la période, avec la TVA par taux.": "Die Datei der Buchungssätze (FEC), die bei einer französischen Steuerprüfung verlangt wird, auch für Ihren Steuerberater: Rechnungen, Gutschriften, Einkäufe und Zahlungen des Zeitraums, mit Umsatzsteuer je Satz.",
+  "Renseignez votre SIRET dans Identité & mentions : il donne son nom au fichier.": "Geben Sie Ihre SIRET unter Identität & Pflichtangaben ein: Sie bestimmt den Dateinamen.",
+  "Télécharger le FEC": "FEC herunterladen"
 }

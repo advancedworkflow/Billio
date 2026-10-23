@@ -1703,3 +1703,31 @@ def product_quick_delete(request, product_id):
     product = _get_product_for_user(request.user, product_id)
     product.delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+def fec_export(request):
+    """Fichier des écritures comptables (FEC) d'une organisation sur une période (apps/invoices/fec.py)."""
+    from datetime import date
+
+    from apps.accounts.views import list_editable_organizations_for_payment
+    from . import fec
+
+    back = f"{reverse('accounts:user-settings')}?tab=facturation"
+    organizations = {str(o.pk): o for o in list_editable_organizations_for_payment(request.user)}
+    organization = organizations.get(request.GET.get('organization', ''))
+    try:
+        start = date.fromisoformat(request.GET.get('start', ''))
+        end = date.fromisoformat(request.GET.get('end', ''))
+    except ValueError:
+        start = end = None
+    if organization is None:
+        messages.error(request, "Seuls le propriétaire et les administrateurs peuvent exporter la comptabilité.")
+        return redirect(back)
+    if not start or not end or start > end or (end - start).days > 731:
+        messages.error(request, 'Choisissez une période valide (24 mois au plus), par exemple votre exercice comptable.')
+        return redirect(back)
+    content, _count = fec.render(organization, start, end, request.GET.get('sales_account', '706000'))
+    response = HttpResponse(content, content_type='text/plain; charset=iso-8859-15')
+    response['Content-Disposition'] = f'attachment; filename="{fec.filename(organization, end)}"'
+    return response

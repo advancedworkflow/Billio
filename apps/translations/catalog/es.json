@@ -5811,5 +5811,17 @@
   "Cliquez sur le lien envoyé à": "Haga clic en el enlace enviado a",
   "Confirmez votre adresse email.": "Confirme su dirección de correo.",
   "Renvoyer l'email": "Reenviar el correo",
-  "pour pouvoir envoyer factures et devis à vos clients.": "para poder enviar facturas y presupuestos a sus clientes."
+  "pour pouvoir envoyer factures et devis à vos clients.": "para poder enviar facturas y presupuestos a sus clientes.",
+  "Choisissez une période valide (24 mois au plus), par exemple votre exercice comptable.": "Elija un periodo válido (24 meses como máximo), por ejemplo su ejercicio contable.",
+  "Seuls le propriétaire et les administrateurs peuvent exporter la comptabilité.": "Solo el propietario y los administradores pueden exportar la contabilidad.",
+  "706000 — Prestations de services": "706000 — Prestación de servicios",
+  "707000 — Ventes de marchandises": "707000 — Venta de mercancías",
+  "Compte de ventes": "Cuenta de ventas",
+  "Comptes utilisés : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.": "Cuentas utilizadas: 411 clientes, 401 proveedores, 4457x IVA repercutido, 44566 IVA deducible, 606 compras, 512 banco, 627 comisiones de Stripe. Su asesor contable puede reasignarlas al importar.",
+  "Début de l'exercice": "Inicio del ejercicio",
+  "Export comptable (FEC)": "Exportación contable (FEC)",
+  "Fin de l'exercice": "Fin del ejercicio",
+  "Le fichier des écritures comptables demandé en cas de contrôle fiscal, à transmettre aussi à votre expert-comptable : factures, avoirs, achats et règlements de la période, avec la TVA par taux.": "El fichero de asientos contables (FEC) exigido en una inspección fiscal francesa, también para su asesor: facturas, abonos, compras y cobros del periodo, con el IVA por tipo.",
+  "Renseignez votre SIRET dans Identité & mentions : il donne son nom au fichier.": "Indique su SIRET en Identidad y menciones: da nombre al fichero.",
+  "Télécharger le FEC": "Descargar el FEC"
 }

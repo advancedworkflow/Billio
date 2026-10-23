@@ -697,6 +697,8 @@ def settings_view(request):
         'custom_currencies': ((entreprise_organization.billing_preferences or {}).get('custom_currencies') or []) if entreprise_organization else [],
         'billing_texts': entreprise_organization.billing_texts() if entreprise_organization else {},
         'closure_shared_organizations': __import__('apps.accounts.closure', fromlist=['shared_organizations']).shared_organizations(request.user),
+        'fec_start': timezone.localdate().replace(month=1, day=1),
+        'fec_end': timezone.localdate().replace(month=12, day=31),
         'closure_grace_days': __import__('apps.accounts.closure', fromlist=['grace_days']).grace_days(),
     }
 

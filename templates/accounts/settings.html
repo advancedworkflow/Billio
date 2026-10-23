@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.2">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.3">
 {% endblock %}
 
 {% block content %}
@@ -332,6 +332,27 @@
                 </form>
             </div>
             <p class="st-meta">TJM, pénalités et franchise se règlent aussi depuis le <a href="{% url 'dashboard:resources-center' %}">Centre de ressources</a>.</p>
+        </section>
+
+        <!-- ================= Export comptable (FEC) ================= -->
+        <section class="st-card st-fec" x-show="tab === 'facturation'" x-cloak>
+            <header><h2>Export comptable (FEC)</h2><p>Le fichier des écritures comptables demandé en cas de contrôle fiscal, à transmettre aussi à votre expert-comptable : factures, avoirs, achats et règlements de la période, avec la TVA par taux.</p></header>
+            {% if not org.registration_number %}<p class="st-fec-warn">Renseignez votre SIRET dans Identité & mentions : il donne son nom au fichier.</p>{% endif %}
+            <form method="get" action="{% url 'invoices:fec-export' %}" class="st-form">
+                <input type="hidden" name="organization" value="{{ org.id }}">
+                <div class="st-grid-2">
+                    <label class="st-field"><span>Début de l'exercice</span><input type="date" name="start" value="{{ fec_start|date:'Y-m-d' }}" required></label>
+                    <label class="st-field"><span>Fin de l'exercice</span><input type="date" name="end" value="{{ fec_end|date:'Y-m-d' }}" required></label>
+                </div>
+                <label class="st-field"><span>Compte de ventes</span>
+                    <select name="sales_account">
+                        <option value="706000">706000 — Prestations de services</option>
+                        <option value="707000">707000 — Ventes de marchandises</option>
+                    </select>
+                </label>
+                <div class="st-actions st-actions--left"><button type="submit" class="st-btn st-btn--primary"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le FEC</button></div>
+            </form>
+            <p class="st-meta">Comptes utilisés : 411 clients, 401 fournisseurs, 4457x TVA collectée, 44566 TVA déductible, 606 achats, 512 banque, 627 frais Stripe. Votre expert-comptable peut les réaffecter à l'import.</p>
         </section>
 
         <!-- ================= Paiement ================= -->
