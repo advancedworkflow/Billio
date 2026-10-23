@@ -229,6 +229,10 @@ def send_payment_reminder(request, invoice_id):
     client = invoice.client
     if not client or not client.email:
         return JsonResponse({'ok': False, 'error': "Le client n'a pas d'adresse email."}, status=400)
+    from apps.accounts.email_verification import client_email_blocked
+    blocked = client_email_blocked(invoice.organization)
+    if blocked:
+        return JsonResponse({'ok': False, 'error': blocked}, status=400)
     if invoice.last_reminder_at and timezone.now() - invoice.last_reminder_at < timezone.timedelta(hours=24):
         return JsonResponse({'ok': False, 'error': 'Une relance a déjà été envoyée il y a moins de 24 h.'}, status=400)
 

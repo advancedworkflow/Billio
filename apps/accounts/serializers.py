@@ -62,7 +62,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
-        user = User.objects.create_user(**validated_data)
+        # Comme l'inscription HTML : adresse à confirmer avant tout email aux clients.
+        user = User.objects.create_user(email_verification_required=True, **validated_data)
+        from .email_verification import send_verification_email
+        send_verification_email(user)
         return user
 
 

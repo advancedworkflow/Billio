@@ -43,6 +43,11 @@ class User(AbstractUser):
     totp_last_step = models.BigIntegerField(default=0)
     totp_recovery_codes = models.JSONField(default=list, blank=True)
 
+    # Vérification de l'adresse (apps/accounts/email_verification.py) : exigée des comptes créés par
+    # l'inscription ; tant qu'elle manque, aucun email ne part vers les clients via le serveur de Billio.
+    email_verification_required = models.BooleanField(default=False)
+    email_verified_at = models.DateTimeField(blank=True, null=True)
+
     # Fermeture demandée par l'utilisateur (apps/accounts/closure.py) : compte désactivé, effacé après le délai de grâce
     closed_at = models.DateTimeField(blank=True, null=True)
 

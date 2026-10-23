@@ -490,10 +490,21 @@
                 <!-- Main Content Area (min-w-0 : les colonnes flex des pages type éditeur facture peuvent rétrécir sans overflow horizontal) -->
                 {# pt-24 ne suffit plus : le bandeau est sur 2 lignes &lt; lg (titre + actions). Marge = hauteur barre + marge de respiration. #}
                 <main class="flex-1 min-w-0 max-w-full p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-clip" :class="focusMode ? 'pt-6' : 'pt-24 lg:pt-20'">
+                    {% block flash_messages %}{% if messages %}
+                    <div class="mb-4 flex flex-col gap-2">
+                        {% for message in messages %}<p class="rounded-xl border px-4 py-3 text-sm" style="{% if message.level >= 40 %}background:#fef2f2;border-color:#fecaca;color:#991b1b;{% elif message.level == 25 %}background:#f0fdf4;border-color:#bbf7d0;color:#166534;{% else %}background:#f8fafc;border-color:#e2e8f0;color:#334155;{% endif %}">{{ message }}</p>{% endfor %}
+                    </div>
+                    {% endif %}{% endblock %}
                     {% if billing_alert %}
                     <div class="mb-4 rounded-xl border px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-3" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
                         <span><strong>Paiement de votre abonnement refusé.</strong> {% if billing_alert.in_grace_period %}Mettez à jour votre carte avant le {{ billing_alert.grace_ends_at|date:"j F" }} pour garder votre forfait <span translate="no">{{ billing_alert.plan.name }}</span>.{% else %}Votre compte applique les limites du forfait Free jusqu'à la régularisation.{% endif %}</span>
                         <a href="{% url 'subscriptions:billing' %}" class="font-semibold underline">Régulariser</a>
+                    </div>
+                    {% endif %}
+                    {% if email_unverified %}
+                    <div class="mb-4 rounded-xl border px-4 py-3 text-sm flex flex-wrap items-center justify-between gap-3" style="background:#fffbeb;border-color:#fde68a;color:#92400e;">
+                        <span><strong>Confirmez votre adresse email.</strong> Cliquez sur le lien envoyé à <span translate="no">{{ user.email }}</span> pour pouvoir envoyer factures et devis à vos clients.</span>
+                        <form method="post" action="{% url 'accounts:verify-email-resend' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="font-semibold underline">Renvoyer l'email</button></form>
                     </div>
                     {% endif %}
                     {% block content %}{% endblock %}

@@ -180,12 +180,15 @@ class BillioPasswordResetView(auth_views.PasswordResetView):
 
 
 def _send_welcome_email(user):
-    """Email de bienvenue après l'inscription. Un échec d'envoi ne bloque jamais la création du compte."""
+    """Email de bienvenue après l'inscription, avec le lien de confirmation de l'adresse.
+    Un échec d'envoi ne bloque jamais la création du compte."""
     import logging
 
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
-    context = {'user': user, 'site_url': settings.SITE_URL}
+    from .email_verification import needs_verification, verification_url
+    context = {'user': user, 'site_url': settings.SITE_URL,
+               'verify_url': verification_url(user) if needs_verification(user) else ''}
     message = EmailMultiAlternatives(
         subject='Bienvenue sur Billio', body=render_to_string('auth/welcome_email.txt', context),
         to=[user.email], reply_to=[settings.SUPPORT_EMAIL] if getattr(settings, 'SUPPORT_EMAIL', '') else None)
@@ -208,7 +211,8 @@ def register_view(request):
             from apps.translations.middleware import request_language
             user.language = request_language(request)
             user.terms_accepted_at = timezone.now()
-            user.save(update_fields=['language', 'terms_accepted_at'])
+            user.email_verification_required = True
+            user.save(update_fields=['language', 'terms_accepted_at', 'email_verification_required'])
             # Create user profile
             from .countries import BY_CODE
             country_name = BY_CODE[form.cleaned_data['country']][0]
@@ -231,6 +235,39 @@ def register_view(request):
 
     from .countries import COUNTRIES
     return render(request, 'auth/register.html', {'form': form, 'countries': COUNTRIES})
+
+
+def verify_email_view(request, token):
+    """Lien de confirmation de l'adresse (email de bienvenue ou renvoyé depuis le bandeau)."""
+    from .email_verification import verify_token
+    if verify_token(token):
+        messages.success(request, 'Adresse email confirmée : vous pouvez envoyer factures et devis à vos clients.')
+    else:
+        messages.error(request, 'Ce lien de confirmation est invalide ou a expiré. Connectez-vous et renvoyez-en un depuis le bandeau en haut de page.')
+    if request.user.is_authenticated:
+        return redirect('dashboard:dashboard-home')
+    return redirect('accounts:login')
+
+
+@login_required
+@require_POST
+def resend_verification_view(request):
+    from django.core.cache import cache
+    from .email_verification import needs_verification, send_verification_email
+    back = request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        back = reverse('dashboard:dashboard-home')
+    if not needs_verification(request.user):
+        return redirect(back)
+    key = f'verify-email-resend:{request.user.pk}'
+    cache.add(key, 0, 3600)
+    if cache.incr(key) > 3:
+        messages.error(request, "Plusieurs emails de confirmation sont déjà partis cette heure-ci : vérifiez vos courriers indésirables.")
+    elif send_verification_email(request.user):
+        messages.success(request, f'Email de confirmation envoyé à {request.user.email}.')
+    else:
+        messages.error(request, "L'email n'a pas pu partir. Réessayez dans quelques minutes.")
+    return redirect(back)
 
 
 @login_required

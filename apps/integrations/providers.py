@@ -377,11 +377,16 @@ def sender(config):
 
 
 def org_mail(organization):
-    """(connexion, expéditeur) : le SMTP de l'organisation s'il est connecté, sinon celui de Billio."""
+    """(connexion, expéditeur) : le SMTP de l'organisation s'il est connecté, sinon celui de Billio
+    (refusé par UnverifiedSender tant que le propriétaire n'a pas confirmé son adresse)."""
     from .models import ConnectionInstance
     instance = ConnectionInstance.objects.filter(organization=organization, connector__key='email', status='connected').first() if organization else None
     if instance and (instance.config or {}).get('host'):
         return smtp_connection(instance.config), sender(instance.config)
+    from apps.accounts.email_verification import UnverifiedSender, client_email_blocked
+    blocked = client_email_blocked(organization)
+    if blocked:
+        raise UnverifiedSender(blocked)
     return None, settings.DEFAULT_FROM_EMAIL
 
 

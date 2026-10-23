@@ -1,6 +1,11 @@
 {% autoescape off %}Bienvenue{% if user.first_name %} {{ user.first_name }}{% endif %} !
 
-Votre compte Billio est prêt ({{ user.email }}). Voici les trois premières étapes pour envoyer votre première facture :
+Votre compte Billio est prêt ({{ user.email }}).
+{% if verify_url %}
+Confirmez d'abord votre adresse email, pour pouvoir envoyer factures et devis à vos clients :
+{{ verify_url }}
+{% endif %}
+Voici les trois premières étapes pour envoyer votre première facture :
 
 1. Complétez votre entreprise (logo, SIRET, coordonnées bancaires) dans Paramètres.
 2. Ajoutez votre premier client.

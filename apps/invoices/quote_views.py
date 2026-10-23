@@ -527,6 +527,11 @@ def send_quote(request, quote_id):
             'message': f'Impossible d\'envoyer un devis avec le statut "{quote.get_status_display()}"',
         }, status=400)
 
+    from apps.accounts.email_verification import client_email_blocked
+    blocked = client_email_blocked(quote.organization) if quote.client_id and quote.client.email else ''
+    if blocked:
+        return JsonResponse({'success': False, 'message': blocked}, status=400)
+
     success, message = quote.send_to_client()
     if success:
         return JsonResponse({'success': True, 'message': message})

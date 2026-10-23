@@ -905,6 +905,14 @@ def send_invoice(request, invoice_id):
                 'message': f'Impossible d\'envoyer une facture avec le statut "{invoice.get_status_display()}"'
             }, status=400)
 
+        from apps.accounts.email_verification import client_email_blocked
+        blocked = client_email_blocked(invoice.organization) if invoice.client_id and invoice.client.email else ''
+        if blocked:
+            if not (request.headers.get('HX-Request') or 'application/json' in request.headers.get('Accept', '')):
+                messages.error(request, blocked)
+                return redirect('invoices:invoice-preview', invoice_id=invoice.id)
+            return JsonResponse({'success': False, 'message': blocked}, status=400)
+
         # Générer le PDF et créer le Payment Intent Stripe
         success, message = invoice.send_to_client()
 

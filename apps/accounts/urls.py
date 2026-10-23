@@ -28,6 +28,8 @@ urlpatterns = [
     path('login/verification/', views.login_2fa_view, name='login-2fa'),
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
+    path('verify-email/resend/', views.resend_verification_view, name='verify-email-resend'),
+    path('verify-email/<str:token>/', views.verify_email_view, name='verify-email'),
     path('google/login/', views.GoogleLoginView.as_view(), name='google-login'),
     path('password-reset/', views.BillioPasswordResetView.as_view(), name='password-reset'),
     path('password-reset/sent/', auth_views.PasswordResetDoneView.as_view(

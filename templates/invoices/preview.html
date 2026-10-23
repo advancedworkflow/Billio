@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% block flash_messages %}{# messages affichés par la page elle-même #}{% endblock %}
 {% block page_title %}{{ page_title|default:"Aperçu de la facture" }}{% endblock %}
 {% block page_subtitle %}Vérifiez la facture avant de l’envoyer{% endblock %}
 

@@ -1,0 +1,10 @@
+{% autoescape off %}Bonjour{% if user.first_name %} {{ user.first_name }}{% endif %},
+
+Pour confirmer votre adresse email ({{ user.email }}) et pouvoir envoyer factures et devis à vos clients depuis Billio, ouvrez ce lien (valable 7 jours) :
+
+{{ verify_url }}
+
+Vous n'avez pas créé de compte Billio ? Ignorez simplement cet email.
+
+L'équipe Billio
+{% endautoescape %}
