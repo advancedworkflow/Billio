@@ -179,10 +179,10 @@ def google_connect(request):
 
 @login_required
 def google_callback(request):
-    target = f"{reverse('integrations:integrations-page')}?plugin=google-drive"
+    target = _authorize_page('google-drive', 'error')
     if request.GET.get('error'):
-        messages.error(request, 'Connexion Google annulée.')
-        return redirect(target)
+        messages.error(request, 'Connexion Google annulée : rien n’a été partagé avec Billio.')
+        return redirect(_authorize_page('google-drive', 'cancelled'))
     try:
         state = signing.loads(request.GET.get('state', ''), salt=GOOGLE_STATE_SALT, max_age=900)
     except signing.BadSignature:
@@ -211,7 +211,7 @@ def google_callback(request):
     instance.save()
     _notify_integration_event(instance, 'integration_connected', request.user)
     messages.success(request, f"Google Drive connecté ({tokens.get('account') or 'compte Google'}).")
-    return redirect(target)
+    return redirect(_authorize_page('google-drive', 'ok'))
 
 
 # --------------------------------------------------------------------------- #
@@ -227,6 +227,42 @@ def oauth_redirect_uri(request, key):
 
 def _oauth_target(key):
     return f"{reverse('integrations:integrations-page')}?plugin={key}"
+
+
+def _authorize_page(key, result):
+    """Retour de l'outil : la page d'autorisation affiche le résultat (ok, cancelled, error)."""
+    return f"{reverse('integrations:oauth-authorize', args=[key])}?result={result}"
+
+
+@login_required
+def oauth_authorize(request, connector_key):
+    """Page « Autoriser Billio » : ce que Billio pourra faire, ce qui va se passer, puis le résultat."""
+    from django.shortcuts import render
+
+    from . import oauth
+    texts = oauth.consent(connector_key)
+    if not texts:
+        return redirect('integrations:integrations-page')
+    google = connector_key == 'google-drive'
+    if not (providers.google_configured() if google else oauth.configured(connector_key)):
+        # Connexion en un clic pas encore activée sur ce serveur : formulaire et consignes dans le panneau.
+        return redirect(_oauth_target(connector_key))
+    organization = _get_user_primary_organization(request.user)
+    instance = ConnectionInstance.objects.filter(
+        organization=organization, connector__key=connector_key).first() if organization else None
+    result = request.GET.get('result', '')
+    return render(request, 'integrations/authorize.html', {
+        'page_title': f"Connecter {texts['name']}",
+        'tool': texts,
+        'icon': f'integrations/icons/{connector_key}.svg.html',
+        'result': result if result in ('ok', 'cancelled', 'error') else '',
+        'instance': instance,
+        'connected': bool(instance and instance.status == 'connected'),
+        'can_manage': bool(organization) and _can_manage_integrations(request.user, organization),
+        'connect_url': reverse('integrations:google-connect') if google
+        else reverse('integrations:oauth-connect', args=[connector_key]),
+        'back_url': _oauth_target(connector_key),
+    })
 
 
 @login_required
@@ -283,14 +319,16 @@ def oauth_callback(request, connector_key):
     from . import oauth
     if connector_key not in oauth.OAUTH:
         return redirect('integrations:integrations-page')
-    target = _oauth_target(connector_key)
     if connector_key == 'trello':
         # Le jeton est dans le fragment (#token=…) : une page le lit et l'envoie à oauth_trello_finish.
         from django.shortcuts import render
-        return render(request, 'integrations/oauth_trello.html', {'state': request.GET.get('state', ''), 'target': target})
+        # Sans jeton (refus chez Trello), la page renvoie vers « annulé ».
+        return render(request, 'integrations/oauth_trello.html', {'state': request.GET.get('state', ''),
+                                                                   'target': _authorize_page('trello', 'cancelled')})
     if request.GET.get('error'):
-        messages.error(request, 'Connexion annulée.')
-        return redirect(target)
+        messages.error(request, 'Connexion annulée : rien n’a été partagé avec Billio.')
+        return redirect(_authorize_page(connector_key, 'cancelled'))
+    target = _authorize_page(connector_key, 'error')
     organization = _check_state(request, connector_key, request.GET.get('state'))
     if not organization:
         messages.error(request, 'Lien de connexion expiré ou session différente : recommencez.')
@@ -301,14 +339,14 @@ def oauth_callback(request, connector_key):
         messages.error(request, f'Connexion impossible : {exc}')
         return redirect(target)
     _save_oauth(request, organization, connector_key, config)
-    return redirect(target)
+    return redirect(_authorize_page(connector_key, 'ok'))
 
 
 @login_required
 @require_POST
 def oauth_trello_finish(request):
     from . import oauth
-    target = _oauth_target('trello')
+    target = _authorize_page('trello', 'error')
     organization = _check_state(request, 'trello', request.POST.get('state'))
     if not organization:
         messages.error(request, 'Lien de connexion expiré ou session différente : recommencez.')
@@ -319,7 +357,7 @@ def oauth_trello_finish(request):
         messages.error(request, str(exc))
         return redirect(target)
     _save_oauth(request, organization, 'trello', config)
-    return redirect(target)
+    return redirect(_authorize_page('trello', 'ok'))
 
 
 # --------------------------------------------------------------------------- #

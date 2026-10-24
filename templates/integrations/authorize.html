@@ -1,0 +1,139 @@
+{% extends "dashboard/base.html" %}
+{% block flash_messages %}{# messages affichés dans la carte #}{% endblock %}
+{% load static %}
+
+{% block title %}{{ page_title }} - Billio{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Connexion sécurisée, sans code à copier{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.5">
+{% endblock %}
+
+{% block content %}
+<div class="ig-auth">
+    {% csrf_token %}
+    <div class="ig-auth-card">
+        <div class="ig-auth-logos" aria-hidden="true">
+            <span class="ig-auth-logo is-billio">B</span>
+            <span class="ig-auth-link">
+                {% if result == 'ok' and connected %}<i data-lucide="check" class="w-4 h-4"></i>{% else %}<i data-lucide="arrow-left-right" class="w-4 h-4"></i>{% endif %}
+            </span>
+            <span class="ig-auth-logo">{% include icon %}</span>
+        </div>
+
+        {% if messages %}
+        <div class="ig-messages">
+            {% for message in messages %}{% if message.tags != 'success' %}<div class="ig-msg{% if message.tags == 'error' %} is-error{% endif %}">{{ message }}</div>{% endif %}{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if result == 'ok' and connected %}
+        {# ---------------------------------------------------------------- Connecté #}
+        <div class="ig-auth-head">
+            <h2>{{ tool.name }} est connecté à Billio</h2>
+            {% if instance.config.account %}<p>Compte : <strong translate="no">{{ instance.config.account }}</strong></p>{% endif %}
+        </div>
+
+        <div class="ig-auth-block" x-data="authorizeTest('{% url 'integrations:plugin-test' tool.key %}')">
+            <p class="ig-auth-label">Vérifiez que tout fonctionne</p>
+            <button type="button" class="ig-btn" @click="run()" :disabled="busy">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span x-show="!busy">Faire un essai</span><span x-show="busy">Essai en cours…</span>
+            </button>
+            <div class="ig-result" x-show="text" :class="ok ? 'is-ok' : 'is-error'" x-cloak>
+                <span x-text="text"></span>
+            </div>
+        </div>
+
+        <div class="ig-auth-block">
+            <p class="ig-auth-label">Et maintenant ?</p>
+            <p>{{ tool.next }}</p>
+        </div>
+
+        <div class="ig-auth-actions">
+            <a href="{% url 'dashboard:automation-builder' %}" class="ig-btn ig-btn--primary"><i data-lucide="zap" class="w-4 h-4"></i>Créer une automatisation</a>
+            <a href="{{ back_url }}" class="ig-btn">Retour aux intégrations</a>
+        </div>
+
+        {% elif result == 'cancelled' or result == 'error' %}
+        {# ---------------------------------------------------------------- Annulé / erreur #}
+        <div class="ig-auth-head">
+            {% if result == 'cancelled' %}
+            <h2>Connexion annulée</h2>
+            <p>Aucune information n’a été partagée. Vous pouvez réessayer quand vous voulez.</p>
+            {% else %}
+            <h2>La connexion n’a pas abouti</h2>
+            <p>Ce n’est pas grave : réessayez, cela suffit le plus souvent.</p>
+            {% endif %}
+        </div>
+        <div class="ig-auth-actions">
+            {% if can_manage %}<a href="{{ connect_url }}" class="ig-btn ig-btn--primary"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>Réessayer</a>{% endif %}
+            <a href="{{ back_url }}" class="ig-btn">Retour aux intégrations</a>
+        </div>
+
+        {% else %}
+        {# ---------------------------------------------------------------- Autorisation #}
+        <div class="ig-auth-head">
+            <h2>Autoriser Billio à utiliser {{ tool.name }}</h2>
+            {% if connected %}
+            <p>Déjà connecté{% if instance.config.account %} : <strong translate="no">{{ instance.config.account }}</strong>{% endif %}</p>
+            <p>Continuez seulement pour changer de compte.</p>
+            {% else %}
+            <p>Cela prend moins d’une minute, sans code à copier.</p>
+            {% endif %}
+        </div>
+
+        <div class="ig-auth-block">
+            <p class="ig-auth-label">Billio pourra</p>
+            <ul class="ig-auth-list is-can">
+                {% for line in tool.can %}<li><i data-lucide="check" class="w-4 h-4"></i><span>{{ line }}</span></li>{% endfor %}
+            </ul>
+        </div>
+
+        <div class="ig-auth-block">
+            <p class="ig-auth-label">Ce qui va se passer</p>
+            <ol class="ig-auth-steps">
+                <li><span>Vous partez sur le site de {{ tool.name }} et vous vous connectez.</span></li>
+                <li><span>{{ tool.at_tool }}</span></li>
+                <li><span>Vous revenez ici automatiquement : c’est connecté.</span></li>
+            </ol>
+        </div>
+
+        <div class="ig-auth-block">
+            <p class="ig-auth-label">Vos garanties</p>
+            <ul class="ig-auth-list is-safe">
+                {% for line in tool.never %}<li><i data-lucide="shield-check" class="w-4 h-4"></i><span>{{ line }}</span></li>{% endfor %}
+            </ul>
+        </div>
+
+        {% if can_manage %}
+        <div class="ig-auth-actions">
+            <a href="{{ connect_url }}" class="ig-btn ig-btn--primary ig-auth-go">Continuer vers {{ tool.name }}<i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+            <a href="{{ back_url }}" class="ig-btn">Annuler</a>
+        </div>
+        {% else %}
+        <div class="ig-msg is-warn">Seul un administrateur de votre organisation peut connecter un outil. Demandez-lui de le faire depuis la page Intégrations.</div>
+        <div class="ig-auth-actions"><a href="{{ back_url }}" class="ig-btn">Retour aux intégrations</a></div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function authorizeTest(url) {
+    return {
+        busy: false, ok: false, text: '',
+        run() {
+            this.busy = true; this.text = '';
+            const token = document.querySelector('[name=csrfmiddlewaretoken]');
+            fetch(url, { method: 'POST', headers: { 'X-CSRFToken': token ? token.value : '' }, credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(data => { this.ok = data.ok; this.text = data.ok ? '✓ ' + data.detail : data.detail; })
+                .catch(() => { this.ok = false; this.text = 'Essai impossible pour le moment.'; })
+                .finally(() => { this.busy = false; });
+        },
+    };
+}
+</script>
+{% endblock %}

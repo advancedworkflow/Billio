@@ -179,3 +179,58 @@ def fresh_config(instance):
         instance.config = config
         instance.save(update_fields=['config', 'updated_at'])
     return config
+
+
+# --------------------------------------------------------------------------- page d'autorisation
+
+# Textes de la page « Autoriser Billio » (avant de partir chez l'outil) : ce que Billio pourra faire,
+# ce qui se passe chez l'outil, et ce qu'on peut faire ensuite. En mots simples, sans jargon.
+CONSENT = {
+    'slack': {
+        'can': ['Publier des messages dans le canal que vous choisissez (facture payée, devis signé…).'],
+        'at_tool': 'Slack vous demande de choisir un canal : prenez celui où vous voulez recevoir les alertes.',
+        'next': 'Créez une automatisation « Envoyer un message » pour être prévenu dans Slack.',
+    },
+    'notion': {
+        'can': ['Créer et mettre à jour des pages dans les pages Notion que vous partagez avec Billio.'],
+        'at_tool': 'Notion vous demande quelles pages partager : cochez celles où Billio pourra écrire.',
+        'next': 'Exportez vos clients, factures ou projets vers Notion depuis le panneau Notion.',
+    },
+    'mailchimp': {
+        'can': ['Ajouter vos clients à vos listes d’abonnés Mailchimp.'],
+        'at_tool': 'Connectez-vous à Mailchimp puis cliquez sur « Allow ».',
+        'next': 'Créez une automatisation pour inscrire chaque nouveau client à votre liste.',
+    },
+    'hubspot': {
+        'can': ['Créer et mettre à jour vos contacts et vos transactions HubSpot.'],
+        'at_tool': 'Choisissez votre compte HubSpot puis cliquez sur « Connecter l’app ».',
+        'next': 'Créez une automatisation pour envoyer vos nouveaux clients et devis dans HubSpot.',
+    },
+    'trello': {
+        'can': ['Créer des cartes dans les tableaux Trello de votre compte.'],
+        'at_tool': 'Connectez-vous à Trello puis cliquez sur « Autoriser ».',
+        'next': 'Créez une automatisation pour ajouter une carte Trello à chaque nouveau projet.',
+    },
+    'google-drive': {
+        'name': 'Google Drive',
+        'can': ['Enregistrer vos factures et devis en PDF dans un dossier « Billio » de votre Drive.',
+                'Ouvrir les fichiers que vous choisissez pour les importer dans Billio.'],
+        'at_tool': 'Choisissez votre compte Google puis cliquez sur « Continuer ».',
+        'next': 'Envoyez une facture vers Drive depuis son aperçu, ou exportez vos tableaux.',
+    },
+}
+
+# Valable pour tous les outils : ce qui rassure avant de cliquer.
+CONSENT_NEVER = [
+    'Billio ne voit jamais votre mot de passe : vous vous connectez directement chez l’outil.',
+    'Billio n’agit que lorsque vous le demandez ou qu’une de vos automatisations le prévoit.',
+    'Vous pouvez déconnecter l’outil à tout moment, depuis Billio ou depuis l’outil.',
+]
+
+
+def consent(key):
+    """Textes de la page d'autorisation, ou None si l'outil n'a pas de connexion en un clic."""
+    if key not in CONSENT:
+        return None
+    name = CONSENT[key].get('name') or OAUTH[key]['name']
+    return dict(CONSENT[key], key=key, name=name, never=CONSENT_NEVER)

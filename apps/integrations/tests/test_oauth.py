@@ -70,3 +70,21 @@ class OAuthTests(TestCase):
         page = self.http.get(reverse('integrations:integrations-page')).content.decode()
         self.assertIn('"slack": {"name": "Slack", "ready": true', page)
         self.assertIn('"notion": {"name": "Notion", "ready": false', page)
+
+    def test_authorize_page_explains_then_shows_result(self):
+        page = self.http.get(reverse('integrations:oauth-authorize', args=['slack'])).content.decode()
+        self.assertIn('Autoriser Billio à utiliser Slack', page)
+        self.assertIn(reverse('integrations:oauth-connect', args=['slack']), page)
+        # Retour de Slack : on revient sur la page, qui affiche le résultat.
+        state = urllib.parse.parse_qs(self._start('slack').query)['state'][0]
+        reply = {'ok': True, 'team': {'name': 'Lumen'}, 'incoming_webhook': {'url': 'https://hooks.slack.com/services/T/B/X', 'channel': '#ventes'}}
+        with mock.patch('apps.integrations.oauth.http', return_value=reply):
+            response = self.http.get(reverse('integrations:oauth-callback', args=['slack']), {'code': 'abc', 'state': state}, follow=True)
+        self.assertContains(response, 'Slack est connecté à Billio')
+        self.assertContains(response, 'Lumen · #ventes')
+        cancelled = self.http.get(reverse('integrations:oauth-callback', args=['slack']), {'error': 'access_denied'}, follow=True)
+        self.assertContains(cancelled, 'Connexion annulée')
+
+    def test_authorize_page_falls_back_to_form_when_not_ready(self):
+        response = self.http.get(reverse('integrations:oauth-authorize', args=['notion']))
+        self.assertIn('?plugin=notion', response['Location'])

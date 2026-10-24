@@ -21,6 +21,7 @@ urlpatterns = [
     path('plugins/telegram/chats/', plugin_views.telegram_chats, name='telegram-chats'),
     path('google/connect/', plugin_views.google_connect, name='google-connect'),
     path('oauth/trello/finish/', plugin_views.oauth_trello_finish, name='oauth-trello-finish'),
+    path('oauth/<slug:connector_key>/authorize/', plugin_views.oauth_authorize, name='oauth-authorize'),
     path('oauth/<slug:connector_key>/connect/', plugin_views.oauth_connect, name='oauth-connect'),
     path('oauth/<slug:connector_key>/callback/', plugin_views.oauth_callback, name='oauth-callback'),
     path('google/callback/', plugin_views.google_callback, name='google-callback'),

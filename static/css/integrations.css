@@ -143,3 +143,31 @@
 .ig-oneclick { display: grid; gap: 6px; padding: 14px; border-radius: 12px; background: #faf8ff; border: 1px solid #e9e3fb; }
 .ig-oneclick-btn { justify-content: center; font-size: 14px; padding: 11px 14px; }
 .ig-admin summary { cursor: pointer; }
+
+/* Page « Autoriser Billio » : consentement en mots simples avant de partir chez l'outil, puis résultat. */
+.ig-auth { display: flex; justify-content: center; padding: 8px 0 32px; }
+.ig-auth-card { width: 100%; max-width: 560px; background: #fff; border: 1px solid #e4e4e7; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+.ig-auth-logos { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.ig-auth-logo { width: 56px; height: 56px; border-radius: 16px; border: 1px solid #ececf1; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.ig-auth-logo svg { width: 30px; height: 30px; }
+.ig-auth-logo.is-billio { background: var(--billio-primary, #6d28d9); border-color: transparent; color: #fff; font-size: 24px; font-weight: 700; }
+.ig-auth-link { width: 32px; height: 32px; border-radius: 50%; background: #f4f4f5; color: #71717a; display: inline-flex; align-items: center; justify-content: center; }
+.ig-auth-head { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.ig-auth-head h2 { font-size: 20px; font-weight: 650; color: #18181b; }
+.ig-auth-head p { font-size: 14px; color: #52525b; }
+.ig-auth-block { display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #3f3f46; }
+.ig-auth-block .ig-result { margin: 0; }
+.ig-auth-block .ig-btn { align-self: flex-start; }
+.ig-auth-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #a1a1aa; }
+.ig-auth-list { display: flex; flex-direction: column; gap: 8px; }
+.ig-auth-list li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.ig-auth-list svg { flex-shrink: 0; margin-top: 2px; }
+.ig-auth-list.is-can svg { color: #16a34a; }
+.ig-auth-list.is-safe svg { color: var(--billio-primary, #6d28d9); }
+.ig-auth-steps { counter-reset: step; display: flex; flex-direction: column; gap: 10px; }
+.ig-auth-steps li { counter-increment: step; display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.ig-auth-steps li::before { content: counter(step); flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: #f4f4f5; color: #18181b; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.ig-auth-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.ig-auth-actions .ig-btn { padding: 10px 16px; font-size: 14px; }
+.ig-auth-go { flex: 1 1 220px; }
+@media (max-width: 480px) { .ig-auth-card { padding: 20px 16px; border-radius: 14px; } .ig-auth-actions .ig-btn { flex: 1 1 100%; } }
