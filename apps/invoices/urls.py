@@ -30,7 +30,6 @@ urlpatterns = [
     path('public/<uuid:quote_id>/quote/confirmation/', quote_views.public_quote_confirmation, name='public-quote-confirmation'),
 
     # Main views
-    path('demo/', views.invoice_demo, name='invoice-demo'),
     path('create/', views.invoice_create, name='invoice-create'),
     path('<uuid:invoice_id>/edit/', views.invoice_edit, name='invoice-edit'),
     path('quotes/<uuid:quote_id>/situation/', quote_views.quote_situation_create, name='quote-situation-create'),
