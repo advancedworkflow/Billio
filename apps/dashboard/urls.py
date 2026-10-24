@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import automation_webhooks, booking, time_views, views
 from . import process_views, project_views, support_views
-from . import portal_views
+from . import milestone_card, portal_views
 
 app_name = 'dashboard'
 
@@ -70,6 +70,11 @@ urlpatterns = [
     path('milestones/<int:milestone_id>/phase/', project_views.milestone_update_phase, name='milestone-update-phase'),
     path('milestones/<int:milestone_id>/delete/', project_views.milestone_delete, name='milestone-delete'),
     path('milestones/<int:milestone_id>/files/upload/', project_views.milestone_file_upload, name='milestone-file-upload'),
+    path('milestones/<int:milestone_id>/detail/', milestone_card.milestone_detail, name='milestone-detail'),
+    path('milestones/<int:milestone_id>/card/', milestone_card.milestone_card_update, name='milestone-card-update'),
+    path('milestones/<int:milestone_id>/comments/', milestone_card.milestone_comment_add, name='milestone-comment-add'),
+    path('milestones/comments/<int:comment_id>/delete/', milestone_card.milestone_comment_delete, name='milestone-comment-delete'),
+    path('milestones/files/<int:file_id>/delete/', milestone_card.milestone_file_delete, name='milestone-file-delete'),
     path('projects/<int:project_id>/tasks/create/', project_views.task_create, name='task-create'),
     path('tasks/<int:task_id>/status/', project_views.task_update_status, name='task-update-status'),
     path('tasks/<int:task_id>/update/', project_views.task_update, name='task-update'),

@@ -217,7 +217,9 @@ def milestones_board(request):
             and 0 <= (project.delivery_date - today).days <= 3 and project.status != 'completed'
         )
 
-        milestones = list(project.milestones.all())
+        from django.db.models import Count
+        from .milestone_card import card_badges
+        milestones = list(project.milestones.annotate(comment_count=Count('comments', distinct=True)).prefetch_related('members'))
         tasks = list(project.tasks.select_related('assignee').all())
         for t in tasks:
             t.assignee_initials = (
@@ -241,6 +243,9 @@ def milestones_board(request):
             m.tasks_done = sum(1 for t in m.task_list if t.status == 'done')
             m.progress_percent = round(100 * m.tasks_done / m.tasks_total) if m.tasks_total else 0
             m.form_fields_json = json.dumps(m.form_fields)
+            m.badges = card_badges(m, today)
+            m.member_list = [{'name': u.get_full_name() or u.email, 'initials': (u.get_full_name() or u.email)[:2].upper()}
+                             for u in m.members.all()]
 
         phases = _phases_context(project.organization, project=project)
         for phase in phases:
@@ -259,6 +264,7 @@ def milestones_board(request):
         'columns': columns,
         'milestones': milestones,
         'org_members': org_members,
+        'label_colors': list(__import__('apps.dashboard.milestone_card', fromlist=['COLOR_NAMES']).COLOR_NAMES.items()),
         'files': files,
         'task_status_choices': Task.STATUS_CHOICES,
     })

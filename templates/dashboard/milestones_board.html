@@ -85,164 +85,28 @@
         </div>
         <div class="kanban-column-body" data-milestone-dropzone="{{ column.id }}">
             {% for m in column.cards %}
-            <div class="kanban-card kanban-card--{{ column.id }}" draggable="true" data-milestone-card data-milestone-id="{{ m.id }}" style="--phase: {{ column.color }};">
-                <template x-if="editingMilestoneId !== {{ m.id }}">
-                    <div>
-                        <div class="kanban-card-top">
-                            <button type="button" class="milestone-marker{% if m.is_completed %} is-done{% endif %} shrink-0" @click="toggleMilestone({{ m.id }})" aria-label="Basculer terminé"></button>
-                            <span class="kanban-card-title flex-1{% if m.is_completed %} line-through{% endif %}">{{ m.title }}</span>
-                            <button type="button" class="detail-item-delete" @click="startEditMilestone({{ m.id }}, '{{ m.title|escapejs }}', '{{ m.due_date|date:'Y-m-d' }}', '{{ m.start_date|date:'Y-m-d' }}', '{{ m.amount|default:'' }}')" aria-label="Modifier">
-                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-                            </button>
-                            <button type="button" class="detail-item-delete" @click="deleteMilestone({{ m.id }})" aria-label="Supprimer">
-                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        {% if m.start_date or m.due_date %}
-                        <p class="text-xs mb-1" style="color: var(--billio-text-muted);">
-                            {% if m.start_date %}{{ m.start_date|date:"d M" }} → {% endif %}{{ m.due_date|date:"d M Y" }}
-                        </p>
-                        {% endif %}
-                        {% if project.billing_mode == 'per_milestone' and m.amount %}
-                        <p class="text-xs font-medium mb-1">
-                            {{ m.amount }} €
-                            {% if m.is_paid %}<span class="status-badge status-badge--paid ml-1">Payé</span>{% else %}<span class="status-badge status-badge--sent ml-1">Non payé</span>{% endif %}
-                        </p>
-                        {% endif %}
-                        {% if m.tasks_total %}
-                        <div class="kanban-card-progress">
-                            <div class="kanban-card-progress-bar" style="width: {{ m.progress_percent }}%;"></div>
-                        </div>
-                        <p class="kanban-card-progress-label mb-2">{{ m.tasks_done }}/{{ m.tasks_total }} tâche{{ m.tasks_total|pluralize }} · {{ m.progress_percent }}%</p>
-                        {% endif %}
-                        {% if m.title == "Spécifications client" %}
-                        <a href="{% url 'dashboard:project-detail' project.id %}#specifications-client" class="text-xs font-medium hover:underline inline-flex items-center gap-1 mt-1" style="color: var(--billio-primary);">
-                            <i data-lucide="clipboard-list" class="w-3 h-3"></i> Ouvrir le questionnaire
-                        </a>
-                        {% endif %}
-                    </div>
-                </template>
-                <template x-if="editingMilestoneId === {{ m.id }}">
-                    <div class="mb-2 flex flex-wrap gap-1.5 items-end" @click.stop>
-                        <input type="text" x-model="editMilestoneTitle" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <input type="date" x-model="editMilestoneStartDate" title="Date de début" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <input type="date" x-model="editMilestoneDate" title="Date d'échéance" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        {% if project.billing_mode == 'per_milestone' %}
-                        <input type="number" min="0" step="0.01" x-model="editMilestoneAmount" title="Montant (€)" placeholder="Montant €" class="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        {% endif %}
-                        <button type="button" @click="editingMilestoneId = null" class="text-xs px-1.5" style="color: var(--billio-text-muted);">Annuler</button>
-                        <button type="button" @click="saveMilestone()" class="btn-primary-black px-2 py-1.5 rounded-lg text-xs font-medium">OK</button>
-                    </div>
-                </template>
-
-                <div class="space-y-1">
-                    {% for t in m.task_list %}
-                    <div class="task-item text-xs" x-show="editingTaskId !== {{ t.id }}">
-                        <button type="button" class="task-status-btn is-{{ t.status }}" @click="cycleTaskStatus({{ t.id }}, '{{ t.status }}')" aria-label="Changer le statut">
-                            {% if t.status == 'done' %}<i data-lucide="check" class="w-3 h-3"></i>{% endif %}
-                        </button>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-medium{% if t.status == 'done' %} line-through{% endif %}" style="color: var(--billio-text);">{{ t.title }}</p>
-                            {% if t.due_date %}<span class="text-xs{% if t.is_late %} kanban-card-due--late{% endif %}" style="color: var(--billio-text-muted);">{% if t.start_date %}{{ t.start_date|date:"d M" }} → {% endif %}{{ t.due_date|date:"d M" }}</span>{% endif %}
-                        </div>
-                        {% if t.assignee_id %}<span class="detail-avatar" title="{{ t.assignee.get_full_name|default:t.assignee.email }}">{{ t.assignee_initials }}</span>{% endif %}
-                        <button type="button" class="detail-item-delete" @click="startEditTask({{ t.id }}, '{{ t.title|escapejs }}', '{{ t.due_date|date:'Y-m-d' }}', '{{ t.assignee_id|default:'' }}', '{{ t.start_date|date:'Y-m-d' }}')" aria-label="Modifier">
-                            <i data-lucide="pencil" class="w-3 h-3"></i>
-                        </button>
-                        <button type="button" class="detail-item-delete" @click="deleteTask({{ t.id }})" aria-label="Supprimer">
-                            <i data-lucide="x" class="w-3 h-3"></i>
-                        </button>
-                    </div>
-                    <div x-show="editingTaskId === {{ t.id }}" x-cloak class="p-2 rounded-lg flex flex-wrap gap-1.5 items-end" style="background: var(--billio-bg);">
-                        <input type="text" x-model="editTaskTitle" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <input type="date" x-model="editTaskStartDate" title="Date de début" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <input type="date" x-model="editTaskDate" title="Date d'échéance" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <select x-model="editTaskAssignee" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                            <option value="">—</option>
-                            <template x-for="member in orgMembers" :key="member.id">
-                                <option :value="member.id" x-text="member.name"></option>
-                            </template>
-                        </select>
-                        <button type="button" @click="editingTaskId = null" class="text-xs px-1.5" style="color: var(--billio-text-muted);">Annuler</button>
-                        <button type="button" @click="saveTask()" class="btn-primary-black px-2 py-1.5 rounded-lg text-xs font-medium">OK</button>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <div x-show="addingTaskMilestoneId === {{ m.id }}" x-cloak class="mt-2 p-2 rounded-lg flex flex-wrap gap-1.5 items-end" style="background: var(--billio-bg);">
-                    <input type="text" x-model="newTaskTitle" placeholder="Titre de la tâche" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                    <input type="date" x-model="newTaskStartDate" title="Date de début" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                    <input type="date" x-model="newTaskDate" title="Date d'échéance" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                    <select x-model="newTaskAssignee" class="px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <option value="">—</option>
-                        <template x-for="member in orgMembers" :key="member.id">
-                            <option :value="member.id" x-text="member.name"></option>
-                        </template>
-                    </select>
-                    <button type="button" @click="addingTaskMilestoneId = null" class="text-xs px-1.5" style="color: var(--billio-text-muted);">Annuler</button>
-                    <button type="button" @click="createTask({{ m.id }})" class="btn-primary-black px-2 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
-                </div>
-                <button type="button" class="text-xs font-medium mt-2 hover:underline" style="color: var(--billio-text-muted);" @click="addingTaskMilestoneId = {{ m.id }}">+ tâche</button>
-
-                <div class="mt-2 pt-2" style="border-top: 1px solid var(--billio-border);">
-                    {% if m.deliverable_list %}
-                    <div class="space-y-1 mb-1">
-                        {% for d in m.deliverable_list %}
-                        <a href="{% url 'dashboard:project-detail' project.id %}" class="flex items-center justify-between gap-1 text-xs hover:underline">
-                            <span class="truncate" style="color: var(--billio-text);">{{ d.title }}</span>
-                            <span class="status-badge status-badge--{% if d.status == 'approved' %}accepted{% elif d.status == 'changes_requested' %}rejected{% elif d.status == 'submitted' %}viewed{% else %}sent{% endif %} shrink-0">{{ d.get_status_display }}</span>
-                        </a>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <div x-show="addingDeliverableMilestoneId === {{ m.id }}" x-cloak class="p-2 rounded-lg flex flex-wrap gap-1.5 items-end mb-1" style="background: var(--billio-bg);" @click.stop>
-                        <input type="text" x-model="newDeliverableTitle" placeholder="Titre du livrable" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs">
-                        <button type="button" @click="addingDeliverableMilestoneId = null" class="text-xs px-1.5" style="color: var(--billio-text-muted);">Annuler</button>
-                        <button type="button" @click="createDeliverable({{ m.id }})" class="btn-primary-black px-2 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
-                    </div>
-                    <button type="button" class="text-xs font-medium hover:underline flex items-center gap-1" style="color: var(--billio-text-muted);" @click="addingDeliverableMilestoneId = {{ m.id }}">
-                        <i data-lucide="package" class="w-3 h-3"></i> + livrable
-                    </button>
-                </div>
-
-                <div class="mt-2 pt-2" style="border-top: 1px solid var(--billio-border);">
-                    <button type="button" class="text-xs font-medium hover:underline flex items-center gap-1" style="color: var(--billio-text-muted);" @click="toggleForm({{ m.id }}, {{ m.form_fields_json|safe }})">
-                        <i data-lucide="clipboard-list" class="w-3 h-3"></i>
-                        Formulaire{% if m.form_fields %} ({{ m.form_fields|length }}){% endif %}
-                    </button>
-                    <div x-show="formMilestoneId === {{ m.id }}" x-cloak class="mt-2 space-y-2" @click.stop>
-                        <template x-for="(f, idx) in formFields" :key="idx">
-                            <div class="flex gap-1.5 items-start">
-                                <div class="flex-1 space-y-1">
-                                    <input type="text" x-model="f.label" placeholder="Question" class="w-full px-2 py-1 border border-gray-300 rounded text-xs">
-                                    <textarea x-model="f.answer" placeholder="Réponse" rows="1" class="w-full px-2 py-1 border border-gray-300 rounded text-xs"></textarea>
-                                </div>
-                                <button type="button" class="shrink-0 p-1 rounded hover:bg-gray-100" style="color: var(--billio-text-muted);" @click="formFields.splice(idx, 1)" aria-label="Retirer">
-                                    <i data-lucide="x" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                        </template>
-                        <div class="flex justify-between items-center gap-2">
-                            <button type="button" class="text-xs font-medium hover:underline" style="color: var(--billio-primary);" @click="formFields.push({ label: '', answer: '' }); $nextTick(() => lucide && lucide.createIcons());">+ Question</button>
-                            <button type="button" class="btn-primary-black px-2 py-1.5 rounded-lg text-xs font-medium" @click="saveForm({{ m.id }})">Enregistrer</button>
-                        </div>
-                    </div>
-                </div>
-
-                {% if m.file_list %}
-                <div class="space-y-1 mt-2 pt-2" style="border-top: 1px solid var(--billio-border);">
-                    {% for f in m.file_list %}
-                    <a href="{{ f.file.url }}" target="_blank" class="text-xs flex items-center gap-1 hover:underline" style="color: var(--billio-text-muted);">
-                        <i data-lucide="paperclip" class="w-3 h-3 shrink-0"></i>
-                        <span class="truncate">{{ f.name }}</span>
-                    </a>
-                    {% endfor %}
+            <div class="kanban-card kanban-card--{{ column.id }} mcard{% if m.is_completed %} is-done{% endif %}" draggable="true" data-milestone-card data-milestone-id="{{ m.id }}" style="--phase: {{ column.color }};" @click="openCard({{ m.id }})">
+                {% if m.badges.cover %}<div class="mcard-cover" style="background: {{ m.badges.cover }};"></div>{% endif %}
+                {% if m.badges.labels %}
+                <div class="mcard-labels" translate="no">
+                    {% for l in m.badges.labels %}<span class="mcard-label" style="background: {{ l.bg }}; color: {{ l.fg }};">{{ l.text|default:"&nbsp;" }}</span>{% endfor %}
                 </div>
                 {% endif %}
-                <label class="text-xs font-medium mt-2 hover:underline flex items-center gap-1 cursor-pointer" style="color: var(--billio-text-muted);">
-                    <i data-lucide="paperclip" class="w-3 h-3"></i> Ajouter un fichier
-                    <input type="file" class="hidden" onchange="uploadMilestoneFile({{ m.id }}, this)">
-                </label>
+                <div class="kanban-card-top">
+                    <button type="button" class="milestone-marker{% if m.is_completed %} is-done{% endif %} shrink-0" @click.stop="toggleMilestone({{ m.id }})" aria-label="Basculer terminé"></button>
+                    <span class="kanban-card-title flex-1{% if m.is_completed %} line-through{% endif %}" translate="no">{{ m.title }}</span>
+                </div>
+                <div class="mcard-badges">
+                    {% if m.due_date %}<span class="mcard-badge mcard-due is-{{ m.badges.due_state|default:'normal' }}" title="Échéance"><i data-lucide="clock" class="w-3 h-3"></i> {{ m.due_date|date:"d M" }}</span>{% endif %}
+                    {% if m.description %}<span class="mcard-badge" title="Cette carte a une description"><i data-lucide="align-left" class="w-3 h-3"></i></span>{% endif %}
+                    {% if m.tasks_total %}<span class="mcard-badge{% if m.tasks_done == m.tasks_total %} is-complete{% endif %}" title="Checklist"><i data-lucide="square-check" class="w-3 h-3"></i> {{ m.tasks_done }}/{{ m.tasks_total }}</span>{% endif %}
+                    {% if m.file_list %}<span class="mcard-badge" title="Pièces jointes"><i data-lucide="paperclip" class="w-3 h-3"></i> {{ m.file_list|length }}</span>{% endif %}
+                    {% if m.comment_count %}<span class="mcard-badge" title="Commentaires"><i data-lucide="message-square" class="w-3 h-3"></i> {{ m.comment_count }}</span>{% endif %}
+                    {% if project.billing_mode == 'per_milestone' and m.amount %}<span class="mcard-badge{% if m.is_paid %} is-complete{% endif %}" title="Montant du jalon">{{ m.amount }} €{% if m.is_paid %} · payé{% endif %}</span>{% endif %}
+                    {% if m.member_list %}
+                    <span class="mcard-members">{% for u in m.member_list|slice:":4" %}<span class="detail-avatar" title="{{ u.name }}" translate="no">{{ u.initials }}</span>{% endfor %}</span>
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
 
@@ -303,6 +167,189 @@
     </ul>
 </div>
 
+
+<!-- Fenêtre de détail d'un jalon (carte façon Trello) -->
+<div class="mdl-overlay" x-show="card" x-cloak @keydown.escape.window="closeCard()" @click.self="closeCard()">
+    <div class="mdl" role="dialog" aria-modal="true" x-show="card" @click.stop>
+        <template x-if="card">
+            <div>
+                <div class="mdl-cover" x-show="card.cover" :class="'is-' + card.cover"></div>
+                <div class="mdl-head">
+                    <button type="button" class="milestone-marker shrink-0" :class="card.is_completed && 'is-done'" @click="save({ is_completed: !card.is_completed })" aria-label="Basculer terminé"></button>
+                    <div class="flex-1 min-w-0">
+                        <input class="mdl-title" x-model="card.title" @change="save({ title: card.title })" maxlength="200" translate="no">
+                        <p class="mdl-sub">Dans la phase <strong x-text="card.phase"></strong> · <span x-text="card.project_name" translate="no"></span></p>
+                    </div>
+                    <button type="button" class="mdl-close" @click="closeCard()" aria-label="Fermer"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="mdl-body">
+                    <div class="mdl-main">
+                        <!-- Étiquettes, membres, dates -->
+                        <div class="mdl-meta">
+                            <div x-show="card.labels.length">
+                                <p class="mdl-label">Étiquettes</p>
+                                <div class="mcard-labels"><template x-for="(l, i) in card.labels" :key="i"><span class="mcard-label" :class="'is-' + l.color" x-text="l.text || ' '" translate="no"></span></template></div>
+                            </div>
+                            <div x-show="card.members.length">
+                                <p class="mdl-label">Membres</p>
+                                <div class="mcard-members"><template x-for="u in card.members" :key="u.id"><span class="detail-avatar" :title="u.name" x-text="u.initials" translate="no"></span></template></div>
+                            </div>
+                            <div x-show="card.due_date || card.start_date">
+                                <p class="mdl-label">Dates</p>
+                                <p class="mdl-dates"><span x-text="dateLabel(card.start_date)"></span><span x-show="card.start_date && card.due_date"> → </span><span x-text="dateLabel(card.due_date)"></span>
+                                    <span class="mcard-badge" :class="card.is_completed ? 'is-complete' : ''" x-show="card.is_completed">Terminé</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="align-left" class="w-4 h-4"></i> Description</h3>
+                            <textarea class="mdl-textarea" rows="4" x-model="card.description" placeholder="Ajoutez une description plus détaillée…" @blur="save({ description: card.description })" translate="no"></textarea>
+                        </section>
+
+                        <!-- Checklist (tâches du jalon) -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="square-check" class="w-4 h-4"></i> Checklist <span class="mdl-count" x-show="card.tasks.length" x-text="doneCount() + '/' + card.tasks.length"></span></h3>
+                            <div class="mdl-progress" x-show="card.tasks.length"><span :style="'width:' + progress() + '%'"></span></div>
+                            <ul class="mdl-checklist">
+                                <template x-for="t in card.tasks" :key="t.id">
+                                    <li>
+                                        <input type="checkbox" :checked="t.done" @change="toggleTask(t)">
+                                        <span :class="t.done && 'is-done'" x-text="t.title" translate="no"></span>
+                                        <small x-show="t.assignee" x-text="t.assignee" translate="no"></small>
+                                        <small x-show="t.due_date" x-text="dateLabel(t.due_date)"></small>
+                                        <button type="button" class="mdl-icon-btn" @click="deleteTask(t)" aria-label="Supprimer l'élément"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                    </li>
+                                </template>
+                            </ul>
+                            <form class="mdl-inline" @submit.prevent="addTask()">
+                                <input type="text" x-model="newItem" placeholder="Ajouter un élément" maxlength="200">
+                                <button type="submit" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
+                            </form>
+                        </section>
+
+                        <!-- Pièces jointes -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="paperclip" class="w-4 h-4"></i> Pièces jointes</h3>
+                            <ul class="mdl-files">
+                                <template x-for="f in card.files" :key="f.id">
+                                    <li><a :href="f.url" target="_blank" rel="noopener" x-text="f.name" translate="no"></a>
+                                        <button type="button" class="mdl-icon-btn" @click="deleteFile(f)" aria-label="Supprimer la pièce jointe"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></li>
+                                </template>
+                            </ul>
+                            <label class="mdl-link"><i data-lucide="upload" class="w-3.5 h-3.5"></i> Ajouter un fichier
+                                <input type="file" class="hidden" @change="uploadFile($event)"></label>
+                        </section>
+
+                        <!-- Livrables -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="package" class="w-4 h-4"></i> Livrables</h3>
+                            <ul class="mdl-files"><template x-for="(d, i) in card.deliverables" :key="i"><li><span x-text="d.title" translate="no"></span><small x-text="d.status"></small></li></template></ul>
+                            <form class="mdl-inline" @submit.prevent="addDeliverable()">
+                                <input type="text" x-model="newDeliverable" placeholder="Ajouter un livrable" maxlength="200">
+                                <button type="submit" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
+                            </form>
+                        </section>
+
+                        <!-- Formulaire -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="clipboard-list" class="w-4 h-4"></i> Formulaire <span class="mdl-count" x-show="card.form_fields.length" x-text="card.form_fields.length"></span></h3>
+                            <template x-for="(f, i) in card.form_fields" :key="i">
+                                <div class="mdl-form-row">
+                                    <div class="flex-1">
+                                        <input type="text" x-model="f.label" placeholder="Question" translate="no">
+                                        <textarea x-model="f.answer" rows="1" placeholder="Réponse" translate="no"></textarea>
+                                    </div>
+                                    <button type="button" class="mdl-icon-btn" @click="card.form_fields.splice(i, 1)" aria-label="Retirer la question"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </template>
+                            <div class="flex items-center justify-between gap-2">
+                                <button type="button" class="mdl-link" @click="card.form_fields.push({ label: '', answer: '' }); icons()">+ Question</button>
+                                <button type="button" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium" x-show="card.form_fields.length" @click="saveFormFields()">Enregistrer le formulaire</button>
+                            </div>
+                        </section>
+
+                        <!-- Commentaires -->
+                        <section class="mdl-section">
+                            <h3><i data-lucide="message-square" class="w-4 h-4"></i> Commentaires</h3>
+                            <form class="mdl-comment-form" @submit.prevent="addComment()">
+                                <textarea x-model="newComment" rows="2" placeholder="Écrire un commentaire…"></textarea>
+                                <button type="submit" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium" :disabled="!newComment.trim()">Envoyer</button>
+                            </form>
+                            <ul class="mdl-comments">
+                                <template x-for="c in card.comments" :key="c.id">
+                                    <li>
+                                        <span class="detail-avatar" x-text="c.initials" translate="no"></span>
+                                        <div>
+                                            <p class="mdl-comment-meta"><strong x-text="c.author" translate="no"></strong> · <span x-text="c.date"></span>
+                                                <button type="button" class="mdl-link-small" x-show="c.own" @click="deleteComment(c)">Supprimer</button></p>
+                                            <p class="mdl-comment-body" x-text="c.body" translate="no"></p>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+                        </section>
+                    </div>
+
+                    <!-- Actions -->
+                    <aside class="mdl-side">
+                        <p class="mdl-label">Ajouter à la carte</p>
+                        <div class="mdl-pop" x-data="{ open: false }" @click.outside="open = false">
+                            <button type="button" class="mdl-action" @click="open = !open"><i data-lucide="users" class="w-4 h-4"></i> Membres</button>
+                            <div class="mdl-pop-panel" x-show="open" x-cloak>
+                                <template x-for="u in card.org_members" :key="u.id">
+                                    <label class="mdl-pop-row"><input type="checkbox" :checked="hasMember(u.id)" @change="toggleMember(u.id)"> <span x-text="u.name" translate="no"></span></label>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="mdl-pop" x-data="{ open: false, text: '', color: 'green' }" @click.outside="open = false">
+                            <button type="button" class="mdl-action" @click="open = !open"><i data-lucide="tag" class="w-4 h-4"></i> Étiquettes</button>
+                            <div class="mdl-pop-panel" x-show="open" x-cloak>
+                                <template x-for="(l, i) in card.labels" :key="i">
+                                    <div class="mdl-pop-row"><span class="mcard-label" :class="'is-' + l.color" x-text="l.text || ' '" translate="no"></span>
+                                        <button type="button" class="mdl-icon-btn" @click="removeLabel(i)" aria-label="Retirer l'étiquette"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>
+                                </template>
+                                <div class="mdl-swatches">
+                                    {% for key, name in label_colors %}<button type="button" class="mdl-swatch is-{{ key }}" :class="color === '{{ key }}' && 'is-active'" @click="color = '{{ key }}'" title="{{ name }}" aria-label="{{ name }}"></button>{% endfor %}
+                                </div>
+                                <form class="mdl-inline" @submit.prevent="addLabel(text, color); text = ''">
+                                    <input type="text" x-model="text" placeholder="Nom (facultatif)" maxlength="30">
+                                    <button type="submit" class="btn-primary-black px-3 py-1.5 rounded-lg text-xs font-medium">Ajouter</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="mdl-pop" x-data="{ open: false }" @click.outside="open = false">
+                            <button type="button" class="mdl-action" @click="open = !open"><i data-lucide="calendar" class="w-4 h-4"></i> Dates</button>
+                            <div class="mdl-pop-panel" x-show="open" x-cloak>
+                                <label class="mdl-pop-field"><span>Début</span><input type="date" x-model="card.start_date" @change="save({ start_date: card.start_date, due_date: card.due_date })"></label>
+                                <label class="mdl-pop-field"><span>Échéance</span><input type="date" x-model="card.due_date" @change="save({ start_date: card.start_date, due_date: card.due_date })"></label>
+                            </div>
+                        </div>
+                        <div class="mdl-pop" x-data="{ open: false }" @click.outside="open = false">
+                            <button type="button" class="mdl-action" @click="open = !open"><i data-lucide="panel-top" class="w-4 h-4"></i> Couverture</button>
+                            <div class="mdl-pop-panel" x-show="open" x-cloak>
+                                <div class="mdl-swatches">
+                                    {% for key, name in label_colors %}<button type="button" class="mdl-swatch is-{{ key }}" :class="card.cover === '{{ key }}' && 'is-active'" @click="save({ cover: '{{ key }}' })" title="{{ name }}" aria-label="{{ name }}"></button>{% endfor %}
+                                </div>
+                                <button type="button" class="mdl-link-small" @click="save({ cover: '' })">Retirer la couverture</button>
+                            </div>
+                        </div>
+                        <template x-if="card.per_milestone">
+                            <label class="mdl-pop-field mdl-amount"><span>Montant du jalon (€)</span>
+                                <input type="number" min="0" step="0.01" x-model="card.amount" @change="save({ amount: card.amount })" :disabled="card.is_paid">
+                                <small x-show="card.is_paid">Payé par le client</small></label>
+                        </template>
+
+                        <p class="mdl-label mt-4">Actions</p>
+                        <button type="button" class="mdl-action" @click="save({ is_completed: !card.is_completed })"><i data-lucide="check" class="w-4 h-4"></i> <span x-text="card.is_completed ? 'Rouvrir le jalon' : 'Marquer terminé'"></span></button>
+                        <button type="button" class="mdl-action is-danger" @click="deleteMilestone(card.id)"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer</button>
+                    </aside>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
 {% endif %}
 </div>
 
@@ -312,6 +359,7 @@ function getCsrfToken() {
 }
 
 function milestonesBoardPage() {
+    const post = (url, body) => fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body });
     return {
         orgMembers: [],
         addingMilestonePhase: null,
@@ -319,176 +367,168 @@ function milestonesBoardPage() {
         newMilestoneStartDate: '',
         newMilestoneDate: '',
         newMilestoneAmount: '',
-        editingMilestoneId: null,
-        editMilestoneTitle: '',
-        editMilestoneStartDate: '',
-        editMilestoneDate: '',
-        editMilestoneAmount: '',
-        addingTaskMilestoneId: null,
-        newTaskTitle: '',
-        newTaskStartDate: '',
-        newTaskDate: '',
-        newTaskAssignee: '',
-        editingTaskId: null,
-        editTaskTitle: '',
-        editTaskStartDate: '',
-        editTaskDate: '',
-        editTaskAssignee: '',
         addingPhase: false,
         newPhaseLabel: '',
         newPhaseColor: '#6366f1',
-        formMilestoneId: null,
-        formFields: [],
-        addingDeliverableMilestoneId: null,
-        newDeliverableTitle: '',
-
-        async createDeliverable(milestoneId) {
-            if (!this.newDeliverableTitle.trim()) return;
-            const projectId = document.getElementById('milestones-kanban-board').dataset.projectId;
-            const body = new URLSearchParams({ title: this.newDeliverableTitle, milestone_id: milestoneId });
-            const response = await fetch(`/dashboard/projects/${projectId}/deliverables/create/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
-            if (response.ok) window.location.reload();
-        },
-
-        toggleForm(id, fields) {
-            if (this.formMilestoneId === id) { this.formMilestoneId = null; return; }
-            this.formMilestoneId = id;
-            this.formFields = Array.isArray(fields) ? fields.map((f) => ({ ...f })) : [];
-            this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
-        },
-
-        async saveForm(id) {
-            const body = new URLSearchParams({ fields: JSON.stringify(this.formFields) });
-            await fetch(`/dashboard/milestones/${id}/form/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body });
-            window.location.reload();
-        },
-
-        async addPhase() {
-            if (!this.newPhaseLabel.trim()) return;
-            const body = new URLSearchParams({ label: this.newPhaseLabel, color: this.newPhaseColor });
-            const response = await fetch('{% url "dashboard:phase-create" %}', {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
-            if (response.ok) window.location.reload();
-        },
-
-        async deletePhase(id) {
-            if (!confirm('Supprimer cette phase ?')) return;
-            const response = await fetch(`/dashboard/projects/phases/${id}/delete/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() },
-            });
-            const data = await response.json().catch(() => ({}));
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                alert(data.message || "Impossible de supprimer cette phase.");
-            }
-        },
-
-        async movePhase(id, direction) {
-            const response = await fetch(`/dashboard/projects/phases/${id}/move/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'direction=' + encodeURIComponent(direction),
-            });
-            if (response.ok) window.location.reload();
-        },
+        // Fenêtre de détail d'un jalon
+        card: null,
+        changed: false,
+        newItem: '',
+        newComment: '',
+        newDeliverable: '',
 
         init() {
             const el = document.getElementById('milestones-org-members-data');
             try { this.orgMembers = el ? JSON.parse(el.textContent || '[]') : []; } catch (e) { this.orgMembers = []; }
+            const open = new URLSearchParams(location.search).get('jalon');
+            if (open) this.openCard(Number(open));
+        },
+        icons() { this.$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); }); },
+
+        // ---------- Fenêtre de détail ----------
+        async openCard(id) {
+            const response = await fetch(`/dashboard/milestones/${id}/detail/`);
+            if (!response.ok) return;
+            this.card = await response.json();
+            this.icons();
+        },
+        async refresh() {
+            if (!this.card) return;
+            const response = await fetch(`/dashboard/milestones/${this.card.id}/detail/`);
+            if (response.ok) {
+                this.card = await response.json();
+                this.icons();
+            }
+        },
+        closeCard() {
+            this.card = null;
+            if (this.changed) window.location.reload();
+        },
+        async save(patch) {
+            if (!this.card) return;
+            Object.assign(this.card, patch);
+            await fetch(`/dashboard/milestones/${this.card.id}/card/`, {
+                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(patch),
+            });
+            this.changed = true;
+            await this.refresh();
+        },
+        dateLabel(iso) {
+            if (!iso) return '';
+            const lang = document.documentElement.lang || 'fr';
+            return new Date(iso + 'T12:00:00').toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
+        },
+        doneCount() { return this.card ? this.card.tasks.filter((t) => t.done).length : 0; },
+        progress() { return this.card && this.card.tasks.length ? Math.round(100 * this.doneCount() / this.card.tasks.length) : 0; },
+
+        async addTask() {
+            if (!this.newItem.trim()) return;
+            await post(`/dashboard/projects/${this.card.project_id}/tasks/create/`,
+                new URLSearchParams({ title: this.newItem.trim(), milestone_id: this.card.id }));
+            this.newItem = '';
+            this.changed = true;
+            await this.refresh();
+        },
+        async toggleTask(task) {
+            await post(`/dashboard/tasks/${task.id}/status/`, new URLSearchParams({ status: task.done ? 'todo' : 'done' }));
+            this.changed = true;
+            await this.refresh();
+        },
+        async deleteTask(task) {
+            await post(`/dashboard/tasks/${task.id}/delete/`);
+            this.changed = true;
+            await this.refresh();
         },
 
+        async uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const body = new FormData();
+            body.append('file', file);
+            await post(`/dashboard/milestones/${this.card.id}/files/upload/`, body);
+            event.target.value = '';
+            this.changed = true;
+            await this.refresh();
+        },
+        async deleteFile(file) {
+            if (!await billioConfirm({ title: 'Supprimer cette pièce jointe ?', confirmLabel: 'Supprimer', tone: 'danger' })) return;
+            await post(`/dashboard/milestones/files/${file.id}/delete/`);
+            this.changed = true;
+            await this.refresh();
+        },
+
+        async addDeliverable() {
+            if (!this.newDeliverable.trim()) return;
+            await post(`/dashboard/projects/${this.card.project_id}/deliverables/create/`,
+                new URLSearchParams({ title: this.newDeliverable.trim(), milestone_id: this.card.id }));
+            this.newDeliverable = '';
+            this.changed = true;
+            await this.refresh();
+        },
+        async saveFormFields() {
+            await post(`/dashboard/milestones/${this.card.id}/form/`,
+                new URLSearchParams({ fields: JSON.stringify(this.card.form_fields) }));
+            this.changed = true;
+            await this.refresh();
+        },
+
+        async addComment() {
+            if (!this.newComment.trim()) return;
+            await post(`/dashboard/milestones/${this.card.id}/comments/`, new URLSearchParams({ body: this.newComment.trim() }));
+            this.newComment = '';
+            this.changed = true;
+            await this.refresh();
+        },
+        async deleteComment(comment) {
+            await post(`/dashboard/milestones/comments/${comment.id}/delete/`);
+            this.changed = true;
+            await this.refresh();
+        },
+
+        hasMember(id) { return this.card.members.some((u) => u.id === id); },
+        toggleMember(id) {
+            const ids = this.card.members.map((u) => u.id);
+            this.save({ member_ids: this.hasMember(id) ? ids.filter((i) => i !== id) : [...ids, id] });
+        },
+        addLabel(text, color) { this.save({ labels: [...this.card.labels, { text: (text || '').trim(), color }] }); },
+        removeLabel(index) { this.save({ labels: this.card.labels.filter((_l, i) => i !== index) }); },
+
+        // ---------- Tableau ----------
+        async addPhase() {
+            if (!this.newPhaseLabel.trim()) return;
+            const response = await post('{% url "dashboard:phase-create" %}',
+                new URLSearchParams({ label: this.newPhaseLabel, color: this.newPhaseColor }));
+            if (response.ok) window.location.reload();
+        },
+        async deletePhase(id) {
+            if (!await billioConfirm({ title: 'Supprimer cette phase ?', confirmLabel: 'Supprimer', tone: 'danger' })) return;
+            const response = await post(`/dashboard/projects/phases/${id}/delete/`);
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) window.location.reload();
+            else billioAlert(data.message || 'Impossible de supprimer cette phase.');
+        },
+        async movePhase(id, direction) {
+            const response = await post(`/dashboard/projects/phases/${id}/move/`, new URLSearchParams({ direction }));
+            if (response.ok) window.location.reload();
+        },
         async createMilestone(phase) {
             if (!this.newMilestoneTitle.trim()) return;
             const projectId = document.getElementById('milestones-kanban-board').dataset.projectId;
-            const body = new URLSearchParams({
+            const response = await post(`/dashboard/projects/${projectId}/milestones/create/`, new URLSearchParams({
                 title: this.newMilestoneTitle, start_date: this.newMilestoneStartDate, due_date: this.newMilestoneDate, phase,
                 amount: this.newMilestoneAmount,
-            });
-            const response = await fetch(`/dashboard/projects/${projectId}/milestones/create/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
+            }));
             if (response.ok) window.location.reload();
         },
-
         async toggleMilestone(id) {
-            await fetch(`/dashboard/milestones/${id}/toggle/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+            await post(`/dashboard/milestones/${id}/toggle/`);
             window.location.reload();
         },
-
         async deleteMilestone(id) {
-            if (!confirm('Supprimer ce jalon et ses tâches associées ?')) return;
-            await fetch(`/dashboard/milestones/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
-            window.location.reload();
-        },
-
-        startEditMilestone(id, title, dueDate, startDate, amount) {
-            this.editingMilestoneId = id;
-            this.editMilestoneTitle = title;
-            this.editMilestoneStartDate = startDate || '';
-            this.editMilestoneDate = dueDate || '';
-            this.editMilestoneAmount = amount || '';
-        },
-
-        async saveMilestone() {
-            if (!this.editMilestoneTitle.trim()) return;
-            const body = new URLSearchParams({
-                title: this.editMilestoneTitle, start_date: this.editMilestoneStartDate, due_date: this.editMilestoneDate,
-                amount: this.editMilestoneAmount,
-            });
-            await fetch(`/dashboard/milestones/${this.editingMilestoneId}/update/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
-            window.location.reload();
-        },
-
-        async createTask(milestoneId) {
-            if (!this.newTaskTitle.trim()) return;
-            const projectId = document.getElementById('milestones-kanban-board').dataset.projectId;
-            const body = new URLSearchParams({
-                title: this.newTaskTitle, start_date: this.newTaskStartDate, due_date: this.newTaskDate,
-                assignee_id: this.newTaskAssignee, milestone_id: milestoneId,
-            });
-            const response = await fetch(`/dashboard/projects/${projectId}/tasks/create/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
-            if (response.ok) window.location.reload();
-        },
-
-        async cycleTaskStatus(id, current) {
-            const next = { todo: 'in_progress', in_progress: 'done', done: 'todo' }[current] || 'todo';
-            await fetch(`/dashboard/tasks/${id}/status/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'status=' + encodeURIComponent(next),
-            });
-            window.location.reload();
-        },
-
-        async deleteTask(id) {
-            await fetch(`/dashboard/tasks/${id}/delete/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
-            window.location.reload();
-        },
-
-        startEditTask(id, title, dueDate, assigneeId, startDate) {
-            this.editingTaskId = id;
-            this.editTaskTitle = title;
-            this.editTaskStartDate = startDate || '';
-            this.editTaskDate = dueDate || '';
-            this.editTaskAssignee = assigneeId || '';
-        },
-
-        async saveTask() {
-            if (!this.editTaskTitle.trim()) return;
-            const body = new URLSearchParams({
-                title: this.editTaskTitle, start_date: this.editTaskStartDate, due_date: this.editTaskDate, assignee_id: this.editTaskAssignee,
-            });
-            await fetch(`/dashboard/tasks/${this.editingTaskId}/update/`, {
-                method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body,
-            });
-            window.location.reload();
+            if (!await billioConfirm({ title: 'Supprimer ce jalon ?', message: 'Ses tâches, pièces jointes et commentaires seront supprimés.', confirmLabel: 'Supprimer', tone: 'danger' })) return;
+            await post(`/dashboard/milestones/${id}/delete/`);
+            window.location.href = window.location.pathname + '?project_id=' + document.getElementById('milestones-kanban-board').dataset.projectId;
         },
     };
 }
@@ -499,14 +539,6 @@ async function uploadProjectFile(input) {
     const formData = new FormData();
     formData.append('file', input.files[0]);
     await fetch(`/dashboard/projects/${projectId}/files/upload/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
-    window.location.reload();
-}
-
-async function uploadMilestoneFile(id, input) {
-    if (!input.files.length) return;
-    const formData = new FormData();
-    formData.append('file', input.files[0]);
-    await fetch(`/dashboard/milestones/${id}/files/upload/`, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
     window.location.reload();
 }
 </script>

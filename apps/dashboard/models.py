@@ -489,6 +489,12 @@ class Milestone(models.Model):
     # (ex. cadrage, recette, retour client) sans passer par PROJECT_BRIEF_QUESTIONS.
     form_fields = models.JSONField(default=list, blank=True)
 
+    # Carte façon Trello (Kanban jalons) : étiquettes [{"text": "Urgent", "color": "red"}],
+    # couleur de couverture (clé de LABEL_COLORS, vide = aucune) et membres assignés.
+    labels = models.JSONField(default=list, blank=True)
+    cover = models.CharField(max_length=20, blank=True, default='')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='assigned_milestones')
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -511,6 +517,20 @@ class Milestone(models.Model):
         self.is_completed = not self.is_completed
         self.completed_at = timezone.now() if self.is_completed else None
         self.save(update_fields=['is_completed', 'completed_at', 'updated_at'])
+
+
+class MilestoneComment(models.Model):
+    """Commentaire de l'équipe sur un jalon (fenêtre de détail du Kanban jalons)."""
+    milestone = models.ForeignKey(Milestone, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.milestone_id} · {self.body[:40]}'
 
 
 class MilestoneFile(models.Model):
