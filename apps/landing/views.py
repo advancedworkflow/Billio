@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
 
+from .icons import inline_icons_callback
+
 
 class LandingPageView(TemplateView):
     """Vue pour la page d'accueil publique (landing page)."""
@@ -17,6 +19,11 @@ class LandingPageView(TemplateView):
         from apps.subscriptions.models import Plan
         context['plan_cards'] = plan_cards(Plan.objects.filter(is_active=True).order_by('order', 'price_monthly'))
         return context
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        response.add_post_render_callback(inline_icons_callback)
+        return response
 
 
 

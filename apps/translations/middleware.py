@@ -142,9 +142,11 @@ class HtmlTranslationMiddleware:
             markup = translate_html(markup, catalog)
         if is_page:
             version = catalog_version(lang)
+            # defer : le catalogue (~145 Kio en anglais) ne bloque plus l'affichage. La page est déjà
+            # traduite par le serveur ; i18n.js traduit encore tout le body à DOMContentLoaded.
             head = (
-                f'<script src="/i18n/catalog/{lang}.js?v={version}"></script>'
-                f'<script src="/static/js/i18n.js?v=1.2"></script>'
+                f'<script src="/i18n/catalog/{lang}.js?v={version}" defer></script>'
+                f'<script src="/static/js/i18n.js?v=1.2" defer></script>'
             )
             markup = markup.replace('</head>', head + '</head>', 1)
             markup = re.sub(r'<html([^>]*)\slang="[^"]*"', rf'<html\1 lang="{lang}"', markup, count=1)
