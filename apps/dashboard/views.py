@@ -1033,6 +1033,9 @@ def resources_center(request):
     organization = _first_user_organization(request.user)
     prefs = dict((organization.billing_preferences or {}) if organization else {})
     prefs.setdefault("payment_days", organization.default_payment_terms if organization else 30)
+    if organization:
+        from apps.organizations.jurisdictions import exemption_ui
+        prefs["exemption"] = exemption_ui(organization)
     return render(request, "dashboard/resources.html", {
         "default_tax_rate": str(default_tax_rate).replace(",", "."),
         "figures": figures,
@@ -1078,7 +1081,8 @@ def resources_save_billing(request):
         labels = {"tjm": "TJM", "hours_per_day": "heures par jour", "penalty_rate": "taux de pénalités", "payment_days": "délai de paiement (60 jours maximum)"}
         return JsonResponse({"ok": False, "error": f"Valeur invalide : {labels.get(str(exc), str(exc))}."}, status=400)
     if "vat_exempt" in data:
-        prefs["vat_exempt"] = bool(data["vat_exempt"])
+        from apps.organizations.jurisdictions import set_tax_exempt
+        set_tax_exempt(prefs, data["vat_exempt"])
     if "early_discount" in data:
         prefs["early_discount"] = str(data["early_discount"] or "").strip()[:300]
     organization.billing_preferences = prefs
@@ -1087,7 +1091,8 @@ def resources_save_billing(request):
         organization.default_payment_terms = prefs["payment_days"]
         fields.append("default_payment_terms")
     organization.save(update_fields=fields)
-    return JsonResponse({"ok": True, "prefs": prefs, "texts": organization.billing_texts()})
+    from apps.organizations.jurisdictions import exemption_ui
+    return JsonResponse({"ok": True, "prefs": prefs, "texts": organization.billing_texts(), "exemption": exemption_ui(organization)})
 
 
 @login_required

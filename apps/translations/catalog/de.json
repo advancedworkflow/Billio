@@ -6178,5 +6178,19 @@
   "Vos données vous appartiennent": "Ihre Daten gehören Ihnen",
   "Votre comptabilité à jour, toute seule": "Ihre Buchhaltung, automatisch aktuell",
   "Vérifiée avant l'envoi": "Vor dem Versand geprüft",
-  "Paiement en ligne": "Online-Zahlung"
+  "Paiement en ligne": "Online-Zahlung",
+  "Franchise de TVA": "USt-Befreiung",
+  "Franchise de TVA des petites entreprises": "Kleinunternehmerregelung (USt-Befreiung)",
+  "Je ne facture pas de sales tax": "Ich berechne keine Sales Tax",
+  "Je ne facture pas de taxe": "Ich berechne keine Steuer",
+  "Je ne suis pas inscrit à la {}": "Ich bin nicht für {} registriert",
+  "Non inscrit ({})": "Nicht registriert ({})",
+  "Nouvelles lignes à 0 % et mention « {} » sur vos factures.": "Neue Positionen mit 0 % und der Hinweis „{}“ auf Ihren Rechnungen.",
+  "Nouvelles lignes à 0 %, sans mention de taxe sur vos factures.": "Neue Positionen mit 0 %, ohne Steuerhinweis auf Ihren Rechnungen.",
+  "Sans sales tax": "Ohne Sales Tax",
+  "Sans taxe": "Ohne Steuer",
+  "Franchise": "Befreiung",
+  "Option activée : nouvelles lignes à 0 % et mention légale ajoutée.": "Option aktiviert: neue Positionen mit 0 % und Pflichthinweis hinzugefügt.",
+  "Option désactivée.": "Option deaktiviert.",
+  "Sans taxe, cette mention doit figurer sur vos factures :": "Ohne Steuer muss dieser Hinweis auf Ihren Rechnungen stehen:"
 }

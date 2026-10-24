@@ -399,7 +399,7 @@
                 </details>
                 <label class="st-field"><span>Escompte pour paiement anticipé</span><input name="early_discount" value="{{ prefs.early_discount|default:'' }}" placeholder="Pas d'escompte pour paiement anticipé."></label>
                 <label class="st-toggle"><input type="checkbox" name="vat_exempt" {% if prefs.vat_exempt %}checked{% endif %}>
-                    <span><strong>Franchise en base de TVA</strong><small>Nouvelles lignes à 0 % et mention « TVA non applicable, art. 293 B du CGI » sur vos factures.</small></span></label>
+                    <span><strong>{{ exemption_ui.label }}</strong><small>{{ exemption_ui.detail }}</small></span></label>
                 {% if billing_texts %}<div class="st-preview"><p class="st-label">Aperçu des mentions imprimées</p><p>{{ billing_texts.payment_terms }}</p><p>{{ billing_texts.legal_mentions }}</p></div>{% endif %}
                 <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
             </form>

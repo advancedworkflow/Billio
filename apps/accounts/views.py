@@ -314,6 +314,7 @@ def _compliance_context(organization):
         'compliance_languages': list(j.DOC_LANGUAGES.items()),
         'compliance_rates': j.tax_rates(pack, prof) if pack['supported'] else [],
         'compliance_title': j.document_title(organization),
+        'exemption_ui': j.exemption_ui(organization),
         'online_methods': __import__('apps.payments.local_methods', fromlist=['recommended']).recommended(prof['country']),
         'stripe_settings_url': 'https://dashboard.stripe.com/settings/payment_methods',
     }
@@ -631,8 +632,10 @@ def settings_view(request):
                 messages.error(request, error)
         else:
             prefs = dict(target.billing_preferences or {})
-            prefs.update({'payment_days': payment_days, 'vat_exempt': request.POST.get('vat_exempt') == 'on',
+            prefs.update({'payment_days': payment_days,
                           'early_discount': (request.POST.get('early_discount') or '').strip()[:300]})
+            from apps.organizations.jurisdictions import set_tax_exempt
+            set_tax_exempt(prefs, request.POST.get('vat_exempt') == 'on')
             if penalty:
                 prefs['penalty_rate'] = penalty
             else:

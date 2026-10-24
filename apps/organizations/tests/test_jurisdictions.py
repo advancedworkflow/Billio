@@ -82,6 +82,28 @@ class JurisdictionTests(TestCase):
         self.assertIn('Article 284', self.org.billing_texts()['legal_mentions'])
         self.assertIn('Payment due within', self.org.billing_texts()['payment_terms'])
 
+    def test_exemption_option_follows_the_country(self):
+        self.assertIn('293 B', j.exemption_ui(self.org)['detail'])
+        j.apply_profile(self.org, {'country': 'DE', 'status': 'freelance', 'tax_registered': True})
+        ui = j.exemption_ui(self.org)
+        self.assertEqual(ui['label'], 'Franchise de TVA des petites entreprises')
+        self.assertIn('§ 19 UStG', ui['detail'])
+        self.assertNotIn('293 B', ui['detail'])
+        j.apply_profile(self.org, {'country': 'US', 'status': 'freelance', 'tax_registered': True})
+        self.assertEqual(j.exemption_ui(self.org)['mention'], '')
+        # La case des paramètres l'emporte bien sur le profil pays enregistré.
+        j.apply_profile(self.org, {'country': 'GB', 'status': 'freelance', 'tax_registered': True})
+        self.org.billing_preferences = j.set_tax_exempt(dict(self.org.billing_preferences), True)
+        self.org.save()
+        self.assertIn('Not registered for VAT', self.org.billing_texts()['legal_mentions'])
+        page = self._settings_page()
+        self.assertIn('Je ne suis pas inscrit à la VAT', page)
+
+    def _settings_page(self):
+        http = HttpClient(HTTP_HOST='127.0.0.1')
+        http.force_login(self.user)
+        return http.get(reverse('accounts:user-settings')).content.decode()
+
     def test_checklist_validates_identifiers(self):
         j.apply_profile(self.org, {'country': 'AU', 'status': 'freelance', 'tax_registered': True})
         self.org.tax_id = '12 345 678 901'  # clé ABN invalide

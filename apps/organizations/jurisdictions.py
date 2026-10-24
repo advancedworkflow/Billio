@@ -319,6 +319,43 @@ NO_TAX_MENTIONS = {
 }
 
 
+def exemption_mention(pack, prof):
+    """Mention imprimée quand l'organisation ne facture pas de taxe ('' si le pays n'en prévoit pas)."""
+    if pack['region'] == 'eu':
+        local = pack['exemption_mention']
+        return local if prof['doc_language'] == pack['doc_language'] or local == EU_GENERIC_EXEMPTION else EU_GENERIC_EXEMPTION
+    return NO_TAX_MENTIONS.get(pack['code'], '')
+
+
+def exemption_ui(organization):
+    """Libellés de l'option « je ne facture pas de taxe » selon le pays (Paramètres, Ressources)."""
+    prof = profile(organization)
+    pack = pack_for(prof['country'])
+    code = pack['code']
+    if code == 'FR':
+        label, short = 'Franchise en base de TVA', 'Franchise (293 B)'
+    elif pack['region'] == 'eu':
+        label, short = 'Franchise de TVA des petites entreprises', 'Franchise de TVA'
+    elif code == 'US':
+        label, short = 'Je ne facture pas de sales tax', 'Sans sales tax'
+    elif pack['supported']:
+        label, short = f"Je ne suis pas inscrit à la {pack['tax_name']}", f"Non inscrit ({pack['tax_name']})"
+    else:
+        label, short = 'Je ne facture pas de taxe', 'Sans taxe'
+    mention = exemption_mention(pack, prof)
+    detail = (f'Nouvelles lignes à 0 % et mention « {mention} » sur vos factures.' if mention
+              else 'Nouvelles lignes à 0 %, sans mention de taxe sur vos factures.')
+    return {'label': label, 'short': short, 'detail': detail, 'mention': mention, 'tax_name': pack['tax_name']}
+
+
+def set_tax_exempt(prefs, exempt):
+    """Coche « franchise / pas de taxe » : garde le profil pays d'accord (sinon il l'emporte sur la case)."""
+    prefs['vat_exempt'] = bool(exempt)
+    if prefs.get('compliance'):
+        prefs['compliance'] = dict(prefs['compliance'], tax_registered=not exempt)
+    return prefs
+
+
 def legal_texts(organization, prefs):
     """{'legal_mentions', 'payment_terms'} selon le pays ; None pour la France (textes historiques)."""
     prof = profile(organization)
@@ -331,12 +368,8 @@ def legal_texts(organization, prefs):
     days = int(raw_days if raw_days is not None else (organization.default_payment_terms or 30))
     with_days, on_receipt = PAYMENT_TERMS.get(lang, PAYMENT_TERMS['en'])
     legal = []
-    if not prof['tax_registered']:
-        if pack['region'] == 'eu':
-            local = pack['exemption_mention']
-            legal.append(local if lang == pack['doc_language'] or local == EU_GENERIC_EXEMPTION else EU_GENERIC_EXEMPTION)
-        elif code in NO_TAX_MENTIONS:
-            legal.append(NO_TAX_MENTIONS[code])
+    if not prof['tax_registered'] and exemption_mention(pack, prof):
+        legal.append(exemption_mention(pack, prof))
     # Indemnité de recouvrement de 40 € (directive 2011/7/UE) : entre professionnels.
     if pack['region'] == 'eu' and (prof['status'] != 'freelance' or code in ('FR', 'BE', 'LU')):
         legal.append({

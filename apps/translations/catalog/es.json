@@ -6178,5 +6178,19 @@
   "Vos données vous appartiennent": "Sus datos le pertenecen",
   "Votre comptabilité à jour, toute seule": "Su contabilidad al día, sola",
   "Vérifiée avant l'envoi": "Verificada antes del envío",
-  "Paiement en ligne": "Pago en línea"
+  "Paiement en ligne": "Pago en línea",
+  "Franchise de TVA": "Franquicia de IVA",
+  "Franchise de TVA des petites entreprises": "Franquicia de IVA para pequeñas empresas",
+  "Je ne facture pas de sales tax": "No cobro sales tax",
+  "Je ne facture pas de taxe": "No cobro impuestos",
+  "Je ne suis pas inscrit à la {}": "No estoy registrado para el {}",
+  "Non inscrit ({})": "No registrado ({})",
+  "Nouvelles lignes à 0 % et mention « {} » sur vos factures.": "Nuevas líneas al 0 % y la mención «{}» en sus facturas.",
+  "Nouvelles lignes à 0 %, sans mention de taxe sur vos factures.": "Nuevas líneas al 0 %, sin mención de impuestos en sus facturas.",
+  "Sans sales tax": "Sin sales tax",
+  "Sans taxe": "Sin impuestos",
+  "Franchise": "Franquicia",
+  "Option activée : nouvelles lignes à 0 % et mention légale ajoutée.": "Opción activada: nuevas líneas al 0 % y mención legal añadida.",
+  "Option désactivée.": "Opción desactivada.",
+  "Sans taxe, cette mention doit figurer sur vos factures :": "Sin impuestos, esta mención debe figurar en sus facturas:"
 }

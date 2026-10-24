@@ -24,7 +24,7 @@
             <button type="button" @click="open('tjm')"><span>TJM</span><strong x-text="billing.tjm ? eur(Number(billing.tjm), 0) : 'Non défini'"></strong></button>
             <button type="button" @click="open('deadlines')"><span>Délai de paiement</span><strong x-text="(billing.payment_days || 30) + ' jours'"></strong></button>
             <button type="button" @click="open('deadlines')"><span>Pénalités de retard</span><strong x-text="billing.penalty_rate ? String(billing.penalty_rate).replace('.', ',') + ' % / an' : 'Non défini'"></strong></button>
-            <button type="button" @click="open('vat')"><span>TVA</span><strong x-text="billing.vat_exempt ? 'Franchise (293 B)' : 'Assujetti'"></strong></button>
+            <button type="button" @click="open('vat')"><span>TVA</span><strong x-text="billing.vat_exempt ? exemption().short : 'Assujetti'"></strong></button>
         </div>
     </section>
 
@@ -145,9 +145,9 @@
                             <div><dt>TVA</dt><dd x-text="eur(vatResult.tva)"></dd></div>
                             <div><dt>Toutes taxes comprises</dt><dd x-text="eur(vatResult.ttc)"></dd></div>
                         </dl>
-                        <p class="rs-note" x-show="Number(vat.rate) === 0">Franchise en base : mentionnez « TVA non applicable, art. 293 B du CGI » sur vos factures.</p>
-                        <label class="rs-toggle"><input type="checkbox" :checked="!!billing.vat_exempt" @change="saveBilling({ vat_exempt: $event.target.checked }, $event.target.checked ? 'Franchise de TVA activée : nouvelles lignes à 0 % et mention 293 B ajoutée.' : 'Franchise de TVA désactivée.')">
-                            <span><strong>Je suis en franchise en base de TVA</strong><small>Les nouvelles lignes de facture passent à 0 % et la mention « art. 293 B du CGI » est ajoutée automatiquement.</small></span></label>
+                        <p class="rs-note" x-show="Number(vat.rate) === 0 && exemption().mention">Sans taxe, cette mention doit figurer sur vos factures : <span translate="no" x-text="exemption().mention"></span></p>
+                        <label class="rs-toggle"><input type="checkbox" :checked="!!billing.vat_exempt" @change="saveBilling({ vat_exempt: $event.target.checked }, $event.target.checked ? 'Option activée : nouvelles lignes à 0 % et mention légale ajoutée.' : 'Option désactivée.')">
+                            <span><strong x-text="exemption().label"></strong><small x-text="exemption().detail"></small></span></label>
                     </div>
                 </div>
             </section>
@@ -332,7 +332,11 @@ function resourcesCenter() {
             });
             const data = await res.json().catch(() => ({}));
             this.flash(res.ok && data.ok ? message : (data.error || 'Enregistrement impossible.'));
-            if (res.ok && data.ok) this.billing = data.prefs;
+            if (res.ok && data.ok) this.billing = Object.assign({}, data.prefs, { exemption: data.exemption });
+        },
+        // Libellés de l'option « pas de taxe » selon le pays de l'organisation (jurisdictions.exemption_ui).
+        exemption() {
+            return this.billing.exemption || { label: 'Franchise en base de TVA', short: 'Franchise', detail: '', mention: '' };
         },
         flash(text) { this.toast = text; clearTimeout(this._t); this._t = setTimeout(() => { this.toast = ''; }, 3500); },
         saveChecks() {

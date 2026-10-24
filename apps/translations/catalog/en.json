@@ -6178,5 +6178,19 @@
   "Vos données vous appartiennent": "Your data belongs to you",
   "Votre comptabilité à jour, toute seule": "Your books, up to date on their own",
   "Vérifiée avant l'envoi": "Checked before sending",
-  "Paiement en ligne": "Online payment"
+  "Paiement en ligne": "Online payment",
+  "Franchise de TVA": "VAT exemption",
+  "Franchise de TVA des petites entreprises": "Small business VAT exemption",
+  "Je ne facture pas de sales tax": "I don’t charge sales tax",
+  "Je ne facture pas de taxe": "I don’t charge tax",
+  "Je ne suis pas inscrit à la {}": "I’m not registered for {}",
+  "Non inscrit ({})": "Not registered ({})",
+  "Nouvelles lignes à 0 % et mention « {} » sur vos factures.": "New lines at 0 % and the statement “{}” on your invoices.",
+  "Nouvelles lignes à 0 %, sans mention de taxe sur vos factures.": "New lines at 0 %, with no tax statement on your invoices.",
+  "Sans sales tax": "No sales tax",
+  "Sans taxe": "No tax",
+  "Franchise": "Exemption",
+  "Option activée : nouvelles lignes à 0 % et mention légale ajoutée.": "Option enabled: new lines at 0 % and legal statement added.",
+  "Option désactivée.": "Option disabled.",
+  "Sans taxe, cette mention doit figurer sur vos factures :": "Without tax, this statement must appear on your invoices:"
 }
