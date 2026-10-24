@@ -338,7 +338,7 @@ def telegram_chats(config):
 # Email (SMTP de l'organisation)
 # --------------------------------------------------------------------------- #
 
-def smtp_connection(config):
+def smtp_connection(config, timeout=TIMEOUT):
     from django.core.mail import get_connection
     security = config.get('security') or 'tls'
     try:
@@ -349,7 +349,7 @@ def smtp_connection(config):
         'django.core.mail.backends.smtp.EmailBackend',
         host=config.get('host'), port=port, username=config.get('username') or '',
         password=config.get('password') or '', use_tls=security == 'tls', use_ssl=security == 'ssl',
-        timeout=TIMEOUT, fail_silently=False,
+        timeout=timeout, fail_silently=False,
     )
 
 
@@ -369,6 +369,105 @@ def smtp_error_message(exc, config):
                 f"(587 + STARTTLS ou 465 + SSL) ; si c'est correct, l'hébergeur bloque les ports SMTP sortants. "
                 f"Détail : {exc}")
     return f'Envoi impossible : {exc}'
+
+
+# --------------------------------------------------------------------------- #
+# Email : connexion « adresse + mot de passe » (réglages SMTP trouvés tout seuls)
+# --------------------------------------------------------------------------- #
+
+# (nom, domaines, serveur, port, sécurité, page du mot de passe d'application ou '')
+MAIL_PROVIDERS = [
+    ('Gmail', ('gmail.com', 'googlemail.com'), 'smtp.gmail.com', 587, 'tls', 'https://myaccount.google.com/apppasswords'),
+    ('Outlook', ('outlook.com', 'outlook.fr', 'hotmail.com', 'hotmail.fr', 'live.com', 'live.fr', 'msn.com'),
+     'smtp-mail.outlook.com', 587, 'tls', 'https://account.live.com/proofs/AppPassword'),
+    ('Yahoo', ('yahoo.com', 'yahoo.fr', 'ymail.com'), 'smtp.mail.yahoo.com', 465, 'ssl', 'https://login.yahoo.com/account/security'),
+    ('iCloud', ('icloud.com', 'me.com', 'mac.com'), 'smtp.mail.me.com', 587, 'tls', 'https://account.apple.com/account/manage'),
+    ('Orange', ('orange.fr', 'wanadoo.fr'), 'smtp.orange.fr', 465, 'ssl', ''),
+    ('Free', ('free.fr',), 'smtp.free.fr', 465, 'ssl', ''),
+    ('SFR', ('sfr.fr', 'neuf.fr'), 'smtp.sfr.fr', 465, 'ssl', ''),
+    ('La Poste', ('laposte.net',), 'smtp.laposte.net', 465, 'ssl', ''),
+    ('GMX', ('gmx.fr', 'gmx.com', 'gmx.de', 'gmx.net'), 'mail.gmx.net', 587, 'tls', ''),
+    ('Web.de', ('web.de',), 'smtp.web.de', 587, 'tls', ''),
+]
+# Hébergeurs d'adresses à votre nom de domaine, proposés si la détection échoue.
+MAIL_HOSTS = [
+    ('Google Workspace', 'smtp.gmail.com', 587, 'tls'),
+    ('Microsoft 365', 'smtp.office365.com', 587, 'tls'),
+    ('OVHcloud', 'ssl0.ovh.net', 465, 'ssl'),
+    ('IONOS', 'smtp.ionos.fr', 587, 'tls'),
+    ('Gandi', 'mail.gandi.net', 587, 'tls'),
+    ('Hostinger', 'smtp.hostinger.com', 465, 'ssl'),
+    ('Zoho Mail', 'smtp.zoho.eu', 465, 'ssl'),
+    ('Infomaniak', 'mail.infomaniak.com', 465, 'ssl'),
+]
+MAIL_PORTS = {25: 'tls', 465: 'ssl', 587: 'tls', 2525: 'tls'}
+EMAIL_RE = re.compile(r'[^@\s]+@([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+)')
+
+
+def mail_provider(email):
+    """Fournisseur connu d'après le domaine de l'adresse, ou None."""
+    match = EMAIL_RE.fullmatch((email or '').strip())
+    domain = match.group(1).lower() if match else ''
+    for name, domains, host, port, security, app_password in MAIL_PROVIDERS:
+        if domain in domains:
+            return {'name': name, 'host': host, 'port': port, 'security': security, 'app_password': app_password}
+    return None
+
+
+def mail_candidates(email, manual=None):
+    """Réglages SMTP à essayer, dans l'ordre : saisis, fournisseur connu, puis serveurs usuels du domaine."""
+    match = EMAIL_RE.fullmatch((email or '').strip())
+    if not match:
+        raise ProviderError('Adresse email invalide.')
+    if manual and manual.get('host'):
+        try:
+            port = int(manual.get('port') or 587)
+        except ValueError:
+            raise ProviderError('Le port doit être un nombre.') from None
+        if port not in MAIL_PORTS:
+            raise ProviderError('Port SMTP non pris en charge (25, 465, 587 ou 2525).')
+        host = (urllib.parse.urlparse('//' + manual['host'].strip()).hostname or '').lower()
+        if not host:
+            raise ProviderError('Serveur SMTP invalide.')
+        security = manual.get('security') if manual.get('security') in ('tls', 'ssl') else MAIL_PORTS[port]
+        return [(host, port, security)]
+    known = mail_provider(email)
+    if known:
+        return [(known['host'], known['port'], known['security'])]
+    domain = match.group(1).lower()
+    return [(f'smtp.{domain}', 587, 'tls'), (f'mail.{domain}', 587, 'tls'),
+            (f'smtp.{domain}', 465, 'ssl'), (f'mail.{domain}', 465, 'ssl')]
+
+
+def smtp_signin(email, password, name='', manual=None):
+    """Trouve le serveur et vérifie les identifiants (sans envoyer d'email). Renvoie la configuration."""
+    import smtplib
+    email = (email or '').strip()
+    if not password:
+        raise ProviderError('Saisissez votre mot de passe.')
+    candidates = mail_candidates(email, manual)
+    last_error = None
+    for host, port, security in candidates:
+        config = {'host': host, 'port': str(port), 'security': security, 'username': email,
+                  'password': password, 'from_email': email, 'from_name': (name or '').strip()[:100]}
+        connection = smtp_connection(config, timeout=6 if len(candidates) > 1 else TIMEOUT)
+        try:
+            connection.open()
+        except smtplib.SMTPAuthenticationError:
+            known = mail_provider(email)
+            if known and known['app_password']:
+                raise ProviderError(f"{known['name']} a refusé le mot de passe : il faut un mot de passe d'application (lien ci-dessus), à coller à la place.") from None
+            raise ProviderError('Adresse ou mot de passe refusé par votre messagerie.') from None
+        except Exception as exc:  # serveur introuvable ou injoignable : on essaie le suivant
+            last_error = exc
+            continue
+        else:
+            connection.close()
+            config['account'] = email
+            return config
+    if manual and manual.get('host'):
+        raise ProviderError(smtp_error_message(last_error, {'host': candidates[0][0], 'port': candidates[0][1]}))
+    raise ProviderError('NOT_FOUND')
 
 
 def sender(config):

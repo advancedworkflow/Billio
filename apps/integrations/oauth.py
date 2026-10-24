@@ -264,6 +264,18 @@ CONSENT = {
         'at_tool': 'Connectez-vous à Trello puis cliquez sur « Autoriser ».',
         'next': 'Créez une automatisation pour ajouter une carte Trello à chaque nouveau projet.',
     },
+    # Email : pas d'OAuth, une carte de connexion « adresse + mot de passe » (providers.smtp_signin).
+    'email': {
+        'name': 'votre adresse email', 'signin': True,
+        'can': ['Envoyer vos relances, devis et emails d’automatisation depuis votre propre adresse.'],
+        'steps': ['Entrez votre adresse email et son mot de passe.',
+                  'Billio trouve tout seul les réglages de votre messagerie.',
+                  'C’est connecté : vos emails partent de votre adresse.'],
+        'never': ['Préférez un mot de passe d’application : vous pouvez le retirer à tout moment sans changer votre mot de passe habituel.',
+                  'Votre mot de passe n’est jamais réaffiché, même à vous.',
+                  'Billio n’agit que lorsque vous le demandez ou qu’une de vos automatisations le prévoit.'],
+        'next': 'Vos relances et emails d’automatisation partent maintenant de votre adresse.',
+    },
     'google-drive': {
         'name': 'Google Drive',
         'can': ['Enregistrer vos factures et devis en PDF dans un dossier « Billio » de votre Drive.',
@@ -286,4 +298,4 @@ def consent(key):
     if key not in CONSENT:
         return None
     name = CONSENT[key].get('name') or OAUTH[key]['name']
-    return dict(CONSENT[key], key=key, name=name, never=CONSENT_NEVER)
+    return {'never': CONSENT_NEVER, **CONSENT[key], 'key': key, 'name': name}

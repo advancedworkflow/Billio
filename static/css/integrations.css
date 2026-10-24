@@ -171,3 +171,22 @@
 .ig-auth-actions .ig-btn { padding: 10px 16px; font-size: 14px; }
 .ig-auth-go { flex: 1 1 220px; }
 @media (max-width: 480px) { .ig-auth-card { padding: 20px 16px; border-radius: 14px; } .ig-auth-actions .ig-btn { flex: 1 1 100%; } }
+
+/* Carte de connexion email (adresse + mot de passe) */
+.ig-signin { display: flex; flex-direction: column; gap: 14px; }
+.ig-signin-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #3f3f46; flex: 1; min-width: 0; }
+.ig-signin-field small { font-weight: 400; color: #a1a1aa; }
+.ig-signin-field input, .ig-signin-field select { width: 100%; padding: 11px 12px; border: 1px solid #e4e4e7; border-radius: 10px; font-size: 15px; background: #fff; color: #18181b; }
+.ig-signin-field input:focus, .ig-signin-field select:focus { outline: none; border-color: var(--billio-primary, #6d28d9); box-shadow: 0 0 0 3px rgba(109,40,217,.1); }
+.ig-signin-password { position: relative; display: block; }
+.ig-signin-password input { padding-right: 42px; }
+.ig-signin-password button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 6px; color: #71717a; border-radius: 6px; }
+.ig-signin-password button:hover { color: #18181b; }
+.ig-signin-hint { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: #f4f4f5; font-size: 13px; color: #3f3f46; line-height: 1.45; margin-top: -4px; }
+.ig-signin-hint svg { flex-shrink: 0; margin-top: 2px; color: var(--billio-primary, #6d28d9); }
+.ig-signin-hint .ig-link { display: inline-block; margin-top: 4px; }
+.ig-signin-server { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px dashed #d4d4d8; border-radius: 12px; }
+.ig-signin-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.ig-signin-row .ig-signin-field:last-child { flex: 0 0 110px; }
+.ig-signin .ig-result { margin: 0; }
+.ig-signin-advanced { text-align: center; }

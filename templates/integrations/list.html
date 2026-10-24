@@ -7,7 +7,7 @@
 {% block page_subtitle %}Connectez vos outils de messagerie, de productivité et d’emailing{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.5">
+<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.6">
 {% endblock %}
 
 {% block content %}
@@ -174,6 +174,16 @@
                                     <p class="ig-help" x-show="state().status !== 'connected'">Vous vous identifiez chez l'outil, vous autorisez Billio, et c'est tout : aucun code à copier.</p>
                                 </div>
                             </template>
+                            <!-- Email : connexion avec l'adresse et le mot de passe, réglages trouvés par Billio -->
+                            <template x-if="current.key === 'email'">
+                                <div class="ig-oneclick">
+                                    <a href="{% url 'integrations:oauth-authorize' 'email' %}" class="ig-btn ig-btn--primary ig-oneclick-btn" {% if not can_manage %}aria-disabled="true"{% endif %}>
+                                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                                        <span x-text="state().status === 'connected' ? 'Changer d’adresse email' : 'Se connecter avec mon adresse email'"></span>
+                                    </a>
+                                    <p class="ig-help" x-show="state().status !== 'connected'">Votre adresse et votre mot de passe suffisent : Billio trouve les réglages de votre messagerie.</p>
+                                </div>
+                            </template>
                             <template x-if="oauthSpec() && !oauthSpec().ready && cfg.isAdmin">
                                 <details class="ig-admin">
                                     <summary><strong>Activer « Se connecter avec <span x-text="oauthSpec().name"></span> »</strong> (administrateur, une seule fois)</summary>
@@ -186,7 +196,7 @@
                                 </details>
                             </template>
 
-                            <details class="ig-guide" :open="state().status !== 'connected' && !(oauthSpec() && oauthSpec().ready)">
+                            <details class="ig-guide" :open="state().status !== 'connected' && !(oauthSpec() && oauthSpec().ready) && current.key !== 'email'">
                                 <summary>Guide de configuration</summary>
                                 <ol>
                                     <template x-for="(step, i) in spec().steps" :key="i">

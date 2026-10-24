@@ -244,7 +244,8 @@ def oauth_authorize(request, connector_key):
     if not texts:
         return redirect('integrations:integrations-page')
     google = connector_key == 'google-drive'
-    if not (providers.google_configured() if google else oauth.configured(connector_key)):
+    signin = bool(texts.get('signin'))
+    if not signin and not (providers.google_configured() if google else oauth.configured(connector_key)):
         # Connexion en un clic pas encore activée sur ce serveur : formulaire et consignes dans le panneau.
         return redirect(_oauth_target(connector_key))
     organization = _get_user_primary_organization(request.user)
@@ -260,9 +261,48 @@ def oauth_authorize(request, connector_key):
         'connected': bool(instance and instance.status == 'connected'),
         'can_manage': bool(organization) and _can_manage_integrations(request.user, organization),
         'connect_url': reverse('integrations:google-connect') if google
-        else reverse('integrations:oauth-connect', args=[connector_key]),
+        else '' if signin else reverse('integrations:oauth-connect', args=[connector_key]),
         'back_url': _oauth_target(connector_key),
+        # Carte de connexion email : fournisseurs reconnus (aide en direct) et hébergeurs à choisir.
+        'mail_json': {'providers': [{'name': n, 'domains': d, 'app_password': a} for n, d, _h, _p, _s, a in providers.MAIL_PROVIDERS],
+                      'hosts': [{'name': n, 'host': h, 'port': p, 'security': s} for n, h, p, s in providers.MAIL_HOSTS]}
+        if signin else None,
     })
+
+
+@login_required
+@require_POST
+def email_signin(request):
+    """Connexion email en une étape : adresse + mot de passe, serveur SMTP trouvé et vérifié par Billio."""
+    organization = _get_user_primary_organization(request.user)
+    if not organization or not _can_manage_integrations(request.user, organization):
+        return _error("Vous n'avez pas les droits pour gérer les intégrations.", 403)
+    connector = get_object_or_404(Connector, key='email', is_active=True)
+    data = _payload(request)
+    from apps.subscriptions.entitlements import require_quota
+    if not ConnectionInstance.objects.filter(organization=organization, connector=connector, status='connected').exists():
+        require_quota(organization, 'integrations')
+    try:
+        config = providers.smtp_signin(data.get('email'), data.get('password'), data.get('name'),
+                                       manual=data.get('manual') if isinstance(data.get('manual'), dict) else None)
+    except ProviderError as exc:
+        if str(exc) == 'NOT_FOUND':
+            # Adresse à un nom de domaine : on demande l'hébergeur (ou le serveur) au lieu d'échouer.
+            return JsonResponse({'ok': False, 'need_server': True,
+                                 'error': "Billio n'a pas trouvé seul le serveur de votre messagerie : choisissez votre hébergeur ci-dessous."},
+                                status=400)
+        return _error(exc)
+    instance, _ = ConnectionInstance.objects.get_or_create(organization=organization, connector=connector)
+    was_connected = instance.status == 'connected'
+    instance.config = config
+    instance.status, instance.last_error = 'connected', ''
+    instance.connected_by, instance.disconnected_at = request.user, None
+    instance.connected_at = instance.connected_at if was_connected else timezone.now()
+    instance.save()
+    if not was_connected:
+        _notify_integration_event(instance, 'integration_connected', request.user)
+    messages.success(request, f"Adresse {config['from_email']} connectée.")
+    return JsonResponse({'ok': True, 'next': _authorize_page('email', 'ok')})
 
 
 @login_required

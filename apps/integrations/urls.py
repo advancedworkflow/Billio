@@ -18,6 +18,7 @@ urlpatterns = [
     # Plugins : configuration + test, Google Drive (OAuth), exports, import Notion
     path('plugins/<slug:connector_key>/save/', plugin_views.plugin_save, name='plugin-save'),
     path('plugins/<slug:connector_key>/test/', plugin_views.plugin_test, name='plugin-test'),
+    path('email/signin/', plugin_views.email_signin, name='email-signin'),
     path('plugins/telegram/chats/', plugin_views.telegram_chats, name='telegram-chats'),
     path('google/connect/', plugin_views.google_connect, name='google-connect'),
     path('oauth/trello/finish/', plugin_views.oauth_trello_finish, name='oauth-trello-finish'),

@@ -7,7 +7,7 @@
 {% block page_subtitle %}Connexion sécurisée, sans code à copier{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.5">
+<link rel="stylesheet" href="{% static 'css/integrations.css' %}?v=1.6">
 {% endblock %}
 
 {% block content %}
@@ -31,7 +31,7 @@
         {% if result == 'ok' and connected %}
         {# ---------------------------------------------------------------- Connecté #}
         <div class="ig-auth-head">
-            <h2>{{ tool.name }} est connecté à Billio</h2>
+            {% if tool.signin %}<h2>Votre adresse email est connectée</h2>{% else %}<h2>{{ tool.name }} est connecté à Billio</h2>{% endif %}
             {% if instance.config.account %}<p>Compte : <strong translate="no">{{ instance.config.account }}</strong></p>{% endif %}
         </div>
 
@@ -68,19 +68,19 @@
             {% endif %}
         </div>
         <div class="ig-auth-actions">
-            {% if can_manage %}<a href="{{ connect_url }}" class="ig-btn ig-btn--primary"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>Réessayer</a>{% endif %}
+            {% if can_manage %}<a href="{% if connect_url %}{{ connect_url }}{% else %}{% url 'integrations:oauth-authorize' tool.key %}{% endif %}" class="ig-btn ig-btn--primary"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>Réessayer</a>{% endif %}
             <a href="{{ back_url }}" class="ig-btn">Retour aux intégrations</a>
         </div>
 
         {% else %}
         {# ---------------------------------------------------------------- Autorisation #}
         <div class="ig-auth-head">
-            <h2>Autoriser Billio à utiliser {{ tool.name }}</h2>
+            {% if tool.signin %}<h2>Connectez votre adresse email</h2>{% else %}<h2>Autoriser Billio à utiliser {{ tool.name }}</h2>{% endif %}
             {% if connected %}
             <p>Déjà connecté{% if instance.config.account %} : <strong translate="no">{{ instance.config.account }}</strong>{% endif %}</p>
             <p>Continuez seulement pour changer de compte.</p>
             {% else %}
-            <p>Cela prend moins d’une minute, sans code à copier.</p>
+            {% if tool.signin %}<p>Comme pour ouvrir votre messagerie : votre adresse et votre mot de passe, c’est tout.</p>{% else %}<p>Cela prend moins d’une minute, sans code à copier.</p>{% endif %}
             {% endif %}
         </div>
 
@@ -94,9 +94,10 @@
         <div class="ig-auth-block">
             <p class="ig-auth-label">Ce qui va se passer</p>
             <ol class="ig-auth-steps">
+                {% if tool.steps %}{% for step in tool.steps %}<li><span>{{ step }}</span></li>{% endfor %}{% else %}
                 <li><span>Vous partez sur le site de {{ tool.name }} et vous vous connectez.</span></li>
                 <li><span>{{ tool.at_tool }}</span></li>
-                <li><span>Vous revenez ici automatiquement : c’est connecté.</span></li>
+                <li><span>Vous revenez ici automatiquement : c’est connecté.</span></li>{% endif %}
             </ol>
         </div>
 
@@ -107,9 +108,52 @@
             </ul>
         </div>
 
-        {% if can_manage %}
+        {% if can_manage and tool.signin %}
+        {# Carte de connexion « adresse + mot de passe » : le serveur SMTP est trouvé par Billio. #}
+        {{ mail_json|json_script:"mail-signin" }}
+        <form class="ig-signin" x-data="emailSignin()" @submit.prevent="submit()">
+            <label class="ig-signin-field"><span>Adresse email</span>
+                <input type="email" x-model.trim="email" autocomplete="email" required placeholder="vous@exemple.fr" value="{{ instance.config.from_email|default:'' }}" x-init="email = $el.value"></label>
+            <p class="ig-signin-hint" x-show="provider()" x-cloak>
+                <i data-lucide="info" class="w-4 h-4"></i>
+                <span><strong x-text="provider() && provider().name"></strong>
+                    <span x-show="provider() && provider().app_password">demande un mot de passe d’application, plus sûr que votre mot de passe habituel.</span>
+                    <span x-show="provider() && !provider().app_password">est reconnu : Billio connaît ses réglages.</span>
+                    <a x-show="provider() && provider().app_password" :href="provider() && provider().app_password" target="_blank" rel="noopener" class="ig-link">Créer mon mot de passe d’application</a></span>
+            </p>
+            <label class="ig-signin-field"><span>Mot de passe</span>
+                <span class="ig-signin-password">
+                    <input :type="show ? 'text' : 'password'" x-model="password" autocomplete="current-password" required>
+                    <button type="button" @click="show = !show" aria-label="Afficher ou masquer le mot de passe"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                </span></label>
+            <label class="ig-signin-field"><span>Nom affiché à vos clients <small>(facultatif)</small></span>
+                <input x-model.trim="name" maxlength="100" placeholder="Ex. Atelier Lumen" value="{{ instance.config.from_name|default:'' }}" x-init="name = $el.value"></label>
+
+            <div class="ig-signin-server" x-show="needServer" x-cloak>
+                <label class="ig-signin-field"><span>Votre adresse est hébergée chez</span>
+                    <select x-model="hostChoice">
+                        <option value="">Choisir…</option>
+                        <template x-for="(h, i) in cfg.hosts" :key="h.name"><option :value="i" x-text="h.name"></option></template>
+                        <option value="other">Autre : je connais le serveur</option>
+                    </select></label>
+                <div class="ig-signin-row" x-show="hostChoice === 'other'">
+                    <label class="ig-signin-field"><span>Serveur d’envoi (SMTP)</span><input x-model.trim="host" placeholder="smtp.exemple.fr"></label>
+                    <label class="ig-signin-field"><span>Port</span><select x-model="port"><option value="587">587</option><option value="465">465</option><option value="25">25</option><option value="2525">2525</option></select></label>
+                </div>
+            </div>
+
+            <div class="ig-result is-error" x-show="error" x-cloak><span x-text="error"></span></div>
+            <div class="ig-auth-actions">
+                <button type="submit" class="ig-btn ig-btn--primary ig-auth-go" :disabled="busy">
+                    <span x-show="!busy">Se connecter</span><span x-show="busy">Connexion en cours…</span>
+                </button>
+                <a href="{{ back_url }}" class="ig-btn">Annuler</a>
+            </div>
+            <p class="ig-help ig-signin-advanced">Vous préférez tout régler vous-même ? <a href="{{ back_url }}" class="ig-link">Réglages avancés</a></p>
+        </form>
+        {% elif can_manage %}
         <div class="ig-auth-actions">
-            <a href="{{ connect_url }}" class="ig-btn ig-btn--primary ig-auth-go">Continuer vers {{ tool.name }}<i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+            <a href="{{ connect_url }}"class="ig-btn ig-btn--primary ig-auth-go">Continuer vers {{ tool.name }}<i data-lucide="arrow-right" class="w-4 h-4"></i></a>
             <a href="{{ back_url }}" class="ig-btn">Annuler</a>
         </div>
         {% else %}
@@ -121,6 +165,40 @@
 </div>
 
 <script>
+function emailSignin() {
+    const cfg = JSON.parse(document.getElementById('mail-signin').textContent);
+    return {
+        cfg, email: '', password: '', name: '', show: false, busy: false, error: '',
+        needServer: false, hostChoice: '', host: '', port: '587',
+        provider() {
+            const domain = (this.email.split('@')[1] || '').toLowerCase();
+            return cfg.providers.find(p => p.domains.includes(domain)) || null;
+        },
+        manual() {
+            if (this.hostChoice === 'other') return this.host ? { host: this.host, port: this.port } : null;
+            const h = cfg.hosts[this.hostChoice];
+            return h ? { host: h.host, port: h.port, security: h.security } : null;
+        },
+        submit() {
+            this.busy = true; this.error = '';
+            const token = document.querySelector('[name=csrfmiddlewaretoken]');
+            fetch('{% url "integrations:email-signin" %}', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token ? token.value : '' },
+                body: JSON.stringify({ email: this.email, password: this.password, name: this.name, manual: this.needServer ? this.manual() : null }),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) { window.location = data.next; return; }
+                    if (data.need_server) this.needServer = true;
+                    this.error = data.error || 'Connexion impossible.';
+                })
+                .catch(() => { this.error = 'Connexion impossible pour le moment.'; })
+                .finally(() => { this.busy = false; });
+        },
+    };
+}
+
 function authorizeTest(url) {
     return {
         busy: false, ok: false, text: '',
