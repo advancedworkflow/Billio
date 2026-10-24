@@ -1419,6 +1419,8 @@ def public_invoice_payment(request, invoice_id):
         'days_late': -days_left if days_left is not None and days_left < 0 else 0,
         'page_title': f'Facture {invoice.invoice_number} — {invoice.organization.name}',
         'card_payment': bool(stripe_instance(invoice.organization)),
+        'transfer_qr': __import__('apps.payments.local_methods', fromlist=['epc_qr_svg']).epc_qr_svg(
+            invoice.organization, invoice, remaining) if invoice.status != 'paid' else '',
         'payment_cancelled': request.GET.get('paiement') == 'annule',
     }
     return render(request, 'invoices/public_payment.html', context)
@@ -1444,7 +1446,7 @@ def public_invoice_pdf(request, invoice_id):
 @require_POST
 def public_invoice_pay(request, invoice_id):
     """
-    Le client clique « Payer par carte » : on ouvre une session Stripe Checkout pour le
+    Le client clique « Payer en ligne » : on ouvre une session Stripe Checkout pour le
     reste dû. La facture n'est marquée payée qu'après confirmation de Stripe
     (retour `public_invoice_pay_return` ou webhook), jamais sur ce simple clic.
     """

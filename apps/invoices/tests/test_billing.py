@@ -147,6 +147,10 @@ class StripeTests(TestCase):
                                           config={'secret_key': 'sk_test_x', 'webhook_secret': 'whsec_test'})
         self.invoice = make_invoice(self.org, self.client_obj, status='sent')
         self.http = HttpClient(HTTP_HOST='127.0.0.1')
+        # Lecture du moyen de paiement utilisé (appel Stripe supplémentaire) : jamais de réseau en test.
+        patcher = mock.patch('apps.payments.stripe_checkout.used_method', return_value='')
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def session(self, **overrides):
         data = {'id': 'cs_test_123', 'payment_status': 'paid', 'amount_total': 12000, 'payment_intent': 'pi_123',

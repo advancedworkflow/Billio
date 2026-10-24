@@ -314,6 +314,8 @@ def _compliance_context(organization):
         'compliance_languages': list(j.DOC_LANGUAGES.items()),
         'compliance_rates': j.tax_rates(pack, prof) if pack['supported'] else [],
         'compliance_title': j.document_title(organization),
+        'online_methods': __import__('apps.payments.local_methods', fromlist=['recommended']).recommended(prof['country']),
+        'stripe_settings_url': 'https://dashboard.stripe.com/settings/payment_methods',
     }
 
 

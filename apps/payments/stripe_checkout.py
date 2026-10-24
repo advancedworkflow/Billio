@@ -114,6 +114,22 @@ def record_checkout(organization, session):
     return None
 
 
+def used_method(organization, session):
+    """Type du moyen de paiement utilisé (card, sepa_debit, bancontact…), ou '' si Stripe ne le dit pas."""
+    intent_id = session.get('payment_intent')
+    instance = stripe_instance(organization)
+    if not intent_id or not instance:
+        return ''
+    try:
+        intent = http('GET', f'{API}/payment_intents/{intent_id}?expand[]=payment_method',
+                      headers=_headers(instance.config['secret_key']))
+    except ProviderError:
+        return ''
+    method = intent.get('payment_method') or {}
+    wallet = ((method.get('card') or {}).get('wallet') or {}).get('type') if isinstance(method, dict) else None
+    return wallet or (method.get('type', '') if isinstance(method, dict) else '')
+
+
 def _record_invoice_payment(organization, invoice_id, amount, reference, session):
     from django.db.models import Sum
     from apps.invoices.models import Invoice
@@ -123,14 +139,17 @@ def _record_invoice_payment(organization, invoice_id, amount, reference, session
         invoice = Invoice.objects.select_for_update().filter(id=invoice_id, organization=organization).first()
         if not invoice or Payment.objects.filter(provider='stripe', provider_payment_id=reference).exists():
             return invoice
+        from .local_methods import label as method_label
+        used = used_method(organization, session)
         method = PaymentMethod.objects.filter(organization=organization, method_type='stripe', is_active=True).first() \
-            or PaymentMethod.objects.create(organization=organization, method_type='stripe', is_active=True, name='Carte bancaire (Stripe)')
+            or PaymentMethod.objects.create(organization=organization, method_type='stripe', is_active=True, name='Paiement en ligne (Stripe)')
         payment = Payment.objects.create(
             invoice=invoice, payment_method=method, amount=amount, currency=invoice.currency,
             status='completed', provider='stripe', provider_payment_id=reference,
             transaction_id=session.get('payment_intent') or None,
             payment_date=timezone.now(), processed_at=timezone.now(),
-            notes='Paiement en ligne par carte (Stripe Checkout).',
+            notes=f"Paiement en ligne : {method_label(used)} (Stripe Checkout)." if used else 'Paiement en ligne (Stripe Checkout).',
+            provider_data={'method': used} if used else None,
         )
         paid = invoice.payments.filter(status='completed').aggregate(total=Sum('amount'))['total'] or Decimal('0')
         fully_paid = invoice.amount_due(paid) <= Decimal('0.009')

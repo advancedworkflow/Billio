@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.4">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.5">
 {% endblock %}
 
 {% block content %}
@@ -480,11 +480,20 @@
             <div class="st-stripe">
                 <span class="st-stripe-logo">{% include "integrations/icons/stripe.svg.html" %}</span>
                 <div class="st-stripe-text">
-                    <strong>Paiement par carte (Stripe)</strong>
-                    <span>{% if stripe_connected %}Activé : vos clients paient factures et jalons par carte depuis leur lien.{% else %}Reliez votre compte Stripe pour que vos clients paient par carte depuis leur lien.{% endif %}</span>
+                    <strong>Paiement en ligne (Stripe)</strong>
+                    <span>{% if stripe_connected %}Activé : vos clients paient factures et jalons en ligne depuis leur lien.{% else %}Reliez votre compte Stripe pour que vos clients paient en ligne depuis leur lien.{% endif %}</span>
                 </div>
                 <a class="st-btn{% if not stripe_connected %} st-btn--primary{% endif %}" href="{% url 'integrations:integrations-page' %}?plugin=stripe">{% if stripe_connected %}Gérer{% else %}Configurer{% endif %}</a>
             </div>
+            {% if online_methods %}
+            <div class="st-sub st-methods">
+                <p class="st-label">Moyens conseillés pour vos clients{% if compliance_pack.supported %} ({{ compliance_pack.name }}){% endif %}</p>
+                <ul class="st-methods-list">
+                    {% for name, delayed in online_methods %}<li><i data-lucide="check" class="w-3.5 h-3.5"></i> {{ name }}{% if delayed %} <small>confirmé sous quelques jours</small>{% endif %}</li>{% endfor %}
+                </ul>
+                <p class="st-help">Activez-les une fois dans votre tableau de bord Stripe : Billio propose ensuite automatiquement ceux qui conviennent à chaque client. <a href="{{ stripe_settings_url }}" target="_blank" rel="noopener">Ouvrir les réglages Stripe</a></p>
+            </div>
+            {% endif %}
         </section>
 
         <!-- ================= Prise de rendez-vous ================= -->

@@ -169,8 +169,8 @@
                     {% if card_payment %}
                     <form method="post" action="{% url 'invoices:public-invoice-pay' invoice.id %}" class="mt-5">
                         {% csrf_token %}
-                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black transition">Payer par carte</button>
-                        <p class="text-xs text-gray-400 mt-2 text-center">Paiement sécurisé par Stripe</p>
+                        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white font-medium hover:bg-black transition">Payer en ligne</button>
+                        <p class="text-xs text-gray-400 mt-2 text-center">Carte, Apple Pay, Google Pay ou prélèvement · paiement sécurisé par Stripe</p>
                     </form>
                     {% elif organization.iban %}
                     <p class="mt-4 text-sm text-gray-600">Réglez cette facture par virement avec les coordonnées ci-dessous.</p>
@@ -200,6 +200,12 @@
                         <div><dt class="text-xs text-gray-500">BIC</dt><dd class="font-mono text-[13px]">{{ organization.bic_swift }}</dd></div>
                         {% endif %}
                     </dl>
+                    {% if transfer_qr %}
+                    <div class="mt-4 flex items-center gap-4 rounded-xl bg-gray-50 p-3">
+                        <div class="shrink-0 bg-white rounded-lg p-1 leading-none" aria-label="QR code de virement">{{ transfer_qr|safe }}</div>
+                        <p class="text-gray-600 text-[13px]">Scannez ce code avec l'application de votre banque : le virement est prérempli (montant, IBAN, référence).</p>
+                    </div>
+                    {% endif %}
                     {% if organization.payment_instructions %}<p class="text-gray-500 mt-4 whitespace-pre-line">{{ organization.payment_instructions }}</p>{% endif %}
                 </div>
                 {% endif %}

@@ -132,7 +132,7 @@
                                 {% elif card_payment %}
                                 <form method="post" action="{% url 'dashboard:public-portal-milestone-pay' client.portal_token m.id %}">
                                     {% csrf_token %}
-                                    <button type="submit" class="pt-btn">Payer par carte</button>
+                                    <button type="submit" class="pt-btn">Payer en ligne</button>
                                 </form>
                                 {% else %}
                                 <span class="text-xs" style="color: var(--pt-muted);">{% if client.organization.iban %}Par virement · IBAN {{ client.organization.iban }}{% else %}À régler selon les modalités convenues{% endif %}</span>
