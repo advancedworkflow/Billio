@@ -5,12 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Billio — Du devis à la livraison, sans friction</title>
-    <meta name="description" content="Devis, projets, livrables, facturation et intégrations — pilotez toute votre activité freelance ou agence depuis une seule plateforme.">
+    <meta name="description" content="Devis, factures conformes dans 32 pays, paiement en ligne local, rapprochement bancaire, projets et intégrations (QuickBooks, Slack…) — pilotez toute votre activité depuis une seule plateforme.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-    <link href="{% static 'css/landing.css' %}?v=2.6" rel="stylesheet">
+    <link href="{% static 'css/landing.css' %}?v=2.7" rel="stylesheet">
     <link href="{% static 'css/landing-motion.css' %}?v=3.0" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
@@ -27,6 +27,7 @@
             <nav class="hidden md:flex items-center gap-8">
                 <a href="#feature-cards" class="landing-nav-link">Fonctionnalités</a>
                 <a href="#projects" class="landing-nav-link">Projets</a>
+                <a href="#paiements" class="landing-nav-link">Paiements</a>
                 <a href="#showcase" class="landing-nav-link">Produit</a>
                 <a href="#automation" class="landing-nav-link">Automation</a>
                 <a href="#pricing" class="landing-nav-link">Tarifs</a>
@@ -213,7 +214,7 @@
                 <div class="bento-item bento-item--payment tilt-card" data-stagger>
                     <div class="bento-icon"><i data-lucide="wallet-cards" class="w-5 h-5"></i></div>
                     <h3 class="bento-title">Paiement intégré</h3>
-                    <p class="bento-desc">Stripe natif — vos clients paient en un clic, vous encaissez plus vite. Aucune configuration technique requise : tout est prêt dès l'inscription.</p>
+                    <p class="bento-desc">Stripe natif — vos clients paient en un clic par carte, Apple Pay, prélèvement SEPA ou le moyen local de leur pays, et les factures en euros portent un QR code de virement.</p>
                     <div class="bento-payment-visual">
                         <div class="bento-payment-row">
                             <div class="bento-payment-icon"><i data-lucide="check" class="w-3.5 h-3.5"></i></div>
@@ -296,12 +297,13 @@
                 <div id="projects" class="bento-item bento-item--projects tilt-card" data-stagger>
                     <div class="bento-icon"><i data-lucide="kanban" class="w-5 h-5"></i></div>
                     <h3 class="bento-title">Projets, jalons &amp; tâches</h3>
-                    <p class="bento-desc">Créez vos propres phases sur un Kanban personnalisable, avec jalons, tâches assignables, réunions client planifiées et progression calculée automatiquement — visible aussi par vos clients.</p>
+                    <p class="bento-desc">Un Kanban façon Trello : chaque jalon s'ouvre en carte détaillée avec étiquettes, membres, échéance, checklist, pièces jointes et commentaires. Progression calculée automatiquement, visible aussi par vos clients.</p>
                     <div class="bento-invoices-visual">
                         <span class="bento-chip">Kanban</span>
-                        <span class="bento-chip">Milestones</span>
+                        <span class="bento-chip">Jalons</span>
                         <span class="bento-chip">Tâches</span>
                         <span class="bento-chip">Réunions</span>
+                        <span class="bento-chip">Commentaires</span>
                     </div>
                 </div>
                 <div id="files" class="bento-item bento-item--files tilt-card" data-stagger>
@@ -326,11 +328,109 @@
                 <div id="integrations" class="bento-item bento-item--integrations tilt-card" data-stagger>
                     <div class="bento-icon"><i data-lucide="plug" class="w-5 h-5"></i></div>
                     <h3 class="bento-title">Intégrations connectées</h3>
-                    <p class="bento-desc">Connectez WhatsApp, Slack, Stripe et vos autres outils : chaque événement reçu alimente automatiquement votre activité, avec un badge dédié.</p>
+                    <p class="bento-desc">Connectez WhatsApp, Slack, Stripe, QuickBooks et vos autres outils : chaque facture, paiement ou devis peut déclencher une action chez eux, sans copier-coller.</p>
                     <div class="bento-invoices-visual">
                         <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413"/></svg>WhatsApp</span>
                         <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>Slack</span>
                         <span class="bento-chip bento-chip--brand"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg>Stripe</span>
+                        <span class="bento-chip bento-chip--brand">{% include "integrations/icons/quickbooks.svg.html" %}QuickBooks</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4 bis. Paiements, conformité et comptabilité -->
+    <section id="paiements" class="landing-section">
+        <div class="max-w-6xl mx-auto reveal">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <p class="landing-label mb-3">Paiements &amp; conformité</p>
+                <h2 class="landing-display text-4xl sm:text-5xl">Facturez dans 32 pays, encaissez comme vos clients préfèrent</h2>
+                <p class="text-base mt-4" style="color: var(--billio-text-muted);">Trois questions suffisent pour des factures conformes à votre pays et à votre statut. Vos clients paient avec leurs moyens habituels, et chaque virement retrouve sa facture.</p>
+            </div>
+            <div class="pc-grid reveal-stagger">
+                <div class="bento-item pc-item pc-item--wide" data-stagger>
+                    <div class="bento-icon"><i data-lucide="globe" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Conforme dans votre pays</h3>
+                    <p class="bento-desc">Indiquez votre pays, votre statut (freelance, PME ou entreprise) et si vous facturez la TVA : devise, taux, mentions légales et intitulés du document sont réglés pour vous.</p>
+                    <div class="pc-steps" aria-hidden="true">
+                        <span class="pc-step"><b>1</b>Pays</span>
+                        <span class="pc-step"><b>2</b>Statut</span>
+                        <span class="pc-step"><b>3</b>TVA</span>
+                        <span class="pc-step pc-step--done"><i data-lucide="check" class="w-3.5 h-3.5"></i>Prêt à facturer</span>
+                    </div>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Union européenne (27)</span>
+                        <span class="bento-chip">Royaume-Uni</span>
+                        <span class="bento-chip">États-Unis</span>
+                        <span class="bento-chip">Canada</span>
+                        <span class="bento-chip">Australie</span>
+                        <span class="bento-chip">Nouvelle-Zélande</span>
+                    </div>
+                    <p class="pc-note">Ailleurs : facturation simple et export comptable, sans promesse fiscale que nous ne pourrions pas tenir.</p>
+                </div>
+                <div class="bento-item pc-item" data-stagger>
+                    <div class="bento-icon"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Vérifiée avant l'envoi</h3>
+                    <p class="bento-desc">Numéro de TVA, immatriculation, mentions obligatoires : Billio signale ce qui manque avant que la facture parte. Autoliquidation et export ajoutés automatiquement.</p>
+                    <ul class="pc-checks" aria-hidden="true">
+                        <li><i data-lucide="check" class="w-3.5 h-3.5"></i>Numéro de TVA du client</li>
+                        <li><i data-lucide="check" class="w-3.5 h-3.5"></i>Mention d'autoliquidation</li>
+                        <li class="is-todo"><i data-lucide="circle-alert" class="w-3.5 h-3.5"></i>Adresse du client à compléter</li>
+                    </ul>
+                </div>
+                <div class="bento-item pc-item" data-stagger>
+                    <div class="bento-icon"><i data-lucide="wallet-cards" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Les moyens de paiement locaux</h3>
+                    <p class="bento-desc">Un bouton « Payer en ligne » sur chaque facture, avec les moyens que vos clients utilisent déjà dans leur pays. L'argent arrive sur votre compte Stripe.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Carte</span>
+                        <span class="bento-chip">Apple Pay</span>
+                        <span class="bento-chip">Google Pay</span>
+                        <span class="bento-chip">Prélèvement SEPA</span>
+                        <span class="bento-chip">Bancontact</span>
+                        <span class="bento-chip">iDEAL</span>
+                        <span class="bento-chip">ACH</span>
+                        <span class="bento-chip">BECS</span>
+                    </div>
+                </div>
+                <div class="bento-item pc-item" data-stagger>
+                    <div class="bento-icon"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">QR code de virement</h3>
+                    <p class="bento-desc">Sur les factures en euros, votre client scanne le QR code avec son application bancaire : IBAN, montant et référence sont déjà remplis. Zéro faute de frappe.</p>
+                    <div class="pc-qr" aria-hidden="true">
+                        <svg viewBox="0 0 21 21" width="64" height="64" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h1v2H8zM10 1h2v1h-2zM9 3h2v2H9zM12 4h1v3h-1zM8 6h2v2H8zM0 8h2v1H0zM3 8h3v1H3zM7 9h3v1H7zM11 8h2v2h-2zM14 8h2v1h-2zM17 8h4v1h-4zM1 10h2v2H1zM5 10h1v2H5zM9 11h3v1H9zM13 10h3v2h-3zM18 10h2v1h-2zM8 13h2v2H8zM11 13h1v3h-1zM14 13h3v1h-3zM19 12h2v2h-2zM13 15h2v2h-2zM16 15h1v3h-1zM18 15h3v1h-3zM8 17h3v1H8zM12 18h3v1h-3zM18 18h1v3h-1zM9 19h2v2H9zM14 20h3v1h-3zM20 17h1v2h-1z"/></svg>
+                        <div><strong>Virement SEPA</strong><span>1 200,00 € · Facture F-2026-042</span></div>
+                    </div>
+                </div>
+                <div class="bento-item pc-item" data-stagger>
+                    <div class="bento-icon"><i data-lucide="git-compare-arrows" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Rapprochement bancaire</h3>
+                    <p class="bento-desc">Importez le relevé de votre banque : Billio propose la bonne facture pour chaque virement reçu, vous validez d'un clic. Les paiements partiels sont gérés.</p>
+                    <div class="pc-match" aria-hidden="true">
+                        <div class="pc-match-row"><span>VIR SEPA STUDIO NOVA</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i><b>F-2026-042</b><em>Sûr</em></div>
+                        <div class="pc-match-row"><span>VIREMENT M. DURAND</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i><b>F-2026-038</b><em class="is-maybe">Probable</em></div>
+                    </div>
+                </div>
+                <div class="bento-item pc-item pc-item--wide" data-stagger>
+                    <div class="bento-icon"><i data-lucide="calculator" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Votre comptabilité à jour, toute seule</h3>
+                    <p class="bento-desc">Export FEC prêt pour l'administration fiscale française, export CSV lisible par n'importe quel logiciel, et QuickBooks Online : chaque facture envoyée et chaque paiement reçu y arrivent automatiquement.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Export FEC</span>
+                        <span class="bento-chip">Export CSV comptable</span>
+                        <span class="bento-chip bento-chip--brand">{% include "integrations/icons/quickbooks.svg.html" %}QuickBooks</span>
+                        <span class="bento-chip">Factur-X</span>
+                    </div>
+                </div>
+                <div class="bento-item pc-item" data-stagger>
+                    <div class="bento-icon"><i data-lucide="lock-keyhole" class="w-5 h-5"></i></div>
+                    <h3 class="bento-title">Vos données vous appartiennent</h3>
+                    <p class="bento-desc">Téléchargez toutes vos données en un clic (factures, clients, fichiers), dans un format lisible. Vous fermez votre compte ? Vous avez 30 jours pour changer d'avis, puis tout est supprimé.</p>
+                    <div class="bento-invoices-visual">
+                        <span class="bento-chip">Export complet (RGPD)</span>
+                        <span class="bento-chip">Adresse d'envoi vérifiée</span>
+                        <span class="bento-chip">Fermeture en libre-service</span>
                     </div>
                 </div>
             </div>
@@ -639,8 +739,8 @@
                         <span class="workflow-number">04</span>
                         <div class="workflow-icon"><i data-lucide="credit-card" class="w-5 h-5"></i></div>
                     </div>
-                    <h3>Paiement Stripe</h3>
-                    <p>Le règlement se fait en un clic grâce à l'intégration Stripe native — paiement par carte, sans que votre client ait besoin de créer un compte.</p>
+                    <h3>Paiement en ligne</h3>
+                    <p>Le règlement se fait en un clic grâce à Stripe — carte, Apple Pay, prélèvement ou moyen local, sans que votre client ait besoin de créer un compte. Un virement ? Le QR code et le rapprochement bancaire s'en chargent.</p>
                 </div>
                 <div class="workflow-card tilt-card" data-stagger>
                     <div class="workflow-card-head">
@@ -648,7 +748,7 @@
                         <div class="workflow-icon"><i data-lucide="badge-check" class="w-5 h-5"></i></div>
                     </div>
                     <h3>Reçu automatique</h3>
-                    <p>Une confirmation de paiement est générée et envoyée instantanément, avec toutes les pièces justificatives nécessaires à votre comptabilité.</p>
+                    <p>Une confirmation de paiement est générée et envoyée instantanément ; la facture et le paiement partent aussi dans votre comptabilité (FEC, CSV ou QuickBooks).</p>
                 </div>
                 <div class="workflow-card tilt-card" data-stagger>
                     <div class="workflow-card-head">
@@ -768,14 +868,35 @@
                         Le client peut-il payer sans compte ?
                         <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
                     </button>
-                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Oui. Un lien de paiement suffit — carte bancaire, sans inscription côté client.</p>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Oui. Un lien de paiement suffit — carte, Apple Pay, Google Pay, prélèvement SEPA ou moyen local de son pays, sans inscription côté client. Pour un virement, il scanne le QR code de la facture.</p>
+                </div>
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Billio fonctionne-t-il hors de France ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Oui. Les factures s'adaptent aux règles de l'Union européenne, du Royaume-Uni, des États-Unis, du Canada, de l'Australie et de la Nouvelle-Zélande. Ailleurs, vous facturez simplement et exportez votre comptabilité.</p>
+                </div>
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Billio se connecte-t-il à ma comptabilité ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Oui : export FEC pour la France, export CSV pour tout logiciel, et connexion QuickBooks Online qui reçoit vos factures et vos paiements automatiquement.</p>
+                </div>
+                <div class="landing-faq-item tilt-card">
+                    <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
+                        Comment savoir quelle facture un virement règle ?
+                        <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
+                    </button>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Importez le relevé de votre banque : Billio propose la facture correspondante à chaque virement, et vous validez d'un clic.</p>
                 </div>
                 <div class="landing-faq-item tilt-card">
                     <button type="button" class="w-full text-left flex justify-between gap-4 faq-toggle font-semibold p-4" onclick="toggleFAQ(this)">
                         Puis-je résilier à tout moment ?
                         <span class="faq-icon text-xl leading-none" style="color: var(--billio-muted);">+</span>
                     </button>
-                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Absolument. Aucun engagement, aucun frais caché.</p>
+                    <p class="faq-content hidden px-4 pb-4 text-sm" style="color: var(--billio-muted);">Absolument. Aucun engagement, aucun frais caché, et vous pouvez télécharger toutes vos données avant de partir.</p>
                 </div>
             </div>
         </div>

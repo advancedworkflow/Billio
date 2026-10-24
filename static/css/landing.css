@@ -907,3 +907,60 @@ html { font-size: 110%; }
     line-height: 1.05;
   }
 }
+
+/* Paiements & conformité (#paiements) — cartes sobres, survol sans halo */
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.pc-item--wide { grid-column: span 2; }
+.pc-item .bento-invoices-visual { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 1rem; }
+.pc-item .bento-chip { animation: none; opacity: 1; }
+.pc-item .bento-chip--brand svg { width: 14px; height: 14px; }
+.pc-note { margin-top: 0.75rem; font-size: 0.78rem; color: var(--billio-text-muted); }
+
+.pc-steps { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.pc-step {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.35rem; border-radius: 999px;
+  border: 1px solid var(--billio-border-strong); background: var(--billio-card);
+  font-size: 0.8rem; font-weight: 600;
+}
+.pc-step b {
+  width: 1.3rem; height: 1.3rem; border-radius: 999px; display: inline-grid; place-items: center;
+  background: var(--billio-primary-soft); color: var(--billio-primary); font-size: 0.72rem;
+}
+.pc-step--done { padding-left: 0.6rem; border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+
+.pc-checks { margin-top: 1rem; display: grid; gap: 0.4rem; font-size: 0.8rem; }
+.pc-checks li { display: flex; align-items: center; gap: 0.45rem; color: #15803d; }
+.pc-checks li.is-todo { color: var(--billio-cta-text); }
+
+.pc-qr {
+  margin-top: 1rem; display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.75rem; border: 1px solid var(--billio-border); border-radius: 0.5rem; background: var(--billio-card);
+}
+.pc-qr svg { flex-shrink: 0; color: var(--billio-text); }
+.pc-qr strong { display: block; font-size: 0.85rem; }
+.pc-qr span { font-size: 0.78rem; color: var(--billio-text-muted); }
+
+.pc-match { margin-top: 1rem; display: grid; gap: 0.45rem; }
+.pc-match-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.6rem; border: 1px solid var(--billio-border); border-radius: 0.4rem;
+  background: var(--billio-card); font-size: 0.75rem;
+}
+.pc-match-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--billio-text-muted); font-family: ui-monospace, monospace; }
+.pc-match-row b { font-weight: 600; }
+.pc-match-row em { font-style: normal; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 999px; background: #f0fdf4; color: #15803d; }
+.pc-match-row em.is-maybe { background: var(--billio-cta-soft); color: var(--billio-cta-text); }
+
+@media (max-width: 1024px) {
+  .pc-grid { grid-template-columns: repeat(2, 1fr); }
+  .pc-item--wide { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .pc-grid { grid-template-columns: 1fr; }
+  .pc-item--wide { grid-column: span 1; }
+}
