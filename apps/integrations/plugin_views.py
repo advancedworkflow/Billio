@@ -334,7 +334,7 @@ def oauth_callback(request, connector_key):
         messages.error(request, 'Lien de connexion expiré ou session différente : recommencez.')
         return redirect(target)
     try:
-        config = oauth.exchange(connector_key, request.GET.get('code', ''), oauth_redirect_uri(request, connector_key))
+        config = oauth.exchange(connector_key, request.GET.get('code', ''), oauth_redirect_uri(request, connector_key), request.GET)
     except ProviderError as exc:
         messages.error(request, f'Connexion impossible : {exc}')
         return redirect(target)

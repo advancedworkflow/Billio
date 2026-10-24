@@ -20,7 +20,7 @@ from . import providers
 from .providers import ProviderError, http
 
 # Domaines appelés pendant l'échange du code (en plus de la liste blanche des services).
-providers.ALLOWED_HOSTS.update({'slack.com', 'login.mailchimp.com', 'api.hubapi.com'})
+providers.ALLOWED_HOSTS.update({'slack.com', 'login.mailchimp.com', 'api.hubapi.com', 'oauth.platform.intuit.com'})
 
 
 def _env(name):
@@ -93,6 +93,38 @@ def _hubspot_refresh(config):
     return _hubspot_tokens({'grant_type': 'refresh_token', 'refresh_token': config['refresh_token']})
 
 
+QUICKBOOKS_TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
+
+
+def _quickbooks_tokens(form):
+    data = http('POST', QUICKBOOKS_TOKEN_URL, form=form, headers={
+        'Authorization': _basic(_env('QUICKBOOKS_CLIENT_ID'), _env('QUICKBOOKS_CLIENT_SECRET')), 'Accept': 'application/json'})
+    if not data.get('access_token'):
+        raise ProviderError('QuickBooks n’a pas renvoyé d’accès.')
+    # Intuit renouvelle le jeton de rafraîchissement : on garde toujours le dernier reçu.
+    return {'access_token': data['access_token'], 'refresh_token': data.get('refresh_token', ''),
+            'token_expiry': int(timezone.now().timestamp()) + int(data.get('expires_in') or 3600) - 60}
+
+
+def _quickbooks_exchange(spec, code, redirect_uri, query):
+    realm = (query.get('realmId') or '').strip()
+    if not realm.isdigit():
+        raise ProviderError('QuickBooks n’a pas indiqué d’entreprise : recommencez en choisissant une entreprise.')
+    config = _quickbooks_tokens({'grant_type': 'authorization_code', 'code': code, 'redirect_uri': redirect_uri})
+    config['realm_id'] = realm
+    config['environment'] = 'sandbox' if _env('QUICKBOOKS_ENVIRONMENT').lower() == 'sandbox' else 'production'
+    from .catalog import qbo_company
+    try:
+        config['account'] = qbo_company(config)
+    except ProviderError:
+        config['account'] = 'QuickBooks'
+    return config
+
+
+def _quickbooks_refresh(config):
+    return _quickbooks_tokens({'grant_type': 'refresh_token', 'refresh_token': config['refresh_token']})
+
+
 # --------------------------------------------------------------------------- outils
 
 OAUTH = {
@@ -129,6 +161,15 @@ OAUTH = {
                   'Onglet Auth : URL de redirection ci-dessous et scopes contacts / transactions (lecture et écriture).',
                   'Copiez Client ID et Client secret.'],
     },
+    'quickbooks': {
+        'name': 'QuickBooks', 'env': ('QUICKBOOKS_CLIENT_ID', 'QUICKBOOKS_CLIENT_SECRET'),
+        'authorize': 'https://appcenter.intuit.com/connect/oauth2', 'params': {'scope': 'com.intuit.quickbooks.accounting'},
+        'exchange': _quickbooks_exchange, 'refresh': _quickbooks_refresh, 'query': True,
+        'console': 'https://developer.intuit.com/app/developer/dashboard',
+        'steps': ['Créez une app « QuickBooks Online and Payments » sur developer.intuit.com (scope Accounting).',
+                  'Keys & credentials (Production) : ajoutez l’URL de redirection ci-dessous.',
+                  'Copiez Client ID et Client Secret. Avec les clés de développement, ajoutez aussi QUICKBOOKS_ENVIRONMENT=sandbox sur le serveur.'],
+    },
     # Trello : flux à jeton (pas de secret) ; le jeton revient dans le fragment de l'URL de retour.
     'trello': {
         'name': 'Trello', 'env': ('TRELLO_API_KEY',), 'console': 'https://trello.com/power-ups/admin',
@@ -157,9 +198,15 @@ def authorize_url(key, state, redirect_uri):
     return f"{spec['authorize']}?{urllib.parse.urlencode(params)}"
 
 
-def exchange(key, code, redirect_uri):
-    """Code d'autorisation → configuration à enregistrer (même clés que le formulaire manuel)."""
-    return OAUTH[key]['exchange'](OAUTH[key], code, redirect_uri)
+def exchange(key, code, redirect_uri, query=None):
+    """Code d'autorisation → configuration à enregistrer (même clés que le formulaire manuel).
+
+    `query` : paramètres de l'URL de retour, pour les outils qui y ajoutent une donnée (realmId de QuickBooks).
+    """
+    spec = OAUTH[key]
+    if spec.get('query'):
+        return spec['exchange'](spec, code, redirect_uri, query or {})
+    return spec['exchange'](spec, code, redirect_uri)
 
 
 def trello_config(token):
@@ -205,6 +252,12 @@ CONSENT = {
         'can': ['Créer et mettre à jour vos contacts et vos transactions HubSpot.'],
         'at_tool': 'Choisissez votre compte HubSpot puis cliquez sur « Connecter l’app ».',
         'next': 'Créez une automatisation pour envoyer vos nouveaux clients et devis dans HubSpot.',
+    },
+    'quickbooks': {
+        'can': ['Créer vos clients, factures et paiements dans l’entreprise QuickBooks que vous choisissez.',
+                'Lire le nom de l’entreprise et ses codes de TVA pour remplir les factures correctement.'],
+        'at_tool': 'Identifiez-vous chez Intuit, choisissez votre entreprise QuickBooks puis cliquez sur « Connecter ».',
+        'next': 'Utilisez les recettes « Facture envoyée → QuickBooks » et « Paiement reçu → QuickBooks ».',
     },
     'trello': {
         'can': ['Créer des cartes dans les tableaux Trello de votre compte.'],

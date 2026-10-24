@@ -26,6 +26,7 @@ HOSTS = {
     'api.yousign.app', 'api-sandbox.yousign.app', 'api.pandadoc.com',
     'api.gocardless.com', 'api-sandbox.gocardless.com', 'api.sumup.com', 'api.mollie.com', 'api.payplug.com',
     'thirdparty.qonto.com', 'api.transferwise.com', 'api.sandbox.transferwise.tech', 'app.pennylane.com',
+    'quickbooks.api.intuit.com', 'sandbox-quickbooks.api.intuit.com',
     'api.hubapi.com', 'api.pipedrive.com', 'api.attio.com', 'login.sellsy.com', 'api.intercom.io', 'api.close.com',
     'api.brevo.com', 'a.klaviyo.com', 'connect.mailerlite.com', 'api.kit.com', 'api.webflow.com',
     'maker.ifttt.com', 'hooks.zapier.com',
@@ -522,6 +523,34 @@ def _pennylane(config):
     company = (me.get('company') or {}).get('name')
     user = me.get('user') or {}
     return f"{_first(company, 'Compte vérifié')}" + (f" · {user.get('first_name', '')} {user.get('last_name', '')}".rstrip() if user else '')
+
+
+# QuickBooks Online : connexion OAuth uniquement (Intuit ne délivre pas de clé personnelle),
+# voir oauth.OAUTH['quickbooks'] ; la configuration porte access_token, realm_id et environment.
+def qbo_base(config):
+    host = 'sandbox-quickbooks.api.intuit.com' if config.get('environment') == 'sandbox' else 'quickbooks.api.intuit.com'
+    return f"https://{host}/v3/company/{config['realm_id']}"
+
+
+def qbo_headers(config):
+    return dict(_bearer(config['access_token']), Accept='application/json')
+
+
+@tool('quickbooks', 'QuickBooks', 'accounting', 'calculator',
+      "Envoyez vos clients, factures et paiements dans QuickBooks Online.",
+      [("Cliquez « Se connecter avec QuickBooks » et identifiez-vous avec votre compte Intuit.", ''),
+       ("Choisissez l'entreprise QuickBooks à relier puis cliquez « Connecter ».", ''),
+       ("Si le bouton n'apparaît pas, l'administrateur de Billio doit d'abord activer la connexion QuickBooks.", '')],
+      [], uses=['Action « Envoyer vers une app » des automatisations',
+                'Facture envoyée → facture QuickBooks, paiement reçu → paiement QuickBooks'])
+def _quickbooks(config):
+    return f"Entreprise « {qbo_company(config)} »" + (' (sandbox)' if config.get('environment') == 'sandbox' else '')
+
+
+def qbo_company(config):
+    info = _http('GET', f"{qbo_base(config)}/companyinfo/{config['realm_id']}?minorversion=75",
+                 headers=qbo_headers(config)).get('CompanyInfo') or {}
+    return _first(info.get('CompanyName'), info.get('LegalName'), 'QuickBooks')
 
 
 # =========================================================================== #

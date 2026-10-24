@@ -98,6 +98,21 @@ RECIPES = {
                         _node('a', 'action', 'app_action', {'app': 'mailchimp', 'operation': 'add_member',
                                                             'values': {'status': 'subscribed', 'tags': 'client, billio'}})),
     },
+    'invoice-quickbooks': {
+        'name': 'Facture envoyée → QuickBooks',
+        'desc': 'Chaque facture envoyée est créée dans QuickBooks avec ses lignes et sa TVA, client compris.',
+        'tool': 'quickbooks',
+        'graph': _chain(_node('t', 'trigger', 'invoice_sent'),
+                        _node('a', 'action', 'app_action', {'app': 'quickbooks', 'operation': 'create_invoice',
+                                                            'values': {'item': 'Prestations'}})),
+    },
+    'payment-quickbooks': {
+        'name': 'Paiement reçu → QuickBooks',
+        'desc': 'Le paiement est enregistré et lettré sur la facture QuickBooks : votre compta reste à jour.',
+        'tool': 'quickbooks',
+        'graph': _chain(_node('t', 'trigger', 'payment_received'),
+                        _node('a', 'action', 'app_action', {'app': 'quickbooks', 'operation': 'record_payment', 'values': {}})),
+    },
 }
 
 # Besoins affichés en tête de la page Intégrations : outils proposés et recettes associées.
@@ -114,6 +129,9 @@ NEEDS = [
     {'key': 'archive', 'icon': 'folder-check', 'label': 'Ranger mes factures automatiquement',
      'desc': 'Chaque facture et devis copiés dans un dossier, prêts pour le comptable.',
      'tools': ['google-drive'], 'recipes': ['invoice-drive', 'quote-drive']},
+    {'key': 'accounting', 'icon': 'calculator', 'label': 'Tenir ma comptabilité à jour',
+     'desc': 'Factures et paiements arrivent tout seuls dans votre logiciel comptable.',
+     'tools': ['quickbooks'], 'recipes': ['invoice-quickbooks', 'payment-quickbooks']},
     {'key': 'organize', 'icon': 'kanban-square', 'label': 'Organiser mon travail',
      'desc': 'Les projets signés arrivent dans votre outil de gestion.',
      'tools': ['trello', 'notion'], 'recipes': ['quote-trello', 'client-notion']},

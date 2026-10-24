@@ -17,10 +17,11 @@ import hashlib
 import re
 import urllib.parse
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 
 from django.utils import timezone
 
-from .catalog import _basic, _bearer
+from .catalog import _basic, _bearer, qbo_base, qbo_headers
 
 MAX_TEXT = 5000
 
@@ -261,6 +262,166 @@ def _notion_row(config, v, event):
                  json_body={'parent': {'database_id': db_id}, 'properties': props})
     detail = f"Ligne ajoutée dans Notion : {page.get('url', '')}"
     return detail + (f" (colonnes ignorées : {', '.join(unknown)})" if unknown else '')
+
+
+# --------------------------------------------------------------------------- #
+# Comptabilité : QuickBooks Online
+# --------------------------------------------------------------------------- #
+
+def _qbo_query(config, sql):
+    url = f"{qbo_base(config)}/query?" + urllib.parse.urlencode({'query': sql, 'minorversion': 75})
+    return _http('GET', url, headers=qbo_headers(config)).get('QueryResponse') or {}
+
+
+def _qbo_post(config, entity, body):
+    return _http('POST', f"{qbo_base(config)}/{entity}?minorversion=75", headers=qbo_headers(config), json_body=body)
+
+
+def _qbo_text(value):
+    """Valeur littérale d'une requête QuickBooks (apostrophes échappées)."""
+    return str(value).replace('\\', '\\\\').replace("'", "\\'")
+
+
+def _qbo_customer_id(config, client):
+    """Client QuickBooks (cherché par nom affiché, sinon créé) : (id, créé ?)."""
+    name = (client.get('company') or client.get('name') or '').replace(':', ' ').strip()[:100]
+    if not name:
+        _fail("L'événement n'a pas de client.")
+    found = _qbo_query(config, f"select Id from Customer where DisplayName = '{_qbo_text(name)}'").get('Customer') or []
+    if found:
+        return found[0]['Id'], False
+    body = {'DisplayName': name}
+    if client.get('company'):
+        body['CompanyName'] = client['company'][:100]
+    if client.get('contact_person'):
+        first, last = _split_name(client)
+        body.update(GivenName=first[:100], FamilyName=last[:100])
+    if client.get('email'):
+        body['PrimaryEmailAddr'] = {'Address': client['email']}
+    if client.get('phone'):
+        body['PrimaryPhone'] = {'FreeFormNumber': client['phone'][:30]}
+    address = {k: v for k, v in {'Line1': client.get('address'), 'City': client.get('city'),
+                                 'PostalCode': client.get('postal_code'), 'Country': client.get('country')}.items() if v}
+    if address:
+        body['BillAddr'] = address
+    return (_qbo_post(config, 'customer', body).get('Customer') or {}).get('Id'), True
+
+
+def _qbo_customer(config, v, event):
+    client = event.get('client') or {}
+    _, created = _qbo_customer_id(config, client)
+    return f"Client QuickBooks {'créé' if created else 'déjà présent'} : {client.get('company') or client.get('name')}"
+
+
+def _target_invoice(event):
+    """(facture, paiement) Billio de l'événement ; la facture doit appartenir au client de l'événement."""
+    from django.core.exceptions import ValidationError
+
+    from apps.invoices.models import Invoice
+    from apps.payments.models import Payment
+    target, client = event.get('target') or {}, event.get('client') or {}
+    invoice = payment = None
+    try:
+        if target.get('type') == 'payment':
+            payment = Payment.objects.filter(id=target.get('id')).select_related('invoice').first()
+            invoice = payment.invoice if payment else Invoice.objects.filter(id=target.get('id')).first()
+        elif target.get('type') == 'invoice':
+            invoice = Invoice.objects.filter(id=target.get('id')).first()
+    except (ValidationError, ValueError):
+        invoice = None
+    if not invoice or str(invoice.client_id) != str(client.get('id')):
+        _fail("Cette action s'utilise après « Facture envoyée » ou « Paiement reçu ».")
+    return invoice, payment
+
+
+def _qbo_item_id(config, name):
+    """Produit/service QuickBooks des lignes (créé au besoin sur le premier compte de revenus)."""
+    name = (name or 'Prestations').replace(':', ' ').strip()[:100]
+    found = _qbo_query(config, f"select Id from Item where Name = '{_qbo_text(name)}'").get('Item') or []
+    if found:
+        return found[0]['Id']
+    accounts = _qbo_query(config, "select Id from Account where AccountType = 'Income' maxresults 1").get('Account') or []
+    if not accounts:
+        _fail('Aucun compte de revenus dans QuickBooks pour créer le service des lignes.')
+    item = _qbo_post(config, 'item', {'Name': name, 'Type': 'Service', 'IncomeAccountRef': {'value': accounts[0]['Id']}})
+    return (item.get('Item') or {}).get('Id')
+
+
+def _qbo_tax_codes(config):
+    """Taux de TVA → code de taxe QuickBooks (codes à un seul taux de vente)."""
+    rates = {r['Id']: Decimal(str(r.get('RateValue') or 0)).quantize(Decimal('0.01'))
+             for r in _qbo_query(config, 'select * from TaxRate').get('TaxRate') or []}
+    codes = {}
+    for code in _qbo_query(config, 'select * from TaxCode where Active = true').get('TaxCode') or []:
+        details = (code.get('SalesTaxRateList') or {}).get('TaxRateDetail') or []
+        if len(details) == 1 and details[0].get('TaxRateRef', {}).get('value') in rates:
+            codes.setdefault(rates[details[0]['TaxRateRef']['value']], code['Id'])
+    return codes
+
+
+def _qbo_invoice(config, v, event):
+    invoice, _ = _target_invoice(event)
+    number = invoice.invoice_number[:21]
+    credit = invoice.invoice_type == 'credit_note'
+    entity, kind = ('creditmemo', 'CreditMemo') if credit else ('invoice', 'Invoice')
+    if _qbo_query(config, f"select Id from {kind} where DocNumber = '{_qbo_text(number)}'").get(kind):
+        return f"Déjà dans QuickBooks : {number}"
+    company = _http('GET', f"{qbo_base(config)}/companyinfo/{config['realm_id']}?minorversion=75",
+                    headers=qbo_headers(config)).get('CompanyInfo') or {}
+    us = company.get('Country') == 'US'
+    codes = {} if us else _qbo_tax_codes(config)
+    item_id = _qbo_item_id(config, v.get('item'))
+    lines = []
+    for item in invoice.items.all():
+        rate = Decimal(item.tax_rate).quantize(Decimal('0.01'))
+        if us:
+            tax_code = 'TAX' if rate else 'NON'
+        elif rate in codes:
+            tax_code = codes[rate]
+        else:
+            _fail(f"Aucun code de TVA à {rate} % dans QuickBooks : créez-le puis relancez l'automatisation.")
+        lines.append({'DetailType': 'SalesItemLineDetail', 'Amount': float(abs(item.quantity * item.unit_price)),
+                      'Description': ' — '.join(x for x in (item.name, item.description or '') if x)[:4000],
+                      'SalesItemLineDetail': {'ItemRef': {'value': item_id}, 'Qty': float(abs(item.quantity)),
+                                              'UnitPrice': float(abs(item.unit_price)), 'TaxCodeRef': {'value': tax_code}}})
+    if not lines:
+        _fail('La facture ne contient aucune ligne.')
+    if invoice.discount_amount:
+        lines.append({'DetailType': 'DiscountLineDetail', 'Amount': float(abs(invoice.discount_amount)),
+                      'DiscountLineDetail': {'PercentBased': False}})
+    customer_id, _ = _qbo_customer_id(config, event['client'])
+    body = {'DocNumber': number, 'TxnDate': invoice.issue_date.isoformat(), 'Line': lines,
+            'CustomerRef': {'value': customer_id}, 'PrivateNote': f'Billio {invoice.id}'}
+    if not credit:
+        body['DueDate'] = invoice.due_date.isoformat()
+    if not us:
+        body['GlobalTaxCalculation'] = 'TaxExcluded'
+    if event['client'].get('email'):
+        body['BillEmail'] = {'Address': event['client']['email']}
+    prefs = (_qbo_query(config, 'select * from Preferences').get('Preferences') or [{}])[0]
+    home = prefs.get('CurrencyPrefs', {}).get('HomeCurrency', {}).get('value')
+    if home and invoice.currency != home:
+        body['CurrencyRef'] = {'value': invoice.currency}
+    created = _qbo_post(config, entity, body).get(kind) or {}
+    label = 'Avoir {} créé' if credit else 'Facture {} créée'
+    return f"{label.format(number)} dans QuickBooks (n° {created.get('Id', '?')})"
+
+
+def _qbo_payment(config, v, event):
+    invoice, payment = _target_invoice(event)
+    number = invoice.invoice_number[:21]
+    found = _qbo_query(config, f"select * from Invoice where DocNumber = '{_qbo_text(number)}'").get('Invoice') or []
+    if not found:
+        _fail(f"La facture {number} n'est pas dans QuickBooks : ajoutez l'action « Créer la facture » à « Facture envoyée ».")
+    amount = payment.amount if payment else Decimal(str(event.get('amount') or invoice.total_amount))
+    day = (payment.payment_date or payment.created_at) if payment else timezone.now()
+    body = {'CustomerRef': found[0]['CustomerRef'], 'TotalAmt': float(amount), 'TxnDate': timezone.localdate(day).isoformat(),
+            'Line': [{'Amount': float(amount), 'LinkedTxn': [{'TxnId': found[0]['Id'], 'TxnType': 'Invoice'}]}],
+            'PrivateNote': f"Billio — facture {number}"}
+    if found[0].get('CurrencyRef'):
+        body['CurrencyRef'] = found[0]['CurrencyRef']
+    created = _qbo_post(config, 'payment', body).get('Payment') or {}
+    return f"Paiement de {amount:.2f} enregistré dans QuickBooks sur la facture {number} (n° {created.get('Id', '?')})"
 
 
 # --------------------------------------------------------------------------- #
@@ -549,6 +710,17 @@ APP_ACTIONS = {
         field('fields', 'Autres colonnes', kind='textarea', default='Client : {{client}}\nMontant : {{montant}}',
               help="« Colonne : valeur », une par ligne. Texte, nombre, date, sélection, email, URL et case à cocher sont reconnus.")],
         _notion_row)],
+    # Comptabilité
+    'quickbooks': [
+        op('upsert_customer', 'Créer le client', [], _qbo_customer,
+           desc='Crée le client dans QuickBooks s’il n’existe pas encore (même nom).'),
+        op('create_invoice', 'Créer la facture', [
+            field('item', 'Produit / service QuickBooks', kind='id', default='Prestations',
+                  help='Les lignes sont rattachées à ce service (créé s’il n’existe pas).')],
+            _qbo_invoice, desc='Après « Facture envoyée » : la facture (ou l’avoir) avec ses lignes et sa TVA, une seule fois.'),
+        op('record_payment', 'Enregistrer le paiement', [], _qbo_payment,
+           desc='Après « Paiement reçu » : le paiement est lettré sur la facture QuickBooks.'),
+    ],
     # CRM & support
     'hubspot': [
         op('upsert_contact', 'Créer / mettre à jour le contact', [], _hubspot_contact, needs_email=True, desc=CONTACT_DESC),
