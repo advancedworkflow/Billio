@@ -44,12 +44,14 @@ def _back(tab='pending'):
 def reconcile_page(request):
     organization = _organization(request)
     tab = request.GET.get('tab') if request.GET.get('tab') in TABS else 'pending'
+    from .payouts import match_bank_lines
+    match_bank_lines(organization)  # virements de Stripe : rapprochés avec leur versement
     lines = BankLine.objects.filter(organization=organization)
     counts = {status: lines.filter(status=status).count() for status in TABS}
     invoices = rec.open_invoices(organization)
     rows = [
         {'line': line, 'suggestion': rec.suggest(line, invoices) if tab == 'pending' else None}
-        for line in lines.filter(status=tab).select_related('payment__invoice', 'payment__invoice__client')[:200]
+        for line in lines.filter(status=tab).select_related('payment__invoice', 'payment__invoice__client', 'payout')[:200]
     ]
     return render(request, 'payments/reconcile.html', {
         'page_title': 'Rapprocher mes encaissements',

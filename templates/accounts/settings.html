@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.5">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.6">
 {% endblock %}
 
 {% block content %}
@@ -477,6 +477,41 @@
                 <label class="st-field"><span>Instructions de paiement</span><textarea name="payment_instructions" rows="3" placeholder="Ex. Merci d'indiquer le numéro de facture dans le libellé du virement.">{{ org.payment_instructions|default:'' }}</textarea></label>
                 <div class="st-actions"><button type="submit" class="st-btn st-btn--primary">Enregistrer</button></div>
             </form>
+            {% if stripe_connect.available and stripe_connect.supported %}
+            {% with sc=stripe_connect %}
+            <div class="st-stripe st-connect st-connect--{{ sc.status }}">
+                <span class="st-stripe-logo">{% include "integrations/icons/stripe.svg.html" %}</span>
+                <div class="st-stripe-text">
+                    <strong>Paiement en ligne{% if sc.status == 'active' %} <em class="st-connect-badge">Activé</em>{% elif sc.status == 'restricted' %} <em class="st-connect-badge st-connect-badge--wait">En vérification</em>{% endif %}</strong>
+                    {% if sc.status == 'active' %}
+                    {% if sc.account.payouts_enabled %}<span>Vos clients paient factures et jalons depuis leur lien (carte, Apple Pay, prélèvement…). Stripe verse l'argent sur votre compte bancaire.</span>
+                    {% else %}<span>Vos clients paient factures et jalons depuis leur lien. Stripe versera l'argent sur votre compte bancaire dès que votre IBAN sera validé.</span>{% endif %}
+                    {% elif sc.status == 'restricted' %}
+                    {% if sc.account.requirements %}<span>Stripe demande encore des informations : finalisez l'inscription pour encaisser.</span>
+                    {% else %}<span>Stripe vérifie votre dossier, généralement en quelques minutes.</span>{% endif %}
+                    {% elif sc.status == 'incomplete' %}
+                    <span>Inscription commencée : terminez-la chez Stripe (identité, entreprise, IBAN) pour encaisser.</span>
+                    {% else %}
+                    <span>Encaissez vos factures en ligne en quelques minutes, sans clé à configurer : inscription sécurisée chez Stripe, versements automatiques sur votre compte bancaire.</span>
+                    {% endif %}
+                    {% if sc.fee_percent %}<small class="st-connect-fees"><span>Frais Stripe à la transaction + commission Billio de {{ sc.fee_percent|floatformat:"-1" }} %.</span> <a href="{% url 'subscriptions:billing' %}">Sans commission avec Business</a></small>
+                    {% else %}<small class="st-connect-fees">Frais Stripe à la transaction, sans commission Billio avec votre forfait.</small>{% endif %}
+                </div>
+                {% if sc.status == 'active' %}
+                <a class="st-btn" href="{% url 'payments:payouts' %}">Versements</a>
+                <a class="st-btn" href="{{ sc.dashboard_url }}" target="_blank" rel="noopener">Tableau de bord Stripe</a>
+                {% else %}
+                <form method="post" action="{% url 'payments:connect-start' %}">{% csrf_token %}
+                    <button type="submit" class="st-btn st-btn--primary">{% if sc.status == 'none' %}Activer les paiements{% else %}Finaliser l'inscription{% endif %}</button>
+                </form>
+                {% endif %}
+            </div>
+            {% if sc.status == 'none' or stripe_connected %}
+            <p class="st-help">{% if stripe_connected and sc.status == 'active' %}<span>Votre propre compte Stripe est aussi relié, mais les paiements passent désormais par le paiement en ligne Billio.</span>{% elif stripe_connected %}<span>Vos paiements passent par votre propre compte Stripe en attendant.</span>{% else %}<span>Vous avez déjà des clés API Stripe ?</span>{% endif %}
+                <a href="{% url 'integrations:integrations-page' %}?plugin=stripe">{% if stripe_connected %}Gérer la clé{% else %}Reliez votre propre compte{% endif %}</a></p>
+            {% endif %}
+            {% endwith %}
+            {% else %}
             <div class="st-stripe">
                 <span class="st-stripe-logo">{% include "integrations/icons/stripe.svg.html" %}</span>
                 <div class="st-stripe-text">
@@ -485,6 +520,7 @@
                 </div>
                 <a class="st-btn{% if not stripe_connected %} st-btn--primary{% endif %}" href="{% url 'integrations:integrations-page' %}?plugin=stripe">{% if stripe_connected %}Gérer{% else %}Configurer{% endif %}</a>
             </div>
+            {% endif %}
             {% if online_methods %}
             <div class="st-sub st-methods">
                 <p class="st-label">Moyens conseillés pour vos clients{% if compliance_pack.supported %} ({{ compliance_pack.name }}){% endif %}</p>

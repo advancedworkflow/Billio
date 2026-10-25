@@ -189,6 +189,9 @@ class InvoiceTemplate(models.Model):
             'client_tax_id': cl.tax_id or '' if cl else '',
             'notes': document.notes or '',
             'items': items,
+            # Lien et QR code « Payer en ligne » (factures émises, paiement en ligne activé).
+            **(__import__('apps.payments.payment_links', fromlist=['document_context']).document_context(document)
+               if not is_quote else {'payment_url': '', 'payment_qr': ''}),
         }
 
     @staticmethod

@@ -724,6 +724,8 @@ def settings_view(request):
         'api_token': Token.objects.filter(user=request.user).first(),
         'stripe_connected': bool(entreprise_organization) and bool(
             __import__('apps.payments.stripe_checkout', fromlist=['stripe_instance']).stripe_instance(entreprise_organization)),
+        'stripe_connect': __import__('apps.payments.stripe_connect', fromlist=['summary']).summary(entreprise_organization)
+        if entreprise_organization else None,
         'api_allowed': request.user.is_superuser or __import__('apps.subscriptions.authentication', fromlist=['user_has_api']).user_has_api(request.user),
         'api_plan': getattr(__import__('apps.subscriptions.entitlements', fromlist=['plan_with_feature']).plan_with_feature('api'), 'name', ''),
         'entreprise_organization': entreprise_organization,

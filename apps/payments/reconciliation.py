@@ -280,5 +280,8 @@ def undo(line):
     with transaction.atomic():
         if line.status == 'matched' and line.payment_id:
             cancel_manual_payment(line.payment)
-        line.payment, line.status = None, 'pending'
-        line.save(update_fields=['payment', 'status'])
+        if line.payout_id:
+            line.payout.bank_match_dismissed = True
+            line.payout.save(update_fields=['bank_match_dismissed'])
+        line.payment, line.payout, line.status = None, None, 'pending'
+        line.save(update_fields=['payment', 'payout', 'status'])

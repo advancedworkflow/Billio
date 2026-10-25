@@ -1,0 +1,69 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}L'argent encaissé en ligne, versé par Stripe sur votre compte bancaire{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.2">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 rec">
+    <a href="{% url 'payments:payments-page' %}" class="rec-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Paiements</a>
+
+    {% if not account %}
+    <section class="pay-card">
+        <div class="pay-empty">
+            <i data-lucide="banknote" class="w-8 h-8"></i>
+            <p><strong>Aucun versement pour l'instant</strong></p>
+            {% if connect_available %}<p>Activez le paiement en ligne : vos clients paient depuis le lien de leurs factures et Stripe verse l'argent sur votre compte bancaire.</p>
+            <a href="{{ settings_url }}" class="btn-primary-black px-4 py-2 text-sm rounded-lg">Activer le paiement en ligne</a>
+            {% else %}<p>Le paiement en ligne avec versements automatiques n'est pas encore disponible.</p>{% endif %}
+        </div>
+    </section>
+    {% else %}
+    <section class="po-summary">
+        <div class="kpi-premium">
+            <p class="kpi-label">À venir</p>
+            <p class="kpi-value">{{ upcoming|money:currency }}</p>
+            <p class="po-muted">Versements en préparation ou en cours</p>
+        </div>
+        <div class="kpi-premium">
+            <p class="kpi-label">Versé sur</p>
+            <p class="kpi-value po-dest" translate="no">{{ account.payout_destination|default:"—" }}</p>
+            {% if account.payouts_enabled %}<p class="po-muted">{{ account.payout_schedule|default:"Rythme réglé dans Stripe" }}</p>
+            {% else %}<p class="po-warn">Versements suspendus : complétez votre compte chez Stripe.</p>{% endif %}
+        </div>
+        <div class="po-actions">
+            <a href="{{ payout_settings_url }}" target="_blank" rel="noopener" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"><i data-lucide="settings-2" class="w-4 h-4"></i> Compte bancaire et rythme</a>
+            <form method="post" action="{% url 'payments:payouts-refresh' %}">{% csrf_token %}
+                <button type="submit" class="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Actualiser</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="pay-card">
+        {% for payout in payouts %}
+        <a href="{% url 'payments:payout-detail' payout.id %}" class="po-row">
+            <div>
+                <p class="po-date">{% if payout.arrival_date %}{{ payout.arrival_date|date:"d/m/Y" }}{% else %}—{% endif %}{% if payout.method == 'instant' %} <span class="po-tag">Instantané</span>{% endif %}</p>
+                <p class="po-muted" translate="no">{{ payout.destination|default:account.payout_destination }}</p>
+            </div>
+            <span class="po-status po-status--{{ payout.status }}">{{ payout.get_status_display }}</span>
+            <span class="po-rec">{% if payout.bank_lines.all %}<i data-lucide="check-circle-2" class="w-4 h-4"></i> Rapproché{% endif %}</span>
+            <span class="po-amount">{{ payout.amount|money:payout.currency }}</span>
+        </a>
+        {% empty %}
+        <div class="pay-empty">
+            <i data-lucide="banknote" class="w-8 h-8"></i>
+            <p><strong>Aucun versement pour l'instant</strong></p>
+            <p>Le premier versement arrive en général quelques jours après le premier paiement, puis selon le rythme choisi dans Stripe.</p>
+        </div>
+        {% endfor %}
+    </section>
+    <p class="po-muted">Chaque versement regroupe les paiements encaissés, moins les frais Stripe et la commission Billio. Il est rapproché tout seul avec la ligne correspondante de votre relevé bancaire.</p>
+    {% endif %}
+</div>
+{% endblock %}

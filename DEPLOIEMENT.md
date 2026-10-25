@@ -61,6 +61,14 @@ Better Stack : https://betterstack.com/uptime — ou UptimeRobot : https://uptim
 - Portail client (à enregistrer une fois) : https://dashboard.stripe.com/test/settings/billing/portal
 - TVA 20 % : https://dashboard.stripe.com/test/tax-rates → `STRIPE_TAX_RATE_ID` (ou Stripe Tax : https://dashboard.stripe.com/settings/tax)
 
+### Stripe Connect (paiement en ligne des utilisateurs, versé sur leur compte bancaire)
+Même compte Stripe que les abonnements (`STRIPE_SECRET_KEY`). Les utilisateurs l'activent dans Paramètres › Paiement.
+- Activer Connect : https://dashboard.stripe.com/test/connect/overview (profil de la plateforme, image de marque du formulaire d'inscription)
+- Webhook : https://dashboard.stripe.com/test/webhooks → « Écouter les événements sur les comptes connectés »,
+  URL `https://VOTRE-DOMAINE/payments/webhooks/stripe/connect/`, évènements `account.updated`,
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded` → secret `STRIPE_CONNECT_WEBHOOK_SECRET`
+- Commission Billio : limite `payment_fee_percent` des forfaits (admin › Forfaits) — 0,5 % Free / Starter / Pro, 0 % Business / Agency
+
 ### Stockage objet (fichiers et sauvegardes)
 - Scaleway Object Storage : https://www.scaleway.com/fr/object-storage/ — créer un bucket **privé** en `fr-par`
 - Clés d'API : https://console.scaleway.com/iam/api-keys → `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`

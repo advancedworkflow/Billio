@@ -1,6 +1,7 @@
 """
-Paiement en ligne par Stripe Checkout, avec le compte Stripe de l'organisation
-(plugin « Stripe » de la page Intégrations : clé secrète + secret du webhook).
+Paiement en ligne par Stripe Checkout, sur le compte Stripe de l'organisation : son compte
+Stripe Connect (apps/payments/stripe_connect.py, prioritaire dès qu'il peut encaisser), sinon
+ses propres clés (plugin « Stripe » de la page Intégrations : clé secrète + secret du webhook).
 
 Le paiement n'est jamais validé sur simple clic : une facture ou un jalon passe
 « payé » seulement quand Stripe le confirme, soit au retour du client (session
@@ -12,6 +13,7 @@ import hmac
 import json
 import time
 from decimal import Decimal
+from typing import NamedTuple
 
 from django.db import transaction
 from django.utils import timezone
@@ -33,8 +35,31 @@ def stripe_instance(organization):
     return instance if instance and (instance.config or {}).get('secret_key') else None
 
 
-def _headers(secret_key):
-    return {'Authorization': f'Bearer {secret_key}', 'Stripe-Version': '2024-06-20'}
+class Access(NamedTuple):
+    """Clé à utiliser et compte connecté visé ('' avec les propres clés de l'organisation)."""
+    secret_key: str
+    account: str = ''
+
+
+def stripe_access(organization):
+    """Accès Stripe de l'organisation pour encaisser : Connect actif, sinon propres clés, sinon None."""
+    from . import stripe_connect
+    connected = stripe_connect.active_account(organization)
+    if connected:
+        return Access(stripe_connect.platform_key(), connected.account_id)
+    instance = stripe_instance(organization)
+    return Access(instance.config['secret_key']) if instance else None
+
+
+def online_payments_enabled(organization):
+    return stripe_access(organization) is not None
+
+
+def _headers(secret_key, account=''):
+    headers = {'Authorization': f'Bearer {secret_key}', 'Stripe-Version': '2024-06-20'}
+    if account:
+        headers['Stripe-Account'] = account
+    return headers
 
 
 def account_label(secret_key):
@@ -47,8 +72,8 @@ def account_label(secret_key):
 
 def create_checkout(organization, *, amount, currency, label, metadata, success_url, cancel_url, customer_email=''):
     """Crée une session Checkout et renvoie son URL de paiement."""
-    instance = stripe_instance(organization)
-    if not instance:
+    access = stripe_access(organization)
+    if not access:
         raise ProviderError("Le paiement par carte n'est pas activé pour cette entreprise.")
     cents = int((Decimal(amount) * 100).quantize(Decimal('1')))
     if cents < 50:
@@ -68,15 +93,20 @@ def create_checkout(organization, *, amount, currency, label, metadata, success_
         form[f'payment_intent_data[metadata][{key}]'] = str(value)
     if customer_email:
         form['customer_email'] = customer_email
-    session = http('POST', f'{API}/checkout/sessions', form=form, headers=_headers(instance.config['secret_key']))
+    if access.account:
+        from .stripe_connect import application_fee
+        fee = application_fee(organization, cents)
+        if fee:
+            form['payment_intent_data[application_fee_amount]'] = fee
+    session = http('POST', f'{API}/checkout/sessions', form=form, headers=_headers(*access))
     return session['url']
 
 
 def retrieve_session(organization, session_id):
-    instance = stripe_instance(organization)
-    if not instance or not str(session_id).startswith('cs_'):
+    access = stripe_access(organization)
+    if not access or not str(session_id).startswith('cs_'):
         return None
-    return http('GET', f'{API}/checkout/sessions/{session_id}', headers=_headers(instance.config['secret_key']))
+    return http('GET', f'{API}/checkout/sessions/{session_id}', headers=_headers(*access))
 
 
 def verify_webhook(payload, signature_header, secret):
@@ -117,12 +147,12 @@ def record_checkout(organization, session):
 def used_method(organization, session):
     """Type du moyen de paiement utilisé (card, sepa_debit, bancontact…), ou '' si Stripe ne le dit pas."""
     intent_id = session.get('payment_intent')
-    instance = stripe_instance(organization)
-    if not intent_id or not instance:
+    access = stripe_access(organization)
+    if not intent_id or not access:
         return ''
     try:
         intent = http('GET', f'{API}/payment_intents/{intent_id}?expand[]=payment_method',
-                      headers=_headers(instance.config['secret_key']))
+                      headers=_headers(*access))
     except ProviderError:
         return ''
     method = intent.get('payment_method') or {}

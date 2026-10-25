@@ -256,8 +256,8 @@ def portal_project_detail(request, portal_token, project_id):
         'brief_sections': brief_sections,
         'portal_full': __import__('apps.subscriptions.entitlements', fromlist=['has_feature']).has_feature(project.organization, 'portal', 'full'),
     }
-    from apps.payments.stripe_checkout import stripe_instance
-    context['card_payment'] = bool(stripe_instance(client.organization))
+    from apps.payments.stripe_checkout import online_payments_enabled
+    context['card_payment'] = online_payments_enabled(client.organization)
     return render(request, 'dashboard/public_portal_project.html', context)
 
 

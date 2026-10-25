@@ -6,7 +6,7 @@
 {% block page_subtitle %}Reliez l'argent reçu sur votre compte à vos factures{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.2">
 {% endblock %}
 
 {% block content %}
@@ -97,7 +97,9 @@
             </div>
             {% else %}
             <div class="rec-line-body rec-done">
-                {% if tab == 'matched' and line.payment %}
+                {% if tab == 'matched' and line.payout %}
+                <p><i data-lucide="check-circle-2" class="w-4 h-4"></i> <a href="{% url 'payments:payout-detail' line.payout.id %}">Versement Stripe</a> <span class="text-gray-500">Paiements déjà enregistrés facture par facture.</span></p>
+                {% elif tab == 'matched' and line.payment %}
                 <p><i data-lucide="check-circle-2" class="w-4 h-4"></i> Facture <a href="{% url 'invoices:invoice-preview' line.payment.invoice.id %}" translate="no">{{ line.payment.invoice.invoice_number }}</a> · <span translate="no">{{ line.payment.invoice.client.name }}</span> · {{ line.payment.invoice.get_status_display }}</p>
                 {% elif tab == 'matched' %}
                 <p>Paiement supprimé depuis.</p>

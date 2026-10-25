@@ -1038,6 +1038,17 @@ def _seller_country(invoice):
     return profile(invoice.organization)['country']
 
 
+def _payment_link_context(invoice):
+    """Panneau « Lien de paiement » de l'aperçu : facture émise et pas encore soldée."""
+    from apps.payments import payment_links
+    from apps.payments.stripe_checkout import online_payments_enabled
+    if not payment_links.payable(invoice):
+        return {'payment_link': ''}
+    url = payment_links.payment_url(invoice)
+    return {'payment_link': url, 'payment_qr': payment_links.qr_svg(url, scale=4),
+            'online_payments': online_payments_enabled(invoice.organization)}
+
+
 @login_required
 def invoice_preview(request, invoice_id):
     """
@@ -1063,6 +1074,7 @@ def invoice_preview(request, invoice_id):
         'page_title': f"{'Avoir' if invoice.is_credit_note else 'Facture'} {invoice.invoice_number}",
         'credit_notes': list(invoice.credit_notes.order_by('created_at')) if not invoice.is_credit_note else [],
         'amount_due': invoice.amount_due() if invoice.invoice_type == 'sale' and invoice.status != 'draft' else None,
+        **_payment_link_context(invoice),
         'recurrence_choices': Invoice.RECURRENCE_CHOICES,
         'einvoice': __import__('apps.invoices.facturx', fromlist=['readiness']).readiness(invoice)
                     if invoice.invoice_type in ('sale', 'credit_note') and _seller_country(invoice) == 'FR' else None,
@@ -1193,7 +1205,7 @@ def invoice_credit_note_create(request, invoice_id):
 
 def public_invoice_payment(request, invoice_id):
     """Public payment page shared with clients."""
-    from apps.payments.stripe_checkout import stripe_instance
+    from apps.payments.stripe_checkout import online_payments_enabled
     invoice = get_object_or_404(Invoice, id=invoice_id, invoice_type='sale')
 
     if invoice.status == 'draft':
@@ -1250,7 +1262,7 @@ def public_invoice_payment(request, invoice_id):
         'days_left': days_left,
         'days_late': -days_left if days_left is not None and days_left < 0 else 0,
         'page_title': f'Facture {invoice.invoice_number} — {invoice.organization.name}',
-        'card_payment': bool(stripe_instance(invoice.organization)),
+        'card_payment': online_payments_enabled(invoice.organization),
         'transfer_qr': __import__('apps.payments.local_methods', fromlist=['epc_qr_svg']).epc_qr_svg(
             invoice.organization, invoice, remaining) if invoice.status != 'paid' else '',
         'payment_cancelled': request.GET.get('paiement') == 'annule',

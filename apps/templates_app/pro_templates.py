@@ -105,6 +105,7 @@ PAYMENT = """{% if notes %}<div class="{p}notes"><p class="{p}label">Notes</p><p
   </div>
   {% endif %}
 </div>
+{% if payment_url %}<div class="{p}paylink"><div class="{p}paylink-qr">{{ payment_qr }}</div><div><p class="{p}label">Payer en ligne</p><p>Scannez le QR code ou ouvrez le lien : {{ payment_url }}</p></div></div>{% endif %}
 {% if document_type == 'quote' %}<div class="{p}sign"><p class="{p}label">Bon pour accord</p><p class="{p}muted">Date, signature et mention « Bon pour accord »</p></div>{% endif %}"""
 
 FOOTER = """<div class="{p}footer">
@@ -151,6 +152,9 @@ BASE_CSS = """
 .{p}payment { margin-top: 26px; width: 100%; }
 .{p}payment-terms, .{p}bank { display: inline-block; vertical-align: top; width: 48%; }
 .{p}bank { margin-left: 3%; }
+.{p}paylink { margin-top: 14px; display: flex; align-items: center; gap: 12px; font-size: 11px; }
+.{p}paylink-qr svg { display: block; width: 72px; height: 72px; }
+.{p}paylink p { margin: 0; word-break: break-all; }
 .{p}sign { margin-top: 26px; margin-left: auto; width: 46%; height: 110px; border: 1px dashed #d1d5db; border-radius: 8px; padding: 12px 14px; }
 .{p}footer { margin-top: 34px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
 .{p}thanks { font-weight: 600; color: var(--accent); margin-bottom: 8px !important; }

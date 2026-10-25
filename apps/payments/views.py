@@ -129,6 +129,7 @@ def payments_page(request):
         ],
         'today': timezone.localdate().isoformat(),
         'page_title': 'Paiements',
+        'has_connect': bool(organization) and bool(__import__('apps.payments.stripe_connect', fromlist=['account_for']).account_for(organization)),
     }
     return render(request, 'payments/list.html', context)
 

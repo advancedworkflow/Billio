@@ -75,6 +75,7 @@ DOC_VARIABLES = {
     'siret': ('SIRET', '{{ organization_registration_number }}'),
     'tva_intra': ('N° de TVA', '{{ organization_tax_id }}'),
     'iban': ('IBAN', '{{ organization_iban }}'),
+    'lien_paiement': ('Lien de paiement en ligne', '{{ payment_url }}'),
     'total_ht': ('Total HT', '{{ subtotal|money:currency }}'),
     'total': ('Total TTC', '{{ total_amount|money:currency }}'),
 }

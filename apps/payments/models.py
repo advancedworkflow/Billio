@@ -242,6 +242,8 @@ class BankLine(models.Model):
     fingerprint = models.CharField(max_length=64)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_lines')
+    # Ligne qui correspond à un versement Stripe (paiements déjà enregistrés un par un) : rapprochée sans paiement.
+    payout = models.ForeignKey('payments.StripePayout', on_delete=models.SET_NULL, null=True, blank=True, related_name='bank_lines')
     imported_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -253,3 +255,75 @@ class BankLine(models.Model):
 
     def __str__(self):
         return f'{self.date} {self.amount} {self.label[:40]}'
+
+
+class StripeConnectAccount(models.Model):
+    """
+    Compte Stripe Connect d'une organisation (apps/payments/stripe_connect.py) : Billio est la
+    plateforme, l'organisation encaisse directement sur son compte et Stripe lui verse l'argent.
+    L'inscription (identité, IBAN) se fait chez Stripe ; ici on ne garde que l'état du compte.
+    """
+    organization = models.OneToOneField('organizations.Organization', on_delete=models.CASCADE, related_name='stripe_connect')
+    account_id = models.CharField(max_length=64, unique=True)
+    country = models.CharField(max_length=2, blank=True, default='')
+    default_currency = models.CharField(max_length=3, blank=True, default='')
+    display_name = models.CharField(max_length=255, blank=True, default='')
+    details_submitted = models.BooleanField(default=False)
+    charges_enabled = models.BooleanField(default=False)
+    payouts_enabled = models.BooleanField(default=False)
+    # Informations encore demandées par Stripe (requirements.currently_due) et motif de blocage éventuel.
+    requirements = models.JSONField(default=list, blank=True)
+    disabled_reason = models.CharField(max_length=120, blank=True, default='')
+    # Rythme des versements et destination (« BNP Paribas •••• 1234 »), réglés dans le tableau de bord Stripe.
+    payout_schedule = models.CharField(max_length=60, blank=True, default='')
+    payout_destination = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Compte Stripe Connect')
+        verbose_name_plural = _('Comptes Stripe Connect')
+
+    def __str__(self):
+        return f'{self.organization} — {self.account_id}'
+
+    @property
+    def status(self):
+        """'active', 'restricted' (inscription envoyée mais encaissement bloqué) ou 'incomplete'."""
+        if self.charges_enabled:
+            return 'active'
+        return 'restricted' if self.details_submitted else 'incomplete'
+
+
+class StripePayout(models.Model):
+    """Versement de Stripe vers le compte bancaire (ou la carte) d'une organisation connectée."""
+    STATUS_CHOICES = [
+        ('pending', _('En préparation')),
+        ('in_transit', _('En cours')),
+        ('paid', _('Versé')),
+        ('failed', _('Échoué')),
+        ('canceled', _('Annulé')),
+    ]
+
+    organization = models.ForeignKey('organizations.Organization', on_delete=models.CASCADE, related_name='stripe_payouts')
+    payout_id = models.CharField(max_length=64, unique=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default='EUR')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='pending')
+    method = models.CharField(max_length=12, blank=True, default='standard')  # standard / instant
+    arrival_date = models.DateField(null=True, blank=True)
+    destination = models.CharField(max_length=120, blank=True, default='')
+    failure_message = models.CharField(max_length=255, blank=True, default='')
+    created = models.DateTimeField(null=True, blank=True)  # date de création chez Stripe
+    # Rapprochement automatique annulé par l'utilisateur : ne plus le proposer.
+    bank_match_dismissed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Versement Stripe')
+        verbose_name_plural = _('Versements Stripe')
+        ordering = ['-arrival_date', '-created']
+
+    def __str__(self):
+        return f'{self.payout_id} {self.amount} {self.currency}'
+

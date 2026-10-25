@@ -3,7 +3,7 @@ URLs for payments app.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import reconcile_views, views
+from . import connect_views, reconcile_views, views
 
 app_name = 'payments'
 
@@ -30,6 +30,13 @@ urlpatterns = [
 
     path('', include(router.urls)),
     path('webhooks/stripe/<int:organization_id>/', views.stripe_webhook, name='stripe-webhook'),
+    path('connect/start/', connect_views.connect_start, name='connect-start'),
+    path('connect/refresh/', connect_views.connect_refresh, name='connect-refresh'),
+    path('connect/return/', connect_views.connect_return, name='connect-return'),
+    path('webhooks/stripe/connect/', connect_views.connect_webhook, name='stripe-connect-webhook'),
+    path('payouts/', connect_views.payouts_page, name='payouts'),
+    path('payouts/refresh/', connect_views.payouts_refresh, name='payouts-refresh'),
+    path('payouts/<int:payout_id>/', connect_views.payout_detail, name='payout-detail'),
 ]
 
 

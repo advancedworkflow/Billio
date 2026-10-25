@@ -1,0 +1,53 @@
+{% extends "dashboard/base.html" %}
+{% load static billio_format %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}Les paiements regroupés dans ce versement, frais déduits{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payments.css' %}?v=1.2">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 rec">
+    <a href="{% url 'payments:payouts' %}" class="rec-back"><i data-lucide="arrow-left" class="w-4 h-4"></i> Versements</a>
+
+    <section class="po-summary">
+        <div class="kpi-premium">
+            <p class="kpi-label">Montant versé</p>
+            <p class="kpi-value">{{ payout.amount|money:payout.currency }}</p>
+            <p class="po-muted"><span class="po-status po-status--{{ payout.status }}">{{ payout.get_status_display }}</span></p>
+        </div>
+        <div class="kpi-premium">
+            <p class="kpi-label">Destination</p>
+            <p class="kpi-value po-dest" translate="no">{{ payout.destination|default:"—" }}</p>
+            {% if bank_line %}<p class="po-muted">Rapproché avec la ligne du {{ bank_line.date|date:"d/m/Y" }} de votre relevé.</p>{% endif %}
+        </div>
+    </section>
+    {% if payout.failure_message %}<p class="text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700" translate="no">{{ payout.failure_message }}</p>{% endif %}
+    {% if error %}<p class="text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700">{{ error }}</p>{% endif %}
+
+    {% if rows %}
+    <section class="pay-card">
+        <table class="po-table">
+            <thead><tr><th>Mouvement</th><th>Facture</th><th class="num">Montant</th><th class="num">Frais</th><th class="num">Net</th></tr></thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.label }}</strong>{% if row.date %} <span class="po-muted">{{ row.date|date:"d/m/Y" }}</span>{% endif %}</td>
+                    <td>{% if row.invoice %}<a href="{% url 'invoices:invoice-preview' row.invoice.id %}" translate="no">{{ row.invoice.invoice_number }}</a> <span class="po-muted" translate="no">{{ row.invoice.client.name }}</span>{% else %}<span class="po-muted" translate="no">{{ row.description|default:"—" }}</span>{% endif %}</td>
+                    <td class="num">{{ row.gross|money:payout.currency }}</td>
+                    <td class="num po-muted">{{ row.fee|money:payout.currency }}</td>
+                    <td class="num">{{ row.net|money:payout.currency }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot><tr><td colspan="2">Total</td><td class="num">{{ totals.gross|money:payout.currency }}</td><td class="num">{{ totals.fee|money:payout.currency }}</td><td class="num">{{ totals.net|money:payout.currency }}</td></tr></tfoot>
+        </table>
+    </section>
+    {% elif not error %}
+    <section class="pay-card"><div class="pay-empty"><p>Le détail apparaît dès que Stripe a préparé le versement.</p></div></section>
+    {% endif %}
+</div>
+{% endblock %}

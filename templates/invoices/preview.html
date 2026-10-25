@@ -47,6 +47,27 @@
             </div>
         </div>
 
+        {% if payment_link %}
+        <!-- Lien de paiement (apps/payments/payment_links.py) -->
+        <div class="mb-6 bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap items-center gap-4 text-sm" x-data="{ copied: false, qr: false }">
+            <div class="flex-1 min-w-[16rem]">
+                <p class="font-semibold text-gray-900">Lien de paiement</p>
+                {% if online_payments %}<p class="text-gray-500 mt-0.5">Votre client règle {{ amount_due }} {{ invoice.currency }} en ligne (carte, Apple Pay, prélèvement…). La facture passe « payée » dès que Stripe confirme.</p>
+                {% else %}<p class="text-gray-500 mt-0.5">Le client y voit le reste dû et vos coordonnées de virement. <a href="{% url 'accounts:user-settings' %}?tab=paiement" class="text-violet-700 font-semibold hover:underline">Activer le paiement en ligne</a></p>{% endif %}
+                <input type="text" readonly value="{{ payment_link }}" class="mt-2 w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600 bg-gray-50" @focus="$el.select()">
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" class="btn-modern btn-modern-primary" @click="navigator.clipboard.writeText('{{ payment_link }}'); copied = true; setTimeout(() => copied = false, 1500)" x-text="copied ? 'Copié' : 'Copier le lien'">Copier le lien</button>
+                <a href="{{ payment_link }}" target="_blank" rel="noopener" class="btn-modern btn-modern-secondary">Ouvrir</a>
+                <button type="button" class="btn-modern btn-modern-secondary" @click="qr = !qr">QR code</button>
+            </div>
+            <div x-show="qr" x-cloak class="w-full flex items-center gap-4 pt-2 border-t border-gray-100">
+                <div class="w-32 h-32 [&_svg]:w-full [&_svg]:h-full">{{ payment_qr|safe }}</div>
+                <p class="text-gray-500">À montrer au client ou à imprimer : il le scanne avec son téléphone pour ouvrir la page de paiement.</p>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Preview Container -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div class="invoice-preview border border-gray-200 rounded-lg p-6 bg-white" translate="no">

@@ -30,6 +30,7 @@ COMPARISON = [
     ('Stockage', 'storage_mb', 'storage'),
     ('Intégrations', 'integrations', 'limit'),
     ('Automatisations actives', 'workflows', 'limit'),
+    ('Commission Billio sur les paiements en ligne', 'payment_fee_percent', 'fee'),
     ('Factures récurrentes', 'recurring', 'bool'),
     ('Acomptes et échéanciers', 'deposits', 'bool'),
     ('Paiements manuels', 'manual_payments', 'bool'),
@@ -48,6 +49,11 @@ LEVEL_LABELS = {'none': None, 'basic': 'Basique', 'full': 'Complet'}
 
 
 def _cell(plan, key, kind):
+    if kind == 'fee':
+        from apps.payments.stripe_connect import DEFAULT_FEE_PERCENT, fee_label
+        value = plan.limit(key)
+        value = DEFAULT_FEE_PERCENT if value is None else value
+        return {'text': fee_label(value) if value else 'Aucune', 'yes': True}
     if kind in ('limit', 'storage'):
         value = plan.limit(key)
         if value is None:

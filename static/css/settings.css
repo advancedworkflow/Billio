@@ -199,6 +199,13 @@
 .st-stripe-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .st-stripe-text span { color: var(--billio-text-muted, #52525b); font-size: 13px; }
 @media (max-width: 560px) { .st-stripe { flex-wrap: wrap; } }
+.st-connect--active { border-color: #bbf7d0; }
+.st-connect-badge { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #dcfce7; color: #15803d; font-size: 11px; font-style: normal; font-weight: 600; vertical-align: 1px; }
+.st-connect-badge--wait { background: #fef3c7; color: #b45309; }
+.st-connect-fees { margin-top: 4px; color: var(--billio-text-muted, #71717a); font-size: 12px; }
+.st-connect-fees a { color: var(--billio-primary, #6d28d9); }
+.st-connect-fees span { font-size: inherit; color: inherit; }
+.st-connect form { margin: 0; }
 
 /* Devise personnalisée */
 .st-currency { margin: 4px 0 14px; padding: 12px 14px; border: 1px dashed var(--billio-border-strong, #d4d4d8); border-radius: 12px; }
