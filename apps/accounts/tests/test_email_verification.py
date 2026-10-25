@@ -32,6 +32,7 @@ class EmailVerificationTests(TestCase):
         self.http.post(reverse('accounts:register'), {
             'name': 'Julie Moreau', 'email': 'julie@moreau-photo.fr', 'password': PASSWORD,
             'country': 'FR', 'phone': '06 12 34 56 78', 'trade': 'audiovisuel', 'accept_terms': '1'})
+        self.http.post(reverse('accounts:onboarding'), {'form_action': 'skip'})  # assistant de démarrage passé
         return User.objects.get(email='julie@moreau-photo.fr')
 
     def link_in(self, email):

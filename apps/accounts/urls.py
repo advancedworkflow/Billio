@@ -5,7 +5,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, include, reverse_lazy
 from django.shortcuts import redirect
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import onboarding, views
 from .views import login_view, register_view, logout_view, profile_view
 
 app_name = 'accounts'
@@ -41,6 +41,7 @@ urlpatterns = [
         template_name='auth/password_reset/complete.html'), name='password-reset-complete'),
     path('profile/', views.profile_view, name='user-profile'),
     path('settings/', views.settings_view, name='user-settings'),
+    path('onboarding/', onboarding.onboarding_view, name='onboarding'),
     path('settings/token/generate/', views.generate_api_token, name='api-token-generate'),
     path('settings/token/revoke/', views.revoke_api_token, name='api-token-revoke'),
 

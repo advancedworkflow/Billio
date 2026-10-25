@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.conf import settings
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Count, Q
@@ -103,6 +103,9 @@ class DashboardStatsView(generics.GenericAPIView):
 @login_required
 def dashboard_home(request):
     """Main dashboard view (UI blocs KPI/actions/activités)."""
+    from apps.accounts.onboarding import is_pending
+    if is_pending(request.user):
+        return redirect('accounts:onboarding')
     # Local imports to avoid unnecessary dependency loading at startup.
     from apps.invoices.models import Invoice
     from apps.payments.models import Payment, Transaction

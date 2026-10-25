@@ -230,10 +230,12 @@ def register_view(request):
             from apps.organizations.jurisdictions import apply_profile
             apply_profile(organization, {'country': form.cleaned_data['country'], 'status': 'freelance',
                                          'tax_registered': False, 'confirmed': False})
+            from .onboarding import mark_pending
+            mark_pending(organization)
             auth_login(request, user)
             _send_welcome_email(user)
             messages.success(request, f'Compte créé avec succès ! Bienvenue, {user.get_full_name() or user.email}!')
-            return redirect(_safe_next(request) or 'dashboard:dashboard-home')
+            return redirect(_safe_next(request) or 'accounts:onboarding')
     else:
         form = RegisterForm(initial={'email': (request.GET.get('email') or '').strip()[:254], 'country': 'FR'})
 

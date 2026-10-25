@@ -86,7 +86,7 @@ class SignupTests(TestCase):
     def test_four_fields_create_account_and_organization(self):
         from apps.organizations.models import Organization
         response = self.signup()
-        self.assertRedirects(response, reverse('dashboard:dashboard-home'), fetch_redirect_response=False)
+        self.assertRedirects(response, reverse('accounts:onboarding'), fetch_redirect_response=False)
         user = User.objects.get(email='julie@moreau-photo.fr')
         self.assertEqual((user.first_name, user.last_name), ('Julie', 'Moreau'))
         self.assertTrue(user.check_password('Photo-Lumiere-2026'))

@@ -1,0 +1,209 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Configurer Billio - Billio</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=1.6" rel="stylesheet">
+    <link href="{% static 'css/onboarding.css' %}?v=1.0" rel="stylesheet">
+    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body>
+<header class="ob-top">
+    <a href="{{ home_url }}" class="ob-logo">
+        <span class="ob-logo-badge">{% include "components/logo_mark_on_violet.html" with class="w-5 h-5" %}</span>
+        Billio
+    </a>
+    <div class="ob-top-actions">
+        {% include "components/language_switcher.html" %}
+        {% if not done %}
+        <form method="post">{% csrf_token %}<input type="hidden" name="form_action" value="skip">
+            <button type="submit" class="ob-skip-all">Passer et configurer plus tard</button>
+        </form>
+        {% endif %}
+    </div>
+</header>
+
+{% if done %}
+<main class="ob-card ob-done">
+    <span class="ob-done-icon"><i data-lucide="check" class="w-7 h-7"></i></span>
+    <h1 class="ob-title">Billio est prêt</h1>
+    <p class="ob-lead">Votre espace est réglé pour votre activité. Voici par où commencer.</p>
+    <ul class="ob-next">
+        {% for step in next_steps %}
+        <li><a href="{{ step.url }}"><i data-lucide="{{ step.icon }}" class="w-4 h-4"></i><span>{{ step.label }}</span><i data-lucide="arrow-right" class="w-4 h-4 ob-next-arrow"></i></a></li>
+        {% endfor %}
+    </ul>
+    <a href="{{ home_url }}" class="ob-btn ob-btn--primary ob-btn--block">Aller au tableau de bord</a>
+    <p class="ob-foot">Tout se modifie ensuite dans Paramètres.</p>
+</main>
+{% else %}
+{{ initial|json_script:"ob-initial" }}
+{{ country_data|json_script:"ob-countries" }}
+{{ trade_labels|json_script:"ob-trades" }}
+{{ status_labels|json_script:"ob-statuses" }}
+{{ days_labels|json_script:"ob-days" }}
+<main class="ob-card" x-data="onboarding()" x-cloak>
+    <ol class="ob-steps" aria-label="Étapes">
+        <li :class="stepClass(0)"><span>1</span> Activité</li>
+        <li :class="stepClass(1)"><span>2</span> Pays & statut</li>
+        <li :class="stepClass(2)"><span>3</span> Préférences</li>
+        <li :class="stepClass(3)"><span>4</span> Récapitulatif</li>
+    </ol>
+
+    <form method="post" @submit="submitting = true">
+        {% csrf_token %}
+        <input type="hidden" name="skip_activity" :value="skipped[0] ? '1' : ''">
+        <input type="hidden" name="skip_country" :value="skipped[1] ? '1' : ''">
+        <input type="hidden" name="skip_preferences" :value="skipped[2] ? '1' : ''">
+
+        <!-- 1. Activité -->
+        <section x-show="step === 0">
+            <h1 class="ob-title">Quelle est votre activité ?</h1>
+            <p class="ob-lead">Billio prépare les étapes de vos projets, des modèles prêts à l'emploi et les mentions de vos factures selon votre métier.</p>
+            <label class="ob-field">
+                <span>Nom de votre entreprise</span>
+                <input class="ob-input" type="text" name="name" x-model="data.name" maxlength="200" autocomplete="organization">
+                <small>Il apparaît en tête de vos factures.</small>
+            </label>
+            <div class="ob-field"><span>Votre métier</span></div>
+            <div class="ob-trades">
+                {% for trade in trades %}
+                <label class="ob-trade" :class="data.trade === '{{ trade.key }}' && 'is-active'">
+                    <input type="radio" name="trade" value="{{ trade.key }}" x-model="data.trade" class="sr-only">
+                    <span class="ob-trade-head"><i data-lucide="{{ trade.icon }}" class="w-4 h-4"></i><strong>{{ trade.label }}</strong></span>
+                    <small>{{ trade.description }}</small>
+                    <span class="ob-trade-detail" x-show="data.trade === '{{ trade.key }}'" translate="no">{{ trade.phases|join:" → " }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- 2. Pays & statut -->
+        <section x-show="step === 1">
+            <h1 class="ob-title">Où et comment facturez-vous ?</h1>
+            <p class="ob-lead">Billio règle la devise, les taux de taxe et les mentions obligatoires de votre pays.</p>
+            <label class="ob-field">
+                <span>Pays de votre entreprise</span>
+                <select class="ob-input" name="country" x-model="data.country">
+                    {% for code, name in countries %}<option value="{{ code }}">{{ name }}</option>{% endfor %}
+                    <option value="OTHER">Autre pays</option>
+                </select>
+                <small x-show="!country.supported" x-text="country.note"></small>
+            </label>
+            <div class="ob-field"><span>Votre statut</span></div>
+            <div class="ob-choices ob-choices--3">
+                {% for key, label in statuses %}
+                <label class="ob-choice" :class="data.status === '{{ key }}' && 'is-active'">
+                    <input type="radio" name="status" value="{{ key }}" x-model="data.status" class="sr-only">
+                    <strong>{{ label }}</strong>
+                    <small translate="no" x-text="country.examples['{{ key }}']"></small>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="ob-field"><span>Facturez-vous la taxe sur vos ventes (TVA, GST, sales tax…) ?</span></div>
+            <div class="ob-choices ob-choices--2">
+                <label class="ob-choice" :class="data.tax === 'yes' && 'is-active'">
+                    <input type="radio" name="tax_registered" value="yes" x-model="data.tax" class="sr-only">
+                    <strong>Oui, je suis inscrit</strong><small>La taxe est ajoutée à vos factures.</small>
+                </label>
+                <label class="ob-choice" :class="data.tax === 'no' && 'is-active'">
+                    <input type="radio" name="tax_registered" value="no" x-model="data.tax" class="sr-only">
+                    <strong>Non, pas encore</strong><small>La mention d'exonération est ajoutée.</small>
+                </label>
+            </div>
+            <p class="ob-hint" x-show="country.threshold" x-text="country.threshold"></p>
+        </section>
+
+        <!-- 3. Préférences -->
+        <section x-show="step === 2">
+            <h1 class="ob-title">Vos préférences</h1>
+            <p class="ob-lead">Les réglages par défaut de vos factures, et ce que vous voulez faire avec Billio.</p>
+            <div class="ob-field"><span>Délai de paiement habituel</span></div>
+            <div class="ob-chips">
+                {% for days, label in payment_days %}
+                <label class="ob-chip" :class="data.days === {{ days }} && 'is-active'">
+                    <input type="radio" name="payment_days" value="{{ days }}" class="sr-only" :checked="data.days === {{ days }}" @change="data.days = {{ days }}">{{ label }}
+                </label>
+                {% endfor %}
+            </div>
+            <div class="ob-row">
+                <label class="ob-field">
+                    <span>Langue de vos factures</span>
+                    <select class="ob-input" name="doc_language" x-model="data.language">
+                        {% for code, label in languages %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="ob-field">
+                    <span>Préfixe des numéros de facture</span>
+                    <input class="ob-input" type="text" name="invoice_prefix" x-model="data.prefix" maxlength="10" translate="no">
+                </label>
+            </div>
+            <div class="ob-field"><span>Ce qui vous intéresse</span><small>Plusieurs choix possibles.</small></div>
+            <div class="ob-interests">
+                {% for key, label, icon in interests %}
+                <label class="ob-interest" :class="data.interests.includes('{{ key }}') && 'is-active'">
+                    <input type="checkbox" name="interests" value="{{ key }}" x-model="data.interests" class="sr-only">
+                    <i data-lucide="{{ icon }}" class="w-4 h-4"></i>{{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- 4. Récapitulatif -->
+        <section x-show="step === 3">
+            <h1 class="ob-title">Tout est prêt</h1>
+            <p class="ob-lead">Voici ce que Billio va régler. Les étapes passées gardent vos réglages actuels.</p>
+            <dl class="ob-recap">
+                <div><dt>Activité</dt>
+                    <dd x-show="!skipped[0]"><span translate="no" x-text="data.name"></span> · <span x-text="trades[data.trade] || '—'"></span></dd>
+                    <dd x-show="skipped[0]" class="ob-muted">Étape passée</dd>
+                    <button type="button" class="ob-link" @click="go(0)">Modifier</button></div>
+                <div><dt>Pays & statut</dt>
+                    <dd x-show="!skipped[1]"><span x-text="country.name"></span> · <span x-text="statusLabel()"></span> · <span x-show="data.tax === 'yes'">taxe facturée</span><span x-show="data.tax !== 'yes'">sans taxe</span></dd>
+                    <dd x-show="skipped[1]" class="ob-muted">Étape passée</dd>
+                    <button type="button" class="ob-link" @click="go(1)">Modifier</button></div>
+                <div><dt>Préférences</dt>
+                    <dd x-show="!skipped[2]"><span x-text="daysLabel()"></span> · <span translate="no" x-text="data.prefix"></span></dd>
+                    <dd x-show="skipped[2]" class="ob-muted">Étape passée</dd>
+                    <button type="button" class="ob-link" @click="go(2)">Modifier</button></div>
+            </dl>
+        </section>
+
+        <footer class="ob-nav">
+            <button type="button" class="ob-btn" x-show="step > 0" @click="go(step - 1)"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour</button>
+            <span class="ob-spacer"></span>
+            <button type="button" class="ob-btn ob-btn--ghost" x-show="step < 3" @click="skip()">Passer cette étape</button>
+            <button type="button" class="ob-btn ob-btn--primary" x-show="step < 3" @click="next()" :disabled="step === 0 && !data.trade">Continuer <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+            <button type="submit" class="ob-btn ob-btn--primary" x-show="step === 3" :disabled="submitting">Terminer la configuration</button>
+        </footer>
+    </form>
+</main>
+<script>
+    function onboarding() {
+        const read = (id) => JSON.parse(document.getElementById(id).textContent);
+        const statuses = read('ob-statuses');
+        const days = read('ob-days');
+        return {
+            step: 0, skipped: [false, false, false], submitting: false,
+            data: read('ob-initial'), countries: read('ob-countries'), trades: read('ob-trades'),
+            get country() { return this.countries[this.data.country] || this.countries.OTHER; },
+            stepClass(i) { return i === this.step ? 'is-current' : (i < this.step ? (this.skipped[i] ? 'is-skipped' : 'is-done') : ''); },
+            statusLabel() { return statuses[this.data.status] || ''; },
+            daysLabel() { return days[this.data.days] || ''; },
+            go(i) { this.step = i; window.scrollTo({ top: 0 }); },
+            next() { this.skipped[this.step] = false; this.go(this.step + 1); },
+            skip() { this.skipped[this.step] = true; this.go(this.step + 1); },
+        };
+    }
+</script>
+{% endif %}
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<script>window.lucide && lucide.createIcons();</script>
+</body>
+</html>

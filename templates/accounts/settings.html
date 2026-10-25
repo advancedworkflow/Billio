@@ -587,7 +587,8 @@
         <!-- ================= Métier & modèles ================= -->
         <section class="st-card" x-show="tab === 'metier'" x-cloak x-data="{ pick: '{{ org.trade|default:'' }}' }">
             <header><h2>Métier & modèles de projet</h2><p>Votre métier règle les processus de vos projets (leurs étapes), les modèles de projet proposés à la création et les mentions légales ajoutées à vos factures.</p>
-                <p><a href="{% url 'dashboard:process-list' %}" class="st-link">Gérer les processus de projet (étapes par type de prestation) →</a></p></header>
+                <p><a href="{% url 'dashboard:process-list' %}" class="st-link">Gérer les processus de projet (étapes par type de prestation) →</a></p>
+                <p><a href="{% url 'accounts:onboarding' %}" class="st-link">Relancer l'assistant de configuration (métier, pays, préférences) →</a></p></header>
             <form method="post" class="st-form">
                 {% csrf_token %}<input type="hidden" name="form_action" value="apply_trade">
                 <div class="st-trades">
