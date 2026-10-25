@@ -5845,7 +5845,6 @@
   "Langue de vos factures": "Sprache Ihrer Rechnungen",
   "Enregistrer et appliquer": "Speichern und anwenden",
   "Votre conformité": "Ihre Konformität",
-  "Ce qu'il faut sur vos factures pour": "Was Ihre Rechnungen brauchen für",
   "votre pays": "Ihr Land",
   "Prêt à facturer": "Bereit zur Rechnungsstellung",
   "Presque prêt": "Fast bereit",
@@ -6311,5 +6310,10 @@
   "Rythme réglé dans Stripe": "Rhythmus in Stripe festgelegt",
   "Rapproché": "Abgeglichen",
   "Paiements déjà enregistrés facture par facture.": "Zahlungen bereits Rechnung für Rechnung erfasst.",
-  "Scannez le QR code ou ouvrez le lien : {}": "QR-Code scannen oder Link öffnen: {}"
+  "Scannez le QR code ou ouvrez le lien : {}": "QR-Code scannen oder Link öffnen: {}",
+  "Ce qu'il faut sur vos factures dans votre pays.": "Was Ihre Rechnungen in Ihrem Land brauchen.",
+  "Ce qu'il faut sur vos factures au {}.": "Was Ihre Rechnungen brauchen: {}.",
+  "Ce qu'il faut sur vos factures aux {}.": "Was Ihre Rechnungen brauchen: {}.",
+  "Ce qu'il faut sur vos factures à {}.": "Was Ihre Rechnungen brauchen: {}.",
+  "Ce qu'il faut sur vos factures en {}.": "Was Ihre Rechnungen brauchen: {}."
 }

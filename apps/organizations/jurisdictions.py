@@ -93,9 +93,13 @@ OTHER_NOTE = ("Billio ne connaît pas les règles fiscales de ce pays : vos fact
               "Faites valider vos mentions par un comptable local.")
 
 
+# Préposition devant le nom du pays (« en France », « au Canada », « aux États-Unis », « à Malte »).
+PREPOSITIONS = {'CA': 'au', 'DK': 'au', 'GB': 'au', 'LU': 'au', 'PT': 'au', 'NL': 'aux', 'US': 'aux', 'CY': 'à', 'MT': 'à'}
+
+
 def _base(code, name, **extra):
     pack = {
-        'code': code, 'name': name, 'supported': True, 'region': code.lower(),
+        'code': code, 'name': name, 'prep': PREPOSITIONS.get(code, 'en'), 'supported': True, 'region': code.lower(),
         'tax_name': 'VAT', 'tax_ui': 'la TVA', 'rates': [], 'currency': 'EUR', 'doc_language': 'en',
         'threshold': '', 'tax_id_label': 'Numéro de TVA', 'tax_id_hint': '', 'registration_label': "Numéro d'immatriculation",
         'registration_required': ('pme', 'entreprise'), 'company_details_hint': '',

@@ -5845,7 +5845,6 @@
   "Langue de vos factures": "Idioma de sus facturas",
   "Enregistrer et appliquer": "Guardar y aplicar",
   "Votre conformité": "Su cumplimiento",
-  "Ce qu'il faut sur vos factures pour": "Lo que necesitan sus facturas para",
   "votre pays": "su país",
   "Prêt à facturer": "Listo para facturar",
   "Presque prêt": "Casi listo",
@@ -6311,5 +6310,10 @@
   "Rythme réglé dans Stripe": "Frecuencia definida en Stripe",
   "Rapproché": "Conciliado",
   "Paiements déjà enregistrés facture par facture.": "Pagos ya registrados factura por factura.",
-  "Scannez le QR code ou ouvrez le lien : {}": "Escanee el código QR o abra el enlace: {}"
+  "Scannez le QR code ou ouvrez le lien : {}": "Escanee el código QR o abra el enlace: {}",
+  "Ce qu'il faut sur vos factures dans votre pays.": "Lo que necesitan sus facturas en su país.",
+  "Ce qu'il faut sur vos factures au {}.": "Lo que necesitan sus facturas en {}.",
+  "Ce qu'il faut sur vos factures aux {}.": "Lo que necesitan sus facturas en {}.",
+  "Ce qu'il faut sur vos factures à {}.": "Lo que necesitan sus facturas en {}.",
+  "Ce qu'il faut sur vos factures en {}.": "Lo que necesitan sus facturas en {}."
 }

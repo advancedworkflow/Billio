@@ -176,7 +176,7 @@
 
         <section class="st-card st-comp-check" x-show="tab === 'conformite'" x-cloak>
             <header class="st-comp-head">
-                <div><h2>Votre conformité</h2><p>Ce qu'il faut sur vos factures pour {% if compliance_pack.supported %}{{ compliance_pack.name }}{% else %}votre pays{% endif %}.</p></div>
+                <div><h2>Votre conformité</h2><p>{% if not compliance_pack.supported %}Ce qu'il faut sur vos factures dans votre pays.{% elif compliance_pack.prep == 'au' %}Ce qu'il faut sur vos factures au {{ compliance_pack.name }}.{% elif compliance_pack.prep == 'aux' %}Ce qu'il faut sur vos factures aux {{ compliance_pack.name }}.{% elif compliance_pack.prep == 'à' %}Ce qu'il faut sur vos factures à {{ compliance_pack.name }}.{% else %}Ce qu'il faut sur vos factures en {{ compliance_pack.name }}.{% endif %}</p></div>
                 {% if compliance_readiness == 'ready' %}<span class="st-comp-pill is-ready">Prêt à facturer</span>
                 {% elif compliance_readiness == 'almost' %}<span class="st-comp-pill is-almost">Presque prêt</span>
                 {% else %}<span class="st-comp-pill is-todo">À compléter</span>{% endif %}

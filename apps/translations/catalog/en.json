@@ -5845,7 +5845,6 @@
   "Langue de vos factures": "Invoice language",
   "Enregistrer et appliquer": "Save and apply",
   "Votre conformité": "Your compliance",
-  "Ce qu'il faut sur vos factures pour": "What your invoices need for",
   "votre pays": "your country",
   "Prêt à facturer": "Ready to invoice",
   "Presque prêt": "Almost ready",
@@ -6311,5 +6310,10 @@
   "Rythme réglé dans Stripe": "Schedule set in Stripe",
   "Rapproché": "Matched",
   "Paiements déjà enregistrés facture par facture.": "Payments already recorded invoice by invoice.",
-  "Scannez le QR code ou ouvrez le lien : {}": "Scan the QR code or open the link: {}"
+  "Scannez le QR code ou ouvrez le lien : {}": "Scan the QR code or open the link: {}",
+  "Ce qu'il faut sur vos factures dans votre pays.": "What your invoices need in your country.",
+  "Ce qu'il faut sur vos factures au {}.": "What your invoices need: {}.",
+  "Ce qu'il faut sur vos factures aux {}.": "What your invoices need: {}.",
+  "Ce qu'il faut sur vos factures à {}.": "What your invoices need: {}.",
+  "Ce qu'il faut sur vos factures en {}.": "What your invoices need: {}."
 }
