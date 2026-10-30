@@ -10,7 +10,7 @@
     <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link href="{% static 'css/landing-tw.css' %}?v=1.0" rel="stylesheet">
     <link href="{% static 'css/landing.css' %}?v=2.7" rel="stylesheet">
-    <link href="{% static 'css/landing-motion.css' %}?v=3.2" rel="stylesheet">
+    <link href="{% static 'css/landing-motion.css' %}?v=3.3" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
 </head>
@@ -431,7 +431,7 @@
         </div>
     </section>
 
-    <!-- 5. Interactive Demo -->
+    <!-- 5. Toutes les fonctionnalités dans l'app -->
     <section id="showcase" class="landing-section landing-section-alt">
         <div class="max-w-6xl mx-auto reveal">
             <div class="text-center max-w-2xl mx-auto mb-12">
@@ -447,108 +447,56 @@
                     <span class="hero-window-dot hero-window-dot--green"></span>
                     <span class="hero-window-title">billio.app/dashboard</span>
                 </div>
-                <div class="p-4 sm:p-6">
-                    <div class="showcase-layout is-embedded" id="product-showcase">
-                        <nav class="showcase-nav">
-                            <button type="button" class="showcase-tab is-active" data-showcase-tab="create">
-                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Créer
-                            </button>
-                            <button type="button" class="showcase-tab" data-showcase-tab="send">
-                                <i data-lucide="send" class="w-4 h-4"></i> Envoyer
-                            </button>
-                            <button type="button" class="showcase-tab" data-showcase-tab="remind">
-                                <i data-lucide="bell-dot" class="w-4 h-4"></i> Relancer
-                            </button>
-                            <button type="button" class="showcase-tab" data-showcase-tab="analyze">
-                                <i data-lucide="chart-spline" class="w-4 h-4"></i> Analyser
-                            </button>
-                        </nav>
-                        <div class="showcase-panel-wrap">
-                            <div class="showcase-panel is-active" data-showcase-panel="create">
-                                <p class="showcase-panel-desc">Composez une facture ou un devis complet en moins de deux minutes : choisissez votre client, ajoutez vos prestations et laissez Billio calculer seul les totaux, la TVA et les remises applicables.</p>
-                                <ul class="showcase-panel-points">
-                                    <li><span class="landing-check">✓</span> Modèles personnalisables à l'image de votre marque</li>
-                                    <li><span class="landing-check">✓</span> Calcul automatique des totaux, remises et TVA</li>
-                                    <li><span class="landing-check">✓</span> Numérotation et mentions légales gérées pour vous</li>
-                                </ul>
-                                <div class="showcase-mock">
-                                    <div class="showcase-mock-bar"></div>
-                                    <p class="text-sm font-semibold mb-2">Nouvelle facture</p>
-                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">Client · Prestations · Montants</p>
-                                    <div class="space-y-2">
-                                        <div class="h-8 rounded-lg" style="background: var(--billio-primary-soft);"></div>
-                                        <div class="h-8 rounded-lg" style="background: var(--billio-bg); border: 1px solid var(--billio-border);"></div>
-                                        <div class="h-8 rounded-lg" style="background: var(--billio-bg); border: 1px solid var(--billio-border);"></div>
-                                    </div>
-                                </div>
+                <div class="app-mock">
+                    <aside class="app-mock-nav" aria-hidden="true">
+                        <span class="is-active"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> Accueil</span>
+                        <span><i data-lucide="users-round" class="w-4 h-4"></i> Clients</span>
+                        <span><i data-lucide="kanban" class="w-4 h-4"></i> Projets</span>
+                        <span><i data-lucide="receipt-text" class="w-4 h-4"></i> Factures</span>
+                        <span><i data-lucide="file-signature" class="w-4 h-4"></i> Devis</span>
+                        <span><i data-lucide="credit-card" class="w-4 h-4"></i> Paiements</span>
+                        <span><i data-lucide="workflow" class="w-4 h-4"></i> Automatisations</span>
+                        <span><i data-lucide="plug" class="w-4 h-4"></i> Intégrations</span>
+                    </aside>
+                    <div class="app-mock-main">
+                        <div class="app-mock-group">
+                            <p class="app-mock-group-title">Facturer</p>
+                            <div class="app-mock-tiles">
+                                <div class="app-mock-tile"><i data-lucide="receipt-text" class="w-4 h-4"></i><div><strong>Devis &amp; factures</strong><span>Numérotation et mentions légales gérées</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="file-text" class="w-4 h-4"></i><div><strong>Modèles &amp; PDF</strong><span>Un style pour chaque activité</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="badge-check" class="w-4 h-4"></i><div><strong>Vérifiée avant l'envoi</strong><span>Mentions et taux contrôlés</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="globe" class="w-4 h-4"></i><div><strong>Conforme dans 32 pays</strong><span>Taxes, devises, Factur-X</span></div></div>
                             </div>
-                            <div class="showcase-panel" data-showcase-panel="send">
-                                <p class="showcase-panel-desc">Partagez votre document en un clic par email, lien web public ou export PDF. Votre client le reçoit avec une présentation professionnelle et cohérente, sans que vous ayez à rédiger le moindre message.</p>
-                                <ul class="showcase-panel-points">
-                                    <li><span class="landing-check">✓</span> Envoi par email, lien partageable ou PDF téléchargeable</li>
-                                    <li><span class="landing-check">✓</span> Suivi d'ouverture en temps réel côté client</li>
-                                    <li><span class="landing-check">✓</span> Historique complet de chaque échange conservé</li>
-                                </ul>
-                                <div class="showcase-mock">
-                                    <div class="showcase-mock-bar"></div>
-                                    <p class="text-sm font-semibold mb-2">Envoi en cours</p>
-                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">Email · Lien web · PDF</p>
-                                    <div class="p-4 rounded-xl border" style="border-color: var(--billio-border);">
-                                        <p class="text-xs font-medium">→ client@studionova.fr</p>
-                                        <p class="text-xs mt-2" style="color: var(--billio-success);">✓ Envoyé il y a 2 min</p>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="app-mock-group">
+                            <p class="app-mock-group-title">Encaisser</p>
+                            <div class="app-mock-tiles">
+                                <div class="app-mock-tile"><i data-lucide="credit-card" class="w-4 h-4"></i><div><strong>Paiement en ligne</strong><span>Carte, Apple Pay, prélèvement</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="wallet-cards" class="w-4 h-4"></i><div><strong>Moyens de paiement locaux</strong><span>Ceux que vos clients préfèrent</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="qr-code" class="w-4 h-4"></i><div><strong>QR code de virement</strong><span>Imprimé sur la facture</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="bell-dot" class="w-4 h-4"></i><div><strong>Relances automatiques</strong><span>J+7, J+14, J+30</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="git-compare-arrows" class="w-4 h-4"></i><div><strong>Rapprochement bancaire</strong><span>Relevé et factures réunis</span></div></div>
                             </div>
-                            <div class="showcase-panel" data-showcase-panel="remind">
-                                <p class="showcase-panel-desc">Billio surveille vos échéances et relance automatiquement vos clients selon un calendrier progressif (J+7, J+14, J+30), avec un ton toujours courtois — vous n'avez plus jamais à envoyer de rappel manuel.</p>
-                                <ul class="showcase-panel-points">
-                                    <li><span class="landing-check">✓</span> Relances programmées à intervalles personnalisables</li>
-                                    <li><span class="landing-check">✓</span> Messages professionnels générés automatiquement</li>
-                                    <li><span class="landing-check">✓</span> Arrêt automatique dès qu'une facture est réglée</li>
-                                </ul>
-                                <div class="showcase-mock">
-                                    <div class="showcase-mock-bar"></div>
-                                    <p class="text-sm font-semibold mb-2">Relances automatiques</p>
-                                    <p class="text-xs mb-4" style="color: var(--billio-muted);">J+7 · J+14 · J+30</p>
-                                    <div class="space-y-2 text-xs">
-                                        <div class="flex justify-between p-2 rounded-lg" style="background: var(--billio-cta-soft);"><span>Facture #042</span><span style="color: var(--billio-cta-hover);">Relance J+7</span></div>
-                                        <div class="flex justify-between p-2 rounded-lg" style="background: var(--billio-bg);"><span>Facture #038</span><span style="color: var(--billio-success);">Payée</span></div>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="app-mock-group">
+                            <p class="app-mock-group-title">Clients &amp; projets</p>
+                            <div class="app-mock-tiles">
+                                <div class="app-mock-tile"><i data-lucide="users-round" class="w-4 h-4"></i><div><strong>Clients</strong><span>Fiches, contacts, historique</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="door-open" class="w-4 h-4"></i><div><strong>Portail client</strong><span>Documents, jalons, paiement</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="kanban" class="w-4 h-4"></i><div><strong>Projets, jalons &amp; tâches</strong><span>Du devis à la livraison</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="git-branch" class="w-4 h-4"></i><div><strong>Timeline &amp; Gantt</strong><span>Tout le projet sur une ligne</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="folder-open" class="w-4 h-4"></i><div><strong>Fichiers &amp; livrables</strong><span>Stockés et partagés</span></div></div>
                             </div>
-                            <div class="showcase-panel" data-showcase-panel="analyze">
-                                <p class="showcase-panel-desc">Chaque paiement, chaque relance et chaque facture alimente automatiquement votre tableau de bord : chiffre d'affaires, factures en attente et croissance sont mis à jour en temps réel, sans ressaisie ni tableur.</p>
-                                <ul class="showcase-panel-points">
-                                    <li><span class="landing-check">✓</span> Chiffre d'affaires et encaissements consolidés</li>
-                                    <li><span class="landing-check">✓</span> Vue claire des factures en attente ou en retard</li>
-                                    <li><span class="landing-check">✓</span> Tendances de croissance mises à jour en temps réel</li>
-                                </ul>
-                                <div class="schema">
-                                    <div class="schema-sources">
-                                        <button type="button" class="schema-node" data-schema="invoices" data-detail="Chaque facture créée ou envoyée alimente aussitôt votre tableau de bord.">
-                                            <div class="schema-node-icon"><i data-lucide="receipt-text" class="w-4 h-4"></i></div>
-                                            <div><strong>Factures</strong><span>Créées &amp; envoyées</span></div>
-                                        </button>
-                                        <button type="button" class="schema-node" data-schema="payments" data-detail="Chaque paiement Stripe encaissé met à jour votre chiffre d'affaires en temps réel.">
-                                            <div class="schema-node-icon"><i data-lucide="credit-card" class="w-4 h-4"></i></div>
-                                            <div><strong>Paiements</strong><span>Encaissés via Stripe</span></div>
-                                        </button>
-                                        <button type="button" class="schema-node" data-schema="reminders" data-detail="Chaque relance envoyée est suivie jusqu'au règlement complet de la facture.">
-                                            <div class="schema-node-icon"><i data-lucide="bell-dot" class="w-4 h-4"></i></div>
-                                            <div><strong>Relances</strong><span>Envoyées automatiquement</span></div>
-                                        </button>
-                                    </div>
-                                    <svg class="schema-connectors" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                                        <path class="schema-line" data-schema-line="invoices" d="M0,10 C50,10 50,50 100,50" />
-                                        <path class="schema-line" data-schema-line="payments" d="M0,50 L100,50" />
-                                        <path class="schema-line" data-schema-line="reminders" d="M0,90 C50,90 50,50 100,50" />
-                                    </svg>
-                                    <div class="schema-target">
-                                        <div class="schema-node-icon schema-node-icon--target"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
-                                        <strong>Tableau de bord</strong>
-                                        <p data-schema-detail>Survolez une source pour voir son impact en temps réel.</p>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="app-mock-group">
+                            <p class="app-mock-group-title">Automatiser &amp; piloter</p>
+                            <div class="app-mock-tiles">
+                                <div class="app-mock-tile"><i data-lucide="workflow" class="w-4 h-4"></i><div><strong>Automatisations</strong><span>Chaque étape déclenche la suivante</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="plug" class="w-4 h-4"></i><div><strong>Intégrations</strong><span>WhatsApp, Slack, Stripe…</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="sparkles" class="w-4 h-4"></i><div><strong>Billio AI</strong><span>Rédige devis et relances</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="chart-spline" class="w-4 h-4"></i><div><strong>Analytics</strong><span>Revenus, retards, croissance</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="calculator" class="w-4 h-4"></i><div><strong>Comptabilité</strong><span>Exports pour votre comptable</span></div></div>
+                                <div class="app-mock-tile"><i data-lucide="shield-check" class="w-4 h-4"></i><div><strong>Vos données</strong><span>Export complet, RGPD</span></div></div>
                             </div>
                         </div>
                     </div>
