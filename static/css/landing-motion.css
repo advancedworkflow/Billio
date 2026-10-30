@@ -415,7 +415,7 @@
   position: relative;
   padding: 1.5rem;
   border-radius: 0.5rem;
-  border: 2px solid var(--billio-text);
+  border: 1px solid var(--billio-border);
   background: var(--billio-card);
   overflow: hidden;
   transition: background-color 0.2s ease;
@@ -940,6 +940,9 @@
 }
 
 .tilt-card:hover::after { opacity: 1; }
+
+/* Cartes bento : bordure fine (la bordure épaisse de .tilt-card reste ailleurs). */
+.bento-item.tilt-card:not(.bento-item--ai) { border: 1px solid var(--billio-border); }
 
 .testimonial-marquee { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
 .testimonial-track { display: flex; gap: 1.25rem; width: max-content; animation: marquee 40s linear infinite; }
