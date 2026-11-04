@@ -39,8 +39,8 @@
 
 :root {
   /* Charte Billio — Swiss minimal x Billio (v2, sept. 2026) */
-  --billio-bg: #f4f1ea;
-  --billio-mist: #f4f1ea;
+  --billio-bg: #f9f8f4;
+  --billio-mist: #f3f1ea;
   --billio-card: #ffffff;
   --billio-text: #10241d;
   --billio-text-muted: #5f6b65;
@@ -56,8 +56,8 @@
   --billio-gradient: linear-gradient(135deg, #10241d 0%, #1d3b31 100%);
   --billio-gradient-premium: linear-gradient(135deg, #10241d 0%, #1d3b31 55%, #2f5d4a 100%);
   --billio-gradient-accent: linear-gradient(135deg, #10241d 0%, #1d3b31 70%, #c8f25a 100%);
-  --billio-border: #e3ded2;
-  --billio-border-strong: #d3cdbf;
+  --billio-border: #ece9e1;
+  --billio-border-strong: #dcd8cd;
   --billio-primary-soft: rgba(29, 59, 49, 0.08);
   --billio-primary-soft-border: rgba(29, 59, 49, 0.2);
   --billio-cta-soft: rgba(200, 242, 90, 0.22);
@@ -159,15 +159,15 @@
 }
 
 .billio-nav-active {
-  background: var(--billio-primary-hover);
-  color: #f4f1ea;
+  background: var(--billio-cta);
+  color: var(--billio-text);
   font-family: var(--font-titles);
   font-weight: 700;
 }
 
 .billio-nav-active .outline-icon,
 .billio-nav-active svg {
-  color: var(--billio-cta);
+  color: var(--billio-text);
 }
 
 .billio-header {
