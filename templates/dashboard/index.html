@@ -187,7 +187,7 @@
                         hx-swap="innerHTML"
                     >
                         <div class="p-8 text-center">
-                            <div class="animate-spin rounded-full h-10 w-10 border-4 border-violet-600 border-t-transparent mx-auto mb-3"></div>
+                            <div class="animate-spin rounded-full h-10 w-10 border-4 border-[#1d3b31] border-t-transparent mx-auto mb-3"></div>
                             <p class="text-gray-500 text-sm">Chargement…</p>
                         </div>
                     </div>
@@ -197,7 +197,7 @@
             <div x-show="invoiceView === 'timeline'" x-cloak class="space-y-3">
                 {% for inv in recent_sales_invoices_data %}
                 <div class="flex items-center gap-3 p-3 rounded-xl border" style="border-color: var(--billio-border);">
-                    <div class="w-9 h-9 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">{{ inv.client_initials }}</div>
+                    <div class="w-9 h-9 rounded-full bg-[#e7efdf] text-[#1d3b31] flex items-center justify-center text-xs font-bold">{{ inv.client_initials }}</div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium truncate">{{ inv.client_name }}</p>
                         <p class="text-xs text-gray-500">{{ inv.date|date:"d M Y" }}</p>

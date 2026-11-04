@@ -236,7 +236,7 @@ def _clean_style(raw, element_type):
             'fieldBg': _color(raw.get('fieldBg'), '#ffffff'),
             'fieldBorder': _color(raw.get('fieldBorder'), '#d1d5db'),
             'fieldRadius': _num(raw.get('fieldRadius'), 8, 0, 40),
-            'accent': _color(raw.get('accent'), '#6d28d9'),
+            'accent': _color(raw.get('accent'), '#1d3b31'),
         })
     if element_type == 'table':
         style.update({
@@ -902,7 +902,7 @@ WEB_CANVAS_CSS = """
 .cv-page .el-field { overflow: visible; }
 .cv-page .fld-opts { display: flex; flex-direction: column; gap: 4px; }
 .cv-page .fld-opt { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.cv-page .el-field input:focus, .cv-page .el-field select:focus, .cv-page .el-field textarea:focus { outline: 2px solid rgba(109,40,217,.25); outline-offset: 1px; }
+.cv-page .el-field input:focus, .cv-page .el-field select:focus, .cv-page .el-field textarea:focus { outline: 2px solid rgba(29, 59, 49,.25); outline-offset: 1px; }
 .cv-page button.el-button { border-style: solid; }
 .cv-page button.el-button:hover { filter: brightness(.95); }
 """

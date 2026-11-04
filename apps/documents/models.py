@@ -196,7 +196,7 @@ DOCUMENT_THEMES = {
         'label': _('Classique'),
         'font_family': 'Inter, sans-serif',
         'text_color': '#1f2937',
-        'accent_color': '#6d28d9',
+        'accent_color': '#1d3b31',
         'header_style': 'line',
         'footer_style': 'minimal-caps',
         'table_style': 'bordered',
@@ -254,7 +254,7 @@ def page_size_px(page_format, orientation):
 DEFAULT_STYLE_CONFIG = {
     'font_family': 'Inter, sans-serif',
     'text_color': '#1f2937',
-    'accent_color': '#6d28d9',
+    'accent_color': '#1d3b31',
     'page_background_color': '#ffffff',
     'background_image': '',
     'border_style': 'none',
@@ -439,7 +439,7 @@ class Document(models.Model):
         page_size = self.get_style('page_format') or 'A4'
         if self.get_style('page_orientation') == 'landscape':
             page_size = f'{page_size} landscape'
-        accent_color = self.get_style('accent_color') or '#6d28d9'
+        accent_color = self.get_style('accent_color') or '#1d3b31'
         header_footer_css = {
             'line': 'border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 8px;',
             'double-line': 'border-bottom: 3px double #6b7280; padding-bottom: 12px; margin-bottom: 8px;',

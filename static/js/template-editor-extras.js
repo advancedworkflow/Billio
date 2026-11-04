@@ -21,7 +21,7 @@
     { key: 'striped', label: 'Rayé', head: 'accent', headText: '#ffffff', stripe: '#f8fafc', border: 'transparent', borders: 'none' },
     { key: 'grid', label: 'Grille', head: '#f3f4f6', headText: '#111827', stripe: '', border: '#d1d5db', borders: 'all' },
     { key: 'minimal', label: 'Minimal', head: 'transparent', headText: '#111827', stripe: '', border: 'transparent', borders: 'none' },
-    { key: 'soft', label: 'Doux', head: '#f5f3ff', headText: 'accent', stripe: '#fafafa', border: '#ede9fe', borders: 'rows' },
+    { key: 'soft', label: 'Doux', head: '#f1f5ec', headText: 'accent', stripe: '#fafafa', border: '#e7efdf', borders: 'rows' },
   ];
   const DENSITY = { compact: '5px 8px', normal: '', comfy: '15px 12px' };
   const tableDefaults = () => ({

@@ -320,17 +320,17 @@
   const PRESETS = {
     heart: { label: 'Cœur', d: 'M50 88C22 68 6 52 6 32C6 17 17 7 30 7C39 7 46 12 50 20C54 12 61 7 70 7C83 7 94 17 94 32C94 52 78 68 50 88Z', fill: '#f43f5e' },
     cloud: { label: 'Nuage', d: 'M26 78C14 78 6 70 6 59C6 49 13 42 23 41C24 27 35 17 49 17C61 17 71 25 74 36C86 36 95 45 95 57C95 69 86 78 74 78Z', fill: '#e0f2fe' },
-    bubble: { label: 'Bulle de dialogue', d: 'M18 10H82C89 10 94 15 94 22V60C94 67 89 72 82 72H44L24 90L28 72H18C11 72 6 67 6 60V22C6 15 11 10 18 10Z', fill: '#ede9fe' },
+    bubble: { label: 'Bulle de dialogue', d: 'M18 10H82C89 10 94 15 94 22V60C94 67 89 72 82 72H44L24 90L28 72H18C11 72 6 67 6 60V22C6 15 11 10 18 10Z', fill: '#e7efdf' },
     blob: { label: 'Forme organique', d: 'M52 6C70 5 89 16 93 35C97 54 87 69 74 81C61 93 40 97 25 87C10 77 3 60 7 43C11 25 33 7 52 6Z', fill: '#c7d2fe' },
-    wave: { label: 'Vague', d: 'M0 40C17 22 33 22 50 40C67 58 83 58 100 40V100H0Z', fill: '#6d28d9', w: 300, h: 90 },
+    wave: { label: 'Vague', d: 'M0 40C17 22 33 22 50 40C67 58 83 58 100 40V100H0Z', fill: '#1d3b31', w: 300, h: 90 },
     leaf: { label: 'Feuille', d: 'M10 90C10 45 40 10 90 10C90 60 55 90 10 90Z', fill: '#86efac' },
     drop: { label: 'Goutte', d: 'M50 4C50 4 16 44 16 64C16 83 31 96 50 96C69 96 84 83 84 64C84 44 50 4 50 4Z', fill: '#38bdf8' },
     badge: { label: 'Sceau', d: 'M50 3L59 12L71 8L75 20L88 22L86 35L96 44L88 54L94 66L82 72L82 85L69 84L62 95L50 89L38 95L31 84L18 85L18 72L6 66L12 54L4 44L14 35L12 22L25 20L29 8L41 12Z', fill: '#fbbf24' },
-    sparkle: { label: 'Éclat', d: 'M50 2C53 33 67 47 98 50C67 53 53 67 50 98C47 67 33 53 2 50C33 47 47 33 50 2Z', fill: '#a78bfa' },
+    sparkle: { label: 'Éclat', d: 'M50 2C53 33 67 47 98 50C67 53 53 67 50 98C47 67 33 53 2 50C33 47 47 33 50 2Z', fill: '#9cc48a' },
     moon: { label: 'Croissant', d: 'M62 6C40 10 24 29 24 52C24 75 40 92 62 96C38 100 8 82 8 51C8 21 36 1 62 6Z', fill: '#fde68a' },
     curvedArrow: { label: 'Flèche courbe', d: 'M10 80C14 42 42 20 76 22L74 10L96 30L72 48L74 36C48 36 28 52 22 82Z', fill: '#111827' },
-    ribbon: { label: 'Ruban', d: 'M0 20H18V8H82V20H100L88 38L100 56H82V68H18V56H0L12 38Z', fill: '#6d28d9', w: 260, h: 120 },
-    squiggle: { label: 'Trait libre', d: 'M4 60C16 30 28 30 36 50C44 70 56 70 64 48C72 26 84 26 96 44', fill: 'transparent', stroke: '#6d28d9', strokeWidth: 4, w: 240, h: 80 },
+    ribbon: { label: 'Ruban', d: 'M0 20H18V8H82V20H100L88 38L100 56H82V68H18V56H0L12 38Z', fill: '#1d3b31', w: 260, h: 120 },
+    squiggle: { label: 'Trait libre', d: 'M4 60C16 30 28 30 36 50C44 70 56 70 64 48C72 26 84 26 96 44', fill: 'transparent', stroke: '#1d3b31', strokeWidth: 4, w: 240, h: 80 },
   };
 
   // ------------------------------------------------------------------ import SVG

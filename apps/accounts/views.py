@@ -397,7 +397,7 @@ def settings_view(request):
             target.country = (request.POST.get('country') or '').strip()[:100]
             target.tax_id = (request.POST.get('tax_id') or '').strip()[:50]
             target.registration_number = (request.POST.get('registration_number') or '').strip()[:50]
-            target.primary_color = (request.POST.get('primary_color') or target.primary_color or '#6d28d9').strip()[:7]
+            target.primary_color = (request.POST.get('primary_color') or target.primary_color or '#1d3b31').strip()[:7]
             target.secondary_color = (request.POST.get('secondary_color') or target.secondary_color or '#f59e0b').strip()[:7]
             target.save(update_fields=[
                 'name', 'email', 'phone', 'website', 'address', 'city', 'postal_code',

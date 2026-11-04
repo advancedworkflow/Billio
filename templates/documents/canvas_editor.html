@@ -6,9 +6,9 @@
 {% block page_subtitle %}{{ document.number }} · Canvas libre{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/document-canvas.css' %}?v=2.1">
-<script src="{% static 'js/document-canvas-vector.js' %}?v=1.1" defer></script>
-<script src="{% static 'js/document-canvas.js' %}?v=2.2" defer></script>
+<link rel="stylesheet" href="{% static 'css/document-canvas.css' %}?v=2.2">
+<script src="{% static 'js/document-canvas-vector.js' %}?v=1.2" defer></script>
+<script src="{% static 'js/document-canvas.js' %}?v=2.3" defer></script>
 {% endblock %}
 
 {% block header_finance_chip %}
@@ -59,7 +59,7 @@
             <button type="button" class="dc-icon-btn" data-dc-exec="italic" data-tip="Italique" data-kbd="Ctrl+I"><i data-lucide="italic" class="w-4 h-4"></i></button>
             <button type="button" class="dc-icon-btn" data-dc-exec="underline" data-tip="Souligné" data-kbd="Ctrl+U"><i data-lucide="underline" class="w-4 h-4"></i></button>
             <button type="button" class="dc-icon-btn" data-dc-exec="strikeThrough" data-tip="Barré" data-kbd="Ctrl+Maj+X"><i data-lucide="strikethrough" class="w-4 h-4"></i></button>
-            <label class="dc-color-chip" data-tip="Couleur du texte sélectionné"><i data-lucide="baseline" class="w-4 h-4"></i><input type="color" data-dc-exec-color="foreColor" value="#6d28d9"></label>
+            <label class="dc-color-chip" data-tip="Couleur du texte sélectionné"><i data-lucide="baseline" class="w-4 h-4"></i><input type="color" data-dc-exec-color="foreColor" value="#1d3b31"></label>
             <label class="dc-color-chip" data-tip="Surligner la sélection"><i data-lucide="highlighter" class="w-4 h-4"></i><input type="color" data-dc-exec-color="hiliteColor" value="#fef08a"></label>
             <button type="button" class="dc-icon-btn" data-dc-exec="insertUnorderedList" data-tip="Liste à puces" data-kbd="Ctrl+Maj+8"><i data-lucide="list" class="w-4 h-4"></i></button>
             <button type="button" class="dc-icon-btn" data-dc-exec="insertOrderedList" data-tip="Liste numérotée" data-kbd="Ctrl+Maj+7"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>

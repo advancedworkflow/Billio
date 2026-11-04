@@ -16,7 +16,7 @@ from django.template.loader import render_to_string
 from django.utils.html import escape, linebreaks, urlize
 from django.utils.safestring import mark_safe
 
-DEFAULT_COLOR = '#6d28d9'
+DEFAULT_COLOR = '#1d3b31'
 HEX_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 # Variables proposées dans l'éditeur (toutes ne s'appliquent pas à tous les emails).

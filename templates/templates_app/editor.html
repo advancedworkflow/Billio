@@ -6,8 +6,8 @@
 {% block page_subtitle %}{{ template.name }}{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/template-editor.css' %}?v=1.2">
-<script src="{% static 'js/template-editor-extras.js' %}?v=1.2"></script>
+<link rel="stylesheet" href="{% static 'css/template-editor.css' %}?v=1.3">
+<script src="{% static 'js/template-editor-extras.js' %}?v=1.3"></script>
 {% endblock %}
 
 {% block content %}
@@ -476,7 +476,7 @@ function templateEditor() {
             if (this._rawExtra) { this._rawExtra = ''; if (this.tableInfo.selector) this.refresh(true); }
             const style = doc.createElement('style');
             style.textContent = this.mode === 'visual'
-                ? '[data-te-hover]{outline:2px dashed rgba(109,40,217,.55)!important;outline-offset:2px;cursor:pointer}[data-te-sel]{outline:2px solid #6d28d9!important;outline-offset:2px}'
+                ? '[data-te-hover]{outline:2px dashed rgba(29, 59, 49,.55)!important;outline-offset:2px;cursor:pointer}[data-te-sel]{outline:2px solid #1d3b31!important;outline-offset:2px}'
                 : '';
             doc.head.appendChild(style);
             if (this.mode !== 'visual') return;

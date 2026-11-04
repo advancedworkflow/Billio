@@ -51,7 +51,7 @@
 .doc-template-card:hover .doc-thumb-cta { opacity: 1; transform: translate(-50%, 0); }
 
 .doc-thumb--blank { padding: 0; color: var(--billio-text); }
-.doc-thumb--blank:hover { background: #ede9fe; }
+.doc-thumb--blank:hover { background: #e7efdf; }
 .doc-template-blank-icon {
     width: 44px; height: 44px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;

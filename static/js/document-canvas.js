@@ -24,7 +24,7 @@
     ['date', 'Date'], ['select', 'Liste déroulante'], ['radio', 'Choix unique'], ['checkbox', 'Choix multiples'],
   ];
   const fieldStyle = (extra) => textStyle(Object.assign({
-    fontSize: 13, labelColor: '#374151', fieldBg: '#ffffff', fieldBorder: '#d1d5db', fieldRadius: 8, accent: '#6d28d9',
+    fontSize: 13, labelColor: '#374151', fieldBg: '#ffffff', fieldBorder: '#d1d5db', fieldRadius: 8, accent: '#1d3b31',
   }, extra || {}));
   const SHAPE_LABEL = { rect: 'Rectangle', ellipse: 'Ellipse', triangle: 'Triangle', diamond: 'Losange', star: 'Étoile', line: 'Ligne', arrow: 'Flèche', path: 'Tracé vectoriel' };
   const V = window.DcVector; // tracés de Bézier : document-canvas-vector.js
@@ -123,7 +123,7 @@
     }, extra || {}));
   }
   function shapeStyle(extra) {
-    return baseStyle(Object.assign({ fill: '#ede9fe', strokeColor: '#6d28d9', strokeWidth: 0, strokeStyle: 'solid' }, extra || {}));
+    return baseStyle(Object.assign({ fill: '#e7efdf', strokeColor: '#1d3b31', strokeWidth: 0, strokeStyle: 'solid' }, extra || {}));
   }
   function tableStyle(extra) {
     return textStyle(Object.assign({
@@ -231,7 +231,7 @@
       case 'list':
         return Object.assign(el, { type: 'text', w: 360, h: 90, html: '<ul><li>Premier point</li><li>Deuxième point</li><li>Troisième point</li></ul>', style: textStyle({ fontSize: 13, lineHeight: 1.6 }) });
       case 'callout':
-        return Object.assign(el, { type: 'text', w: 460, h: 80, html: '<strong>À noter</strong><br>Un encadré pour mettre une information en avant.', style: textStyle({ fontSize: 13, lineHeight: 1.5, background: '#f5f3ff', padding: 16, radius: 10, color: '#4c1d95', borderWidth: 1, borderColor: '#ddd6fe' }) });
+        return Object.assign(el, { type: 'text', w: 460, h: 80, html: '<strong>À noter</strong><br>Un encadré pour mettre une information en avant.', style: textStyle({ fontSize: 13, lineHeight: 1.5, background: '#f1f5ec', padding: 16, radius: 10, color: '#10241d', borderWidth: 1, borderColor: '#d3e5c6' }) });
       case 'rect': case 'rounded': case 'ellipse': case 'triangle': case 'diamond': case 'star': {
         const shape = key === 'rounded' ? 'rect' : key;
         return Object.assign(el, { type: 'shape', shape, w: 160, h: shape === 'rect' ? 110 : 160, style: shapeStyle({ radius: key === 'rounded' ? 18 : 0 }) });
@@ -245,7 +245,7 @@
         return Object.assign(el, {
           type: 'table', w: 620, h: 160, header: true, colWidths: [46, 14, 20, 20],
           rows: [['Désignation', 'Qté', 'Prix unitaire', 'Total'], ['Prestation', '1', '500', ''], ['Option', '2', '120', '']],
-          style: tableStyle({ headerBg: '#6d28d9', stripe: '#f5f3ff', cellBorderColor: '#ede9fe', totalBg: '#f5f3ff' }),
+          style: tableStyle({ headerBg: '#1d3b31', stripe: '#f1f5ec', cellBorderColor: '#e7efdf', totalBg: '#f1f5ec' }),
         }, tableExtras(4, {
           borders: 'rows',
           columns: [{ kind: 'text', align: '', field: 'name' }, { kind: 'number', align: 'center', field: 'quantity' }, { kind: 'money', align: '', field: 'unit_price' }, { kind: 'calc', align: '', field: 'total', a: 1, b: 2 }],
@@ -257,7 +257,7 @@
       case 'image':
         return Object.assign(el, { type: 'image', w: 280, h: 190, src: '', style: baseStyle({ fit: 'cover', radius: 8 }) });
       case 'banner':
-        return Object.assign(el, { type: 'shape', shape: 'rect', name: 'Bandeau', x: 0, y: 0, w: pageW, h: 140, style: shapeStyle({ fill: '#6d28d9' }), _anchor: true });
+        return Object.assign(el, { type: 'shape', shape: 'rect', name: 'Bandeau', x: 0, y: 0, w: pageW, h: 140, style: shapeStyle({ fill: '#1d3b31' }), _anchor: true });
       case 'client_block':
         return Object.assign(el, { type: 'text', name: 'Bloc client', w: 280, h: 96, html: `<strong>${varToken('client.name')}</strong><br>${varToken('client.address')}<br>${varToken('client.email')}<br>${varToken('client.phone')}`, style: textStyle({ fontSize: 12, lineHeight: 1.6 }) });
       case 'company_block':
@@ -280,7 +280,7 @@
       case 'field_checkbox':
         return Object.assign(el, { type: 'field', fieldType: 'checkbox', label: 'Services souhaités', placeholder: '', required: false, showLabel: true, options: ['Design', 'Développement', 'Rédaction'], w: 280, h: 104, style: fieldStyle() });
       case 'button_submit':
-        return Object.assign(el, { type: 'button', text: 'Envoyer mes réponses', w: 220, h: 46, style: textStyle({ fontSize: 14, fontWeight: 600, color: '#ffffff', align: 'center', background: '#6d28d9', radius: 10 }) });
+        return Object.assign(el, { type: 'button', text: 'Envoyer mes réponses', w: 220, h: 46, style: textStyle({ fontSize: 14, fontWeight: 600, color: '#ffffff', align: 'center', background: '#1d3b31', radius: 10 }) });
       default:
         return null;
     }
@@ -1468,7 +1468,7 @@
     const targetH = preset.h || Math.round((160 * b.h) / Math.max(1, b.w));
     paths = V.mapPaths(paths, (x, y) => [((x - b.x) / Math.max(1, b.w)) * targetW, ((y - b.y) / Math.max(1, b.h)) * targetH]);
     const style = shapeStyle({
-      fill: preset.fill || '#ede9fe', strokeWidth: preset.strokeWidth || 0, strokeColor: preset.stroke || '#6d28d9',
+      fill: preset.fill || '#e7efdf', strokeWidth: preset.strokeWidth || 0, strokeColor: preset.stroke || '#1d3b31',
     });
     return Object.assign(pathElement(paths, style, preset.label), { x: 0, y: 0 });
   }
@@ -1496,7 +1496,7 @@
     cancelPen();
     if (nodes.length < 2 || !page) return;
     const style = shapeStyle(closed
-      ? { fill: '#ede9fe', strokeWidth: 2, strokeColor: '#6d28d9' }
+      ? { fill: '#e7efdf', strokeWidth: 2, strokeColor: '#1d3b31' }
       : { fill: 'transparent', strokeWidth: 3, strokeColor: '#111827' });
     const el = pathElement([{ closed, nodes }], style);
     el._anchor = true;
@@ -1856,7 +1856,7 @@
     `);
   }
   function gradientFields(s) {
-    if (!s.fill2) return `<button type="button" class="dc-btn dc-btn--block" data-set-prop="style.fill2" data-value="${s.fill === '#6d28d9' ? '#2563eb' : '#6d28d9'}"><i data-lucide="blend" class="w-3.5 h-3.5"></i> Ajouter un dégradé</button>`;
+    if (!s.fill2) return `<button type="button" class="dc-btn dc-btn--block" data-set-prop="style.fill2" data-value="${s.fill === '#1d3b31' ? '#2563eb' : '#1d3b31'}"><i data-lucide="blend" class="w-3.5 h-3.5"></i> Ajouter un dégradé</button>`;
     return `${color('Couleur de fin du dégradé', 'style.fill2', s.fill2)}
       ${range('Direction du dégradé', 'style.gradientAngle', s.gradientAngle || 0, 0, 360, 15, (v) => `${v}°`)}
       <button type="button" class="dc-btn dc-btn--block" data-set-prop="style.fill2" data-value=""><i data-lucide="x" class="w-3.5 h-3.5"></i> Retirer le dégradé</button>`;
@@ -2139,8 +2139,8 @@
   const TABLE_PRESETS = [
     ['classic', 'Classique', { headerBg: '#111827', headerColor: '#ffffff', stripe: '#f9fafb', cellBorderColor: '#e5e7eb', totalBg: 'transparent' }, 'all'],
     ['minimal', 'Minimal', { headerBg: 'transparent', headerColor: '#111827', stripe: 'transparent', cellBorderColor: '#e5e7eb', totalBg: 'transparent' }, 'rows'],
-    ['accent', 'Couleur', { headerBg: '#6d28d9', headerColor: '#ffffff', stripe: '#f5f3ff', cellBorderColor: '#ede9fe', totalBg: '#f5f3ff' }, 'none'],
-    ['soft', 'Doux', { headerBg: '#ede9fe', headerColor: '#4c1d95', stripe: 'transparent', cellBorderColor: '#ede9fe', totalBg: '#faf8ff' }, 'rows'],
+    ['accent', 'Couleur', { headerBg: '#1d3b31', headerColor: '#ffffff', stripe: '#f1f5ec', cellBorderColor: '#e7efdf', totalBg: '#f1f5ec' }, 'none'],
+    ['soft', 'Doux', { headerBg: '#e7efdf', headerColor: '#10241d', stripe: 'transparent', cellBorderColor: '#e7efdf', totalBg: '#faf8ff' }, 'rows'],
     ['framed', 'Encadré', { headerBg: '#f3f4f6', headerColor: '#111827', stripe: 'transparent', cellBorderColor: '#d1d5db', totalBg: '#f9fafb' }, 'all'],
   ];
   const COLUMN_KINDS = [['text', 'Texte'], ['number', 'Nombre'], ['money', 'Montant (€)'], ['percent', 'Pourcentage'], ['calc', 'Calcul (A × B)']];
