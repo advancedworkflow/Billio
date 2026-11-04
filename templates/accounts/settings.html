@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.6">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.7">
 {% endblock %}
 
 {% block content %}
@@ -343,7 +343,7 @@
                     <label class="st-field"><span>N° de TVA intracommunautaire</span><input name="tax_id" value="{{ org.tax_id|default:'' }}" placeholder="FR12 345678901"></label>
                 </div>
                 <div class="st-grid-2">
-                    <label class="st-field"><span>Couleur principale</span><span class="st-color"><input type="color" name="primary_color" value="{{ org.primary_color|default:'#6d28d9' }}"><em>{{ org.primary_color|default:'#6d28d9' }}</em></span></label>
+                    <label class="st-field"><span>Couleur principale</span><span class="st-color"><input type="color" name="primary_color" value="{{ org.primary_color|default:'#1d3b31' }}"><em>{{ org.primary_color|default:'#1d3b31' }}</em></span></label>
                     <label class="st-field"><span>Couleur secondaire</span><span class="st-color"><input type="color" name="secondary_color" value="{{ org.secondary_color|default:'#f59e0b' }}"><em>{{ org.secondary_color|default:'#f59e0b' }}</em></span></label>
                 </div>
                 <div class="st-check-list">

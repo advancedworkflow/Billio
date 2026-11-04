@@ -89,7 +89,7 @@
   const webhookUrl = (p) => (p.token ? `${cfg.webhookBase}${p.token}/` : '');
   const CHANNELS = Object.fromEntries((cfg.messagingChannels || []).map((c) => [c.key, c]));
   const FORM_TYPES = [['text', 'Texte court'], ['textarea', 'Texte long'], ['email', 'Email'], ['phone', 'Téléphone'], ['number', 'Nombre'], ['date', 'Date'], ['select', 'Liste de choix'], ['checkbox', 'Case à cocher']];
-  const GROUP_COLORS = [['violet', '#7c3aed'], ['blue', '#2563eb'], ['green', '#16a34a'], ['amber', '#d97706'], ['rose', '#e11d48'], ['slate', '#475569']];
+  const GROUP_COLORS = [['violet', '#2f5d4a'], ['blue', '#2563eb'], ['green', '#16a34a'], ['amber', '#d97706'], ['rose', '#e11d48'], ['slate', '#475569']];
   const TRIGGER_LABEL = Object.fromEntries(cfg.triggers.map((t) => [t.key, t.label]));
   const ACTION_LABEL = Object.fromEntries(cfg.actions.map((a) => [a.key, a.label]));
   const TYPE_LABEL = { trigger: 'Déclencheur', condition: 'Condition', wait: 'Attente', action: 'Action' };

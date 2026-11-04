@@ -9,9 +9,9 @@
   --ui-h: 38px;
   --ui-r: 10px;
   --ui-border: var(--billio-border-strong, #d4d4d8);
-  --ui-ring: var(--billio-primary-soft, rgba(109, 40, 217, .12));
-  --ui-primary: var(--billio-primary, #6d28d9);
-  --ui-primary-hover: var(--billio-primary-hover, #4c1d95);
+  --ui-ring: var(--billio-primary-soft, rgba(29, 59, 49, .12));
+  --ui-primary: var(--billio-primary, #1d3b31);
+  --ui-primary-hover: var(--billio-primary-hover, #10241d);
   --ui-text: var(--billio-text, #18181b);
   --ui-muted: var(--billio-text-muted, #52525b);
   --ui-danger: var(--billio-error, #b91c1c);
@@ -141,7 +141,7 @@
 #cmd-palette .cmd-palette-item.hidden { display: none; }
 #cmd-palette .cmd-palette-item.is-active { background: #f4f4f5; }
 #cmd-palette .cmd-ico { width: 34px; height: 34px; border-radius: 9px; background: #f4f4f5; color: var(--ui-muted); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-#cmd-palette .cmd-palette-item.is-active .cmd-ico { background: var(--billio-primary-soft, #f5f3ff); color: var(--ui-primary); }
+#cmd-palette .cmd-palette-item.is-active .cmd-ico { background: var(--billio-primary-soft, #f1f5ec); color: var(--ui-primary); }
 #cmd-palette .cmd-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 #cmd-palette .cmd-text strong { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #cmd-palette .cmd-text small { font-size: 12.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -155,11 +155,11 @@
 /* ---------- Carte Billio AI (tableau de bord) ---------- */
 .ai-card { display: flex; flex-direction: column; gap: 14px; }
 .ai-card-head { display: flex; align-items: center; gap: 12px; }
-.ai-card-badge { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #6d28d9, #a78bfa); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-card-badge { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #1d3b31, #9cc48a); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ai-card-sub { margin: 2px 0 0; font-size: 13px; color: var(--ui-muted); }
 .ai-card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ai-card-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 12px; }
-.ai-card-ico { width: 32px; height: 32px; border-radius: 9px; background: var(--billio-primary-soft, #f5f3ff); color: var(--ui-primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-card-ico { width: 32px; height: 32px; border-radius: 9px; background: var(--billio-primary-soft, #f1f5ec); color: var(--ui-primary); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ai-card-ico--danger { background: #fef2f2; color: #b91c1c; }
 .ai-card-ico--ok { background: #f0fdf4; color: #15803d; }
 .ai-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -172,7 +172,7 @@
 /* Menu du profil (épuré) */
 .pm { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: 260px; padding: 6px; background: #fff; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 14px; box-shadow: 0 16px 40px rgba(24, 24, 27, .14); }
 .pm-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 12px; }
-.pm-avatar { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; overflow: hidden; background: var(--billio-primary-soft, #f5f3ff); color: var(--billio-primary, #6d28d9); font: 700 13px/1 Inter, sans-serif; }
+.pm-avatar { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; overflow: hidden; background: var(--billio-primary-soft, #f1f5ec); color: var(--billio-primary, #1d3b31); font: 700 13px/1 Inter, sans-serif; }
 .pm-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .pm-id { display: flex; flex-direction: column; min-width: 0; }
 .pm-id strong, .pm-id span, .pm-id em { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

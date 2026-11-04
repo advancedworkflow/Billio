@@ -85,7 +85,7 @@
   border-radius: 1rem;
   border: 1px solid var(--billio-border);
   background: var(--billio-card);
-  box-shadow: 0 32px 80px rgba(109, 40, 217, 0.2);
+  box-shadow: 0 32px 80px rgba(29, 59, 49, 0.2);
   overflow: hidden;
 }
 
@@ -138,7 +138,7 @@
 }
 
 .notification-icon-ai {
-  background: linear-gradient(135deg, rgba(109, 40, 217, 0.15), rgba(234, 179, 8, 0.2));
+  background: linear-gradient(135deg, rgba(29, 59, 49, 0.15), rgba(234, 179, 8, 0.2));
   color: var(--billio-primary);
 }
 
@@ -401,7 +401,7 @@
 
 /* Billio AI card */
 .dash-ai-card {
-  background: linear-gradient(145deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%);
+  background: linear-gradient(145deg, #10241d 0%, #1d3b31 50%, #2f5d4a 100%);
   color: #fff;
   border: none;
 }
@@ -477,7 +477,7 @@
 
 .status-badge--paid,
 .status-badge--accepted { --dot-color: var(--billio-cta, #eab308); }
-.status-badge--sent { --dot-color: var(--billio-primary, #6d28d9); }
+.status-badge--sent { --dot-color: var(--billio-primary, #1d3b31); }
 .status-badge--draft { --dot-color: #a1a1aa; }
 .status-badge--late,
 .status-badge--overdue,
@@ -1297,11 +1297,11 @@
   justify-content: center;
   background: var(--billio-gradient);
   color: #fff;
-  box-shadow: 0 12px 32px rgba(109, 40, 217, 0.35);
+  box-shadow: 0 12px 32px rgba(29, 59, 49, 0.35);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.quick-dock-fab:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(109, 40, 217, 0.4); }
+.quick-dock-fab:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(29, 59, 49, 0.4); }
 
 .quick-dock-fab { touch-action: none; cursor: grab; }
 .quick-dock.is-dragging .quick-dock-fab { cursor: grabbing; transform: scale(1.06); transition: none; }
@@ -2162,7 +2162,7 @@
 .billio-confirm.is-open { opacity: 1; }
 .billio-confirm-card { width: 100%; max-width: 420px; padding: 24px; border-radius: 16px; background: #fff; box-shadow: 0 24px 60px -12px rgba(0, 0, 0, .3); transform: translateY(8px) scale(.98); transition: transform .15s ease; }
 .billio-confirm.is-open .billio-confirm-card { transform: none; }
-.billio-confirm-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; margin-bottom: 14px; background: color-mix(in srgb, var(--billio-primary, #6d28d9) 12%, #fff); color: var(--billio-primary, #6d28d9); }
+.billio-confirm-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; margin-bottom: 14px; background: color-mix(in srgb, var(--billio-primary, #1d3b31) 12%, #fff); color: var(--billio-primary, #1d3b31); }
 .billio-confirm-icon svg { width: 22px; height: 22px; }
 .billio-confirm--danger .billio-confirm-icon { background: #fef2f2; color: #dc2626; }
 .billio-confirm-title { font-size: 17px; font-weight: 700; color: #18181b; }
@@ -2175,10 +2175,10 @@
 .billio-confirm-ok:hover { background: #000; }
 .billio-confirm--danger .billio-confirm-ok { background: #dc2626; }
 .billio-confirm--danger .billio-confirm-ok:hover { background: #b91c1c; }
-.billio-confirm-ok:focus-visible, .billio-confirm-cancel:focus-visible { outline: 2px solid var(--billio-primary, #6d28d9); outline-offset: 2px; }
+.billio-confirm-ok:focus-visible, .billio-confirm-cancel:focus-visible { outline: 2px solid var(--billio-primary, #1d3b31); outline-offset: 2px; }
 
 .billio-confirm-input { display: block; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px solid #d4d4d8; border-radius: 10px; font-size: 14.5px; color: #18181b; background: #fff; }
-.billio-confirm-input:focus { outline: none; border-color: var(--billio-primary, #6d28d9); box-shadow: 0 0 0 3px rgba(109,40,217,.12); }
+.billio-confirm-input:focus { outline: none; border-color: var(--billio-primary, #1d3b31); box-shadow: 0 0 0 3px rgba(29, 59, 49,.12); }
 .billio-confirm-input[hidden] { display: none; }
 
 /* Tableau des projets : onglets de processus et choix du processus à la création */
@@ -2186,18 +2186,18 @@
 .pb-processes a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--billio-border, #e4e4e7); background: #fff; color: #3f3f46; font-size: 13px; font-weight: 500; text-decoration: none; }
 .pb-processes a:hover { border-color: #a1a1aa; }
 .pb-processes a.is-on { background: #18181b; border-color: #18181b; color: #fff; }
-.pb-processes .pb-processes-manage { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; border-color: transparent; background: transparent; color: var(--billio-primary, #6d28d9); font-weight: 600; }
+.pb-processes .pb-processes-manage { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; border-color: transparent; background: transparent; color: var(--billio-primary, #1d3b31); font-weight: 600; }
 .pb-proc-pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .pb-proc-pick button { min-width: 0; width: 100%; }
 .pb-proc-pick button { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fff; text-align: left; cursor: pointer; }
 .pb-proc-pick button strong { font-size: 13.5px; color: #18181b; }
 .pb-proc-pick button span { display: block; max-width: 100%; font-size: 11.5px; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pb-proc-pick button.is-on { border-color: var(--billio-primary, #6d28d9); background: var(--billio-primary-soft, #f5f3ff); box-shadow: 0 0 0 2px var(--billio-primary-soft, #ede9fe); }
+.pb-proc-pick button.is-on { border-color: var(--billio-primary, #1d3b31); background: var(--billio-primary-soft, #f1f5ec); box-shadow: 0 0 0 2px var(--billio-primary-soft, #e7efdf); }
 
 /* Nouveau projet : étapes personnalisables */
 .pb-steps-edit { display: flex; flex-direction: column; gap: 8px; }
 .pb-steps-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.pb-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; color: var(--billio-primary, #6d28d9); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.pb-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; color: var(--billio-primary, #1d3b31); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .pb-flow { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
 .pb-flow > span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #f4f4f5; font-size: 12px; color: #27272a; }
 .pb-flow i { width: 7px; height: 7px; border-radius: 999px; }
@@ -2212,7 +2212,7 @@
 .pb-step-del:hover:not(:disabled) { color: #b91c1c; background: #fef2f2; }
 .pb-step-add { display: flex; align-items: center; gap: 8px; }
 .pb-save-process { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; font-size: 13px; color: #27272a; cursor: pointer; }
-.pb-save-process input { margin-top: 2px; accent-color: var(--billio-primary, #6d28d9); }
+.pb-save-process input { margin-top: 2px; accent-color: var(--billio-primary, #1d3b31); }
 .pb-hint { margin: 0; font-size: 12px; color: #71717a; }
 
 /* ===== Kanban projets : cartes plus marquées, couleurs franches ===== */
@@ -2244,7 +2244,7 @@
 .kanban-card-due { font-size: .68rem; font-weight: 700; background: #f4f4f5; border: 0; color: #3f3f46; padding: .15rem .5rem; }
 .kanban-card-due--soon { background: #f59e0b; color: #fff; }
 .kanban-card-due--late { background: #ef4444; color: #fff; }
-.kanban-column-body.is-dragover { background: color-mix(in srgb, var(--phase, #6d28d9) 12%, #fff); outline: 2px dashed var(--phase, #6d28d9); outline-offset: -6px; border-radius: 0 0 1rem 1rem; }
+.kanban-column-body.is-dragover { background: color-mix(in srgb, var(--phase, #1d3b31) 12%, #fff); outline: 2px dashed var(--phase, #1d3b31); outline-offset: -6px; border-radius: 0 0 1rem 1rem; }
 
 /* ===== Kanban jalons : carte compacte façon Trello + fenêtre de détail =====
    Survols sobres : fond ou bordure un peu plus marqués, jamais de halo coloré. */
@@ -2265,7 +2265,7 @@
 .mcard-label.is-yellow, .mdl-swatch.is-yellow, .mdl-cover.is-yellow { background: #fef9c3; color: #854d0e; }
 .mcard-label.is-orange, .mdl-swatch.is-orange, .mdl-cover.is-orange { background: #ffedd5; color: #9a3412; }
 .mcard-label.is-red, .mdl-swatch.is-red, .mdl-cover.is-red { background: #fee2e2; color: #991b1b; }
-.mcard-label.is-purple, .mdl-swatch.is-purple, .mdl-cover.is-purple { background: #ede9fe; color: #5b21b6; }
+.mcard-label.is-purple, .mdl-swatch.is-purple, .mdl-cover.is-purple { background: #e7efdf; color: #10241d; }
 .mcard-label.is-blue, .mdl-swatch.is-blue, .mdl-cover.is-blue { background: #dbeafe; color: #1e40af; }
 .mcard-label.is-sky, .mdl-swatch.is-sky, .mdl-cover.is-sky { background: #e0f2fe; color: #075985; }
 .mcard-label.is-pink, .mdl-swatch.is-pink, .mdl-cover.is-pink { background: #fce7f3; color: #9d174d; }
@@ -2301,7 +2301,7 @@
 .mdl-checklist input[type=checkbox] { width: 16px; height: 16px; accent-color: #16a34a; }
 .mdl-inline { display: flex; gap: 8px; margin-top: 8px; }
 .mdl-files li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f4f4f5; font-size: 13.5px; }
-.mdl-files a { color: #6d28d9; text-decoration: underline; word-break: break-all; }
+.mdl-files a { color: #1d3b31; text-decoration: underline; word-break: break-all; }
 .mdl-files small { color: #71717a; font-size: 12px; }
 .mdl-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; font-weight: 500; color: #52525b; cursor: pointer; }
 .mdl-link:hover { color: #18181b; text-decoration: underline; }

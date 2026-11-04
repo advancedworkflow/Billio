@@ -39,31 +39,31 @@
 
 :root {
   /* Charte Billio — Swiss minimal x Billio (v2, sept. 2026) */
-  --billio-bg: #f4f4f5;
-  --billio-mist: #f4f4f5;
+  --billio-bg: #f4f1ea;
+  --billio-mist: #f4f1ea;
   --billio-card: #ffffff;
-  --billio-text: #18181b;
-  --billio-text-muted: #52525b;
-  --billio-primary: #6d28d9;
-  --billio-primary-hover: #4c1d95;
-  --billio-cta: #eab308;
-  --billio-cta-hover: #d97706;
-  --billio-cta-text: #a16207;
+  --billio-text: #10241d;
+  --billio-text-muted: #5f6b65;
+  --billio-primary: #1d3b31;
+  --billio-primary-hover: #10241d;
+  --billio-cta: #c8f25a;
+  --billio-cta-hover: #b9e64a;
+  --billio-cta-text: #2f4a10;
   --billio-success: #22c55e;
   --billio-error: #b91c1c;
   --billio-danger: #b91c1c;
   --billio-info: #3b82f6;
-  --billio-gradient: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
-  --billio-gradient-premium: linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #a78bfa 100%);
-  --billio-gradient-accent: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 70%, #facc15 100%);
-  --billio-border: #e4e4e7;
-  --billio-border-strong: #d4d4d8;
-  --billio-primary-soft: rgba(109, 40, 217, 0.1);
-  --billio-primary-soft-border: rgba(109, 40, 217, 0.2);
-  --billio-cta-soft: rgba(234, 179, 8, 0.12);
+  --billio-gradient: linear-gradient(135deg, #10241d 0%, #1d3b31 100%);
+  --billio-gradient-premium: linear-gradient(135deg, #10241d 0%, #1d3b31 55%, #2f5d4a 100%);
+  --billio-gradient-accent: linear-gradient(135deg, #10241d 0%, #1d3b31 70%, #c8f25a 100%);
+  --billio-border: #e3ded2;
+  --billio-border-strong: #d3cdbf;
+  --billio-primary-soft: rgba(29, 59, 49, 0.08);
+  --billio-primary-soft-border: rgba(29, 59, 49, 0.2);
+  --billio-cta-soft: rgba(200, 242, 90, 0.22);
   /* Fond sombre (logo, tuiles inversées) */
-  --billio-primary-on-dark: #a78bfa;
-  --billio-cta-on-dark: #facc15;
+  --billio-primary-on-dark: #c8f25a;
+  --billio-cta-on-dark: #c8f25a;
 
   /* Alias compatibilité */
   --billio-ink: var(--billio-text);
@@ -72,7 +72,7 @@
   --billio-amber-deep: var(--billio-cta-hover);
   --billio-pale-gold: var(--billio-primary-soft);
   --billio-bronze: var(--billio-primary);
-  --billio-parchment: #ede9fe;
+  --billio-parchment: #e7efdf;
   --billio-neutral: var(--billio-bg);
   --billio-dark-alt: var(--billio-primary-hover);
 
@@ -84,7 +84,7 @@
   --dd-accent-soft: var(--billio-primary-soft);
   --dd-border: var(--billio-border);
   --dd-radius: 0.375rem;
-  --dd-focus-ring: rgba(109, 40, 217, 0.15);
+  --dd-focus-ring: rgba(29, 59, 49, 0.15);
 
   /* Échelle d'espacement de la charte — n'utiliser que ces valeurs pour tout nouvel espacement */
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
@@ -159,14 +159,15 @@
 }
 
 .billio-nav-active {
-  background: var(--billio-mist);
-  color: var(--billio-text);
+  background: var(--billio-primary-hover);
+  color: #f4f1ea;
   font-family: var(--font-titles);
   font-weight: 700;
 }
 
-.billio-nav-active .outline-icon {
-  color: var(--billio-primary);
+.billio-nav-active .outline-icon,
+.billio-nav-active svg {
+  color: var(--billio-cta);
 }
 
 .billio-header {
@@ -269,8 +270,8 @@
 }
 
 .badge-dot--new {
-  background: #ede9fe;
-  border-color: #ede9fe;
+  background: #e7efdf;
+  border-color: #e7efdf;
   color: var(--billio-primary-hover);
 }
 

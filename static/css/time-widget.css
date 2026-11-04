@@ -1,8 +1,8 @@
 /* Chrono Billio : pastille de la barre du haut, panneau, fenêtre détachée et widget au premier plan.
    Autonome (variables locales) car chargé aussi dans la fenêtre « toujours au premier plan ». */
 .bt-chip, .bt-widget, .bt-standalone {
-  --bt-primary: var(--billio-primary, #6d28d9);
-  --bt-primary-hover: var(--billio-primary-hover, #4c1d95);
+  --bt-primary: var(--billio-primary, #1d3b31);
+  --bt-primary-hover: var(--billio-primary-hover, #10241d);
   --bt-text: var(--billio-text, #18181b);
   --bt-muted: var(--billio-text-muted, #52525b);
   --bt-border: var(--billio-border, #e4e4e7);
@@ -33,7 +33,7 @@
 .bt-muted { margin: 0; color: var(--bt-muted); }
 .bt-form { display: flex; flex-direction: column; gap: .5rem; margin: 0; }
 .bt-input { width: 100%; box-sizing: border-box; padding: .5rem .65rem; border: 1px solid var(--bt-border); border-radius: .6rem; background: #fff; color: var(--bt-text); font: inherit; }
-.bt-input:focus { outline: 2px solid rgba(109, 40, 217, .35); outline-offset: 0; border-color: var(--bt-primary); }
+.bt-input:focus { outline: 2px solid rgba(29, 59, 49, .35); outline-offset: 0; border-color: var(--bt-primary); }
 .bt-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .55rem .9rem; border: 0; border-radius: .65rem; color: #fff; font: 600 .875rem/1 Inter, system-ui, sans-serif; cursor: pointer; }
 .bt-btn--start { background: var(--bt-primary); }
 .bt-btn--start:hover { background: var(--bt-primary-hover); }

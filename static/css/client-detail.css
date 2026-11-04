@@ -4,7 +4,7 @@
 .cd-back:hover { color: #18181b; }
 .cd-head-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .cd-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.cd-avatar { width: 52px; height: 52px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: #ede9fe; color: #5b21b6; font-weight: 700; font-size: 18px; flex-shrink: 0; }
+.cd-avatar { width: 52px; height: 52px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: #e7efdf; color: #10241d; font-weight: 700; font-size: 18px; flex-shrink: 0; }
 .cd-identity h1 { font-size: 22px; font-weight: 700; color: #18181b; }
 .cd-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 3px; font-size: 13px; color: #71717a; }
 .cd-sub a { display: inline-flex; align-items: center; gap: 5px; }
@@ -16,7 +16,7 @@
 .cd-btn:hover { border-color: #a1a1aa; color: #18181b; }
 .cd-btn--primary { background: #18181b; border-color: #18181b; color: #fff; }
 .cd-btn--primary:hover { background: #000; color: #fff; }
-.cd-link { font-size: 12.5px; font-weight: 500; color: var(--billio-primary, #6d28d9); }
+.cd-link { font-size: 12.5px; font-weight: 500; color: var(--billio-primary, #1d3b31); }
 .cd-link:hover { text-decoration: underline; }
 
 .cd-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -57,7 +57,7 @@
 .cd-events li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f4f4f5; font-size: 13px; }
 .cd-events li:last-child { border-bottom: 0; }
 .cd-events a { flex: 1; min-width: 0; color: #27272a; }
-.cd-events a:hover { color: var(--billio-primary, #6d28d9); }
+.cd-events a:hover { color: var(--billio-primary, #1d3b31); }
 .cd-events time { font-size: 12px; color: #a1a1aa; flex-shrink: 0; }
 .cd-event-icon { width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #f4f4f5; color: #52525b; flex-shrink: 0; }
 
@@ -74,7 +74,7 @@
 .cd-rows { display: flex; flex-direction: column; }
 .cd-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 10px; }
 a.cd-row:hover, .cd-row:hover { background: #fafafa; }
-.cd-row-icon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: #f5f3ff; color: #6d28d9; flex-shrink: 0; }
+.cd-row-icon { width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5ec; color: #1d3b31; flex-shrink: 0; }
 .cd-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cd-row-main strong { font-size: 13.5px; font-weight: 600; color: #18181b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cd-row-main small { font-size: 12px; color: #a1a1aa; }
@@ -83,7 +83,7 @@ a.cd-row:hover, .cd-row:hover { background: #fafafa; }
 .cd-row-links { display: flex; gap: 12px; }
 .cd-chev { color: #d4d4d8; }
 .cd-bar { flex: 1; display: block; height: 5px; border-radius: 999px; background: #f4f4f5; overflow: hidden; }
-.cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--billio-primary, #6d28d9); }
+.cd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--billio-primary, #1d3b31); }
 .cd-pill { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: #f4f4f5; color: #52525b; white-space: nowrap; }
 .cd-pill--sent { background: #eff6ff; color: #1d4ed8; }
 .cd-pill--signed, .cd-pill--accepted, .cd-pill--completed { background: #f0fdf4; color: #15803d; }
@@ -99,6 +99,6 @@ a.cd-row:hover, .cd-row:hover { background: #fafafa; }
 .cd-table .text-right { text-align: right; }
 .cd-num { font-variant-numeric: tabular-nums; }
 .cd-strong { font-weight: 600; color: #18181b; }
-.cd-strong:hover { color: var(--billio-primary, #6d28d9); }
+.cd-strong:hover { color: var(--billio-primary, #1d3b31); }
 .cd-empty { text-align: center; color: #a1a1aa; font-size: 13px; padding: 22px 12px; }
 .cd-empty-line { font-size: 12.5px; color: #a1a1aa; }

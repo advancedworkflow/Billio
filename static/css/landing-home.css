@@ -205,8 +205,8 @@ main > .lp-section:last-child { padding-bottom: 90px; }
 @media (max-width: 860px) { .lp-audiences { grid-template-columns: 1fr; } .lp-audience-visual { height: 120px; } }
 
 /* Tarifs */
-.lp-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: stretch; }
-.lp-plan { background: #fff; border: 1px solid var(--lp-line); border-radius: var(--lp-radius); padding: 24px 22px; display: flex; flex-direction: column; }
+.lp-plans { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; align-items: stretch; }
+.lp-plan { flex: 1 1 200px; max-width: 280px; background: #fff; border: 1px solid var(--lp-line); border-radius: var(--lp-radius); padding: 24px 22px; display: flex; flex-direction: column; }
 .lp-plan.is-featured { background: var(--lp-ink); color: var(--lp-on-dark); border-color: var(--lp-ink); }
 .lp-plan-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .lp-plan-head h3 { font-family: var(--lp-title); font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
@@ -222,7 +222,7 @@ main > .lp-section:last-child { padding-bottom: 90px; }
 .lp-plan-list li svg { margin-top: 3px; color: var(--lp-forest); }
 .lp-plan.is-featured .lp-plan-list li svg { color: var(--lp-lime); }
 .lp-plan-list li.is-heading { font-weight: 600; margin-top: 6px; }
-.lp-plans-note { margin-top: 18px !important; text-align: center; font-size: 13px; color: var(--lp-muted); }
+.lp-plans-note { margin-top: 22px !important; text-align: center; font-size: 13px; color: var(--lp-muted); }
 
 /* FAQ */
 .lp-faq { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 48px; align-items: start; }
@@ -254,3 +254,4 @@ main > .lp-section:last-child { padding-bottom: 90px; }
 .lp-reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
 .lp-reveal.is-visible { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .lp-reveal { opacity: 1; transform: none; transition: none; } .lp-hero-list li, .lp-hero-list li svg { transition: none; } }
+@media (max-width: 520px) { .lp-plan { max-width: none; } }

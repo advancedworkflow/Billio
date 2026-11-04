@@ -16,7 +16,7 @@
 .pd-btn--ghost { border-color: transparent; background: transparent; }
 .pd-btn--sm { padding: 5px 10px; font-size: 13.5px; }
 .pd-btn:disabled { opacity: .45; cursor: not-allowed; }
-.pd-link { color: var(--billio-primary, #6d28d9); font-weight: 500; font-size: 14px; }
+.pd-link { color: var(--billio-primary, #1d3b31); font-weight: 500; font-size: 14px; }
 .pd-link:hover { text-decoration: underline; }
 .pd-icon-btn { padding: 6px; border-radius: 7px; color: #a1a1aa; }
 .pd-icon-btn:hover { background: #f4f4f5; color: #18181b; }
@@ -31,7 +31,7 @@
 .pd-stat-hint { font-size: 13.5px; color: #a1a1aa; }
 .is-danger { color: #b91c1c; font-weight: 600; }
 .pd-bar { display: block; height: 6px; border-radius: 999px; background: #f4f4f5; overflow: hidden; margin-top: 4px; }
-.pd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--billio-primary, #6d28d9); }
+.pd-bar i { display: block; height: 100%; border-radius: inherit; background: var(--billio-primary, #1d3b31); }
 .pd-bar--sm { height: 4px; max-width: 220px; margin-top: 6px; }
 
 .pd-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
@@ -82,7 +82,7 @@
 .pd-field { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; font-weight: 500; color: #52525b; }
 .pd-field--grow { flex: 1; min-width: 180px; }
 .pd-field input, .pd-field select, .pd-qa input, .pd-qa textarea, .pd-comment-form input { padding: 7px 10px; border: 1px solid #e4e4e7; border-radius: 9px; font-size: 14.5px; background: #fff; font-weight: 400; width: 100%; }
-.pd-field input:focus, .pd-field select:focus, .pd-qa input:focus, .pd-qa textarea:focus { outline: none; border-color: var(--billio-primary, #6d28d9); box-shadow: 0 0 0 3px rgba(109,40,217,.1); }
+.pd-field input:focus, .pd-field select:focus, .pd-qa input:focus, .pd-qa textarea:focus { outline: none; border-color: var(--billio-primary, #1d3b31); box-shadow: 0 0 0 3px rgba(29, 59, 49,.1); }
 .pd-form-actions { display: flex; gap: 6px; margin-left: auto; }
 .pd-form-actions--split { justify-content: space-between; align-items: center; margin-left: 0; width: 100%; }
 .pd-qa { display: flex; gap: 6px; align-items: flex-start; }
@@ -142,7 +142,7 @@
 .pd-comments { margin-top: 10px; border-top: 1px solid #f4f4f5; padding-top: 8px; }
 .pd-comments summary { font-size: 13.5px; color: #71717a; cursor: pointer; }
 .pd-comment { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: #fafafa; font-size: 14px; }
-.pd-comment.is-client { background: #f5f3ff; }
+.pd-comment.is-client { background: #f1f5ec; }
 .pd-comment-author { font-weight: 600; font-size: 13.5px; }
 .pd-comment-author em { font-style: normal; font-weight: 400; color: #a1a1aa; margin-left: 4px; }
 .pd-comment p { color: #3f3f46; margin-top: 2px; }
@@ -154,7 +154,7 @@
 .pd-meeting:hover { background: #fafafa; }
 .pd-meeting:hover .detail-item-delete { opacity: 1; }
 .pd-meeting.is-past { opacity: .7; }
-.pd-date-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 44px; height: 46px; border-radius: 10px; background: #f5f3ff; color: #5b21b6; flex-shrink: 0; }
+.pd-date-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 44px; height: 46px; border-radius: 10px; background: #f1f5ec; color: #10241d; flex-shrink: 0; }
 .pd-date-tile b { font-size: 17px; line-height: 1; }
 .pd-date-tile small { font-size: 12px; text-transform: uppercase; }
 .pd-meeting-title { font-size: 15.5px; font-weight: 600; color: #18181b; }
@@ -195,8 +195,8 @@
 .pd-desc { font-size: 14px; color: #71717a; margin-top: 10px; line-height: 1.5; }
 .pd-billing { display: flex; flex-direction: column; gap: 6px; }
 .pd-radio { display: flex; gap: 8px; align-items: flex-start; padding: 9px 10px; border-radius: 10px; border: 1px solid #ececef; cursor: pointer; }
-.pd-radio.is-active { border-color: var(--billio-primary, #6d28d9); background: #faf8ff; }
-.pd-radio input { margin-top: 3px; accent-color: var(--billio-primary, #6d28d9); }
+.pd-radio.is-active { border-color: var(--billio-primary, #1d3b31); background: #faf8ff; }
+.pd-radio input { margin-top: 3px; accent-color: var(--billio-primary, #1d3b31); }
 .pd-radio span { display: flex; flex-direction: column; }
 .pd-radio strong { font-size: 14.5px; }
 .pd-radio small { font-size: 13px; color: #71717a; line-height: 1.4; }
@@ -235,18 +235,18 @@
 .pd-timer { font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* Option non incluse dans le forfait */
-.pd-plan-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--billio-primary-soft, #f3effd); color: var(--billio-primary-hover, #4c1d95); font-size: 13.5px; }
+.pd-plan-note { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--billio-primary-soft, #f3effd); color: var(--billio-primary-hover, #10241d); font-size: 13.5px; }
 .pd-plan-note a { font-weight: 600; text-decoration: underline; }
 
 /* Étapes : sélection (consultation) et panneau de l'étape choisie */
-.pd-step.is-selected { box-shadow: 0 0 0 2px var(--billio-primary, #6d28d9); }
+.pd-step.is-selected { box-shadow: 0 0 0 2px var(--billio-primary, #1d3b31); }
 .pd-stage { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 16px; padding: 16px 18px; border-radius: 12px; background: #fafafa; border: 1px solid #f0f0f2; }
 .pd-stage-info { min-width: 0; }
 .pd-stage-kicker { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: .05em; }
 .pd-stage-info h3 { margin: 4px 0 2px; font-size: 18px; font-weight: 700; color: #18181b; }
 .pd-stage-progress { margin: 0; font-size: 13.5px; color: #52525b; }
 .pd-stage-chip { padding: 2px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0; text-transform: none; }
-.pd-stage-chip.current { background: var(--billio-primary-soft, #f5f3ff); color: var(--billio-primary, #6d28d9); }
+.pd-stage-chip.current { background: var(--billio-primary-soft, #f1f5ec); color: var(--billio-primary, #1d3b31); }
 .pd-stage-chip.done { background: #f0fdf4; color: #15803d; }
 .pd-stage-chip.todo { background: #f4f4f5; color: #52525b; }
 .pd-stage-actions { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -6,7 +6,7 @@
 @media (max-width: 760px) { .tg-hero { grid-template-columns: 1fr; } }
 .tg-hero-thumb { position: relative; display: block; aspect-ratio: 210 / 297; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px #ececef, 0 8px 24px rgba(0,0,0,.08); }
 .tg-hero-body { display: flex; flex-direction: column; justify-content: center; }
-.tg-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--billio-primary, #6d28d9); }
+.tg-eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--billio-primary, #1d3b31); }
 .tg-hero-title { font-size: 24px; font-weight: 700; letter-spacing: -.01em; margin-top: 4px; }
 .tg-hero-text { font-size: 13.5px; color: #71717a; margin-top: 6px; max-width: 560px; line-height: 1.5; }
 .tg-stats { display: grid; grid-template-columns: repeat(4, max-content); gap: 8px 32px; margin-top: 18px; }
@@ -40,7 +40,7 @@
 .tg-thumb iframe { transform: scale(var(--tg-scale, .3)); left: 50%; margin-left: calc(-397px * var(--tg-scale, .3)); top: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.08); }
 .tg-hero-thumb iframe { transform: scale(var(--tg-hero-scale, .315)); }
 .tg-badge { position: absolute; top: 10px; left: 10px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: #18181b; color: #fff; }
-.tg-badge--pro { background: #ede9fe; color: #5b21b6; }
+.tg-badge--pro { background: #e7efdf; color: #10241d; }
 .tg-card-body { padding: 12px 14px 14px; }
 .tg-card-title { display: flex; align-items: center; gap: 8px; }
 .tg-card-title p { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -56,7 +56,7 @@
 .tg-menu-panel .is-danger { color: #b91c1c; }
 .tg-card--new { align-items: center; justify-content: center; gap: 6px; min-height: 260px; border-style: dashed; color: #52525b; text-align: center; }
 .tg-card--new small { font-size: 12px; color: #a1a1aa; }
-.tg-new-icon { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #f5f3ff; color: var(--billio-primary, #6d28d9); }
+.tg-new-icon { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #f1f5ec; color: var(--billio-primary, #1d3b31); }
 .tg-empty { padding: 28px; text-align: center; font-size: 13px; color: #71717a; border: 1px dashed #e4e4e7; border-radius: 14px; }
 
 .tg-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; }

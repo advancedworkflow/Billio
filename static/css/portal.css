@@ -8,8 +8,8 @@
   --pt-text: #18181b;
   --pt-muted: #71717a;
   --pt-faint: #a1a1aa;
-  --pt-accent: #6d28d9;
-  --pt-accent-soft: #f5f3ff;
+  --pt-accent: #1d3b31;
+  --pt-accent-soft: #f1f5ec;
   --pt-warn: #b45309;
   --pt-warn-soft: #fffbeb;
   --pt-ok: #15803d;
@@ -105,7 +105,7 @@ a.pt-row:hover { background: #fafafa; }
 /* Formulaires */
 .pt-label { display: block; font-size: 12.5px; font-weight: 500; color: var(--pt-muted); margin-bottom: 4px; }
 .pt-input { width: 100%; border: 1px solid var(--pt-line); border-radius: 9px; padding: 8px 11px; font-size: 14px; background: #fff; color: var(--pt-text); }
-.pt-input:focus { outline: none; border-color: var(--pt-accent); box-shadow: 0 0 0 3px rgba(109,40,217,.1); }
+.pt-input:focus { outline: none; border-color: var(--pt-accent); box-shadow: 0 0 0 3px rgba(29, 59, 49,.1); }
 .pt-drop { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed #d4d4d8; border-radius: 9px; font-size: 13px; color: var(--pt-muted); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pt-drop:hover { border-color: var(--pt-accent); color: var(--pt-accent); }
 
@@ -133,7 +133,7 @@ a.pt-row:hover { background: #fafafa; }
 .pt-notif-item { display: flex; gap: 10px; padding: 10px 8px; border-radius: 10px; text-decoration: none; color: inherit; }
 .pt-notif-item:hover { background: #f4f4f5; }
 .pt-notif-item.is-unread { background: #faf8ff; }
-.pt-notif-item.is-unread strong::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--pt-accent, #6d28d9); vertical-align: middle; }
+.pt-notif-item.is-unread strong::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--pt-accent, #1d3b31); vertical-align: middle; }
 .pt-notif-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: #f4f4f5; color: #52525b; }
 .pt-notif-icon.is-major { background: #fef3c7; color: #b45309; }
 .pt-notif-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
