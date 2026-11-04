@@ -6,7 +6,7 @@ module.exports = {
     './templates/components/language_switcher.html',
     './templates/components/flags/*.html',
     './templates/integrations/icons/quickbooks.svg.html',
-    './static/js/landing.js',
+    './static/js/landing-home.js',
     './static/js/consent.js',
   ],
   theme: { extend: {} },
