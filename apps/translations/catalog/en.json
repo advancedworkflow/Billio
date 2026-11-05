@@ -6502,5 +6502,9 @@
   "Terminez votre profil de paiement": "Finish your payment profile",
   "Terminez votre profil pour que vos clients paient vos factures par carte.": "Finish your profile so your clients can pay your invoices by card.",
   "Versements en attente": "Payouts pending",
-  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Your Stripe sign-up is not finished: your clients cannot pay online yet."
+  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Your Stripe sign-up is not finished: your clients cannot pay online yet.",
+  "Inscription sécurisée": "Secure sign-up",
+  "Vos informations (identité, entreprise, IBAN) sont transmises directement à Stripe, notre partenaire de paiement. Billio ne les voit pas.": "Your details (identity, business, IBAN) go straight to Stripe, our payment partner. Billio never sees them.",
+  "Chargement du formulaire Stripe…": "Loading the Stripe form…",
+  "L'inscription n'a pas pu s'ouvrir. Réessayez dans un instant.": "The sign-up could not open. Please try again in a moment."
 }

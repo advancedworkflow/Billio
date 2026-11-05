@@ -7,7 +7,8 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.8">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.9">
+<script src="{% static 'js/stripe-connect-onboarding.js' %}?v=1.0" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -492,6 +493,8 @@
             </form>
             {% if stripe_connect.available and stripe_connect.supported %}
             {% with sc=stripe_connect %}
+            <div class="st-connect-wrap" x-data="{ connectOpen: false, openConnect() { this.connectOpen = true; this.$nextTick(() => window.billioConnectOnboarding && window.billioConnectOnboarding(this.$root)); } }"
+                 x-init="if ({% if sc.embedded and sc.status != 'active' %}true{% else %}false{% endif %} && new URLSearchParams(location.search).has('connect')) setTimeout(() => openConnect(), 0)">
             <div class="st-stripe st-connect st-connect--{{ sc.status }}">
                 <span class="st-stripe-logo">{% include "integrations/icons/stripe.svg.html" %}</span>
                 <div class="st-stripe-text">
@@ -513,11 +516,27 @@
                 {% if sc.status == 'active' %}
                 <a class="st-btn" href="{% url 'payments:payouts' %}">Versements</a>
                 <a class="st-btn" href="{{ sc.dashboard_url }}" target="_blank" rel="noopener">Tableau de bord Stripe</a>
+                {% elif sc.embedded %}
+                <button type="button" class="st-btn st-btn--primary" x-show="!connectOpen" @click="openConnect()">{% if sc.status == 'none' %}Activer les paiements{% else %}Finaliser l'inscription{% endif %}</button>
                 {% else %}
                 <form method="post" action="{% url 'payments:connect-start' %}">{% csrf_token %}
                     <button type="submit" class="st-btn st-btn--primary">{% if sc.status == 'none' %}Activer les paiements{% else %}Finaliser l'inscription{% endif %}</button>
                 </form>
                 {% endif %}
+            </div>
+            {% if sc.embedded and sc.status != 'active' %}
+            <div class="st-connect-embed" x-show="connectOpen" x-cloak>
+                <div class="st-connect-embed-head">
+                    <strong>Inscription sécurisée</strong>
+                    <span>Vos informations (identité, entreprise, IBAN) sont transmises directement à Stripe, notre partenaire de paiement. Billio ne les voit pas.</span>
+                </div>
+                <div class="st-connect-embed-body" translate="no" data-connect-onboarding data-publishable-key="{{ sc.publishable_key }}"
+                     data-session-url="{% url 'payments:connect-session' %}" data-return-url="{% url 'payments:connect-return' %}" data-locale="{{ request.LANGUAGE_CODE|default:'fr' }}">
+                    <p class="st-connect-loading">Chargement du formulaire Stripe…</p>
+                </div>
+                <button type="button" class="st-link" @click="connectOpen = false">Fermer</button>
+            </div>
+            {% endif %}
             </div>
             {% if sc.status == 'none' or stripe_connected %}
             <p class="st-help">{% if stripe_connected and sc.status == 'active' %}<span>Votre propre compte Stripe est aussi relié, mais les paiements passent désormais par le paiement en ligne Billio.</span>{% elif stripe_connected %}<span>Vos paiements passent par votre propre compte Stripe en attendant.</span>{% else %}<span>Vous avez déjà des clés API Stripe ?</span>{% endif %}

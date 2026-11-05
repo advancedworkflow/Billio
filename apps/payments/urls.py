@@ -31,6 +31,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('webhooks/stripe/<int:organization_id>/', views.stripe_webhook, name='stripe-webhook'),
     path('connect/start/', connect_views.connect_start, name='connect-start'),
+    path('connect/session/', connect_views.connect_session, name='connect-session'),
     path('connect/refresh/', connect_views.connect_refresh, name='connect-refresh'),
     path('connect/return/', connect_views.connect_return, name='connect-return'),
     path('webhooks/stripe/connect/', connect_views.connect_webhook, name='stripe-connect-webhook'),

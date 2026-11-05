@@ -1,7 +1,7 @@
 """Activation du paiement en ligne avec Stripe Connect (Paramètres › Paiement) et webhook Connect."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -46,6 +46,25 @@ def connect_start(request):
     except ProviderError as exc:
         messages.error(request, str(exc))
         return redirect(_settings_url())
+
+
+@login_required
+@require_POST
+def connect_session(request):
+    """
+    Inscription intégrée (Paramètres › Paiement) : crée le compte connecté si besoin et renvoie le
+    client_secret d'une session de composant Stripe. Le formulaire reste celui de Stripe, dans Billio.
+    """
+    organization = _organization(request.user)
+    if not organization:
+        return JsonResponse({'error': "Seul le propriétaire ou un administrateur de l'entreprise peut activer le paiement en ligne."}, status=403)
+    if not stripe_connect.embedded_available():
+        return JsonResponse({'error': "Le paiement en ligne n'est pas encore activé sur Billio."}, status=503)
+    try:
+        account = stripe_connect.create_account(organization, email=request.user.email)
+        return JsonResponse({'client_secret': stripe_connect.account_session(account)})
+    except ProviderError as exc:
+        return JsonResponse({'error': str(exc)}, status=400)
 
 
 @login_required

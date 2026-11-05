@@ -287,3 +287,13 @@
 .st-methods-list i { color: #16a34a; }
 .st-methods-list small { color: #a1a1aa; font-size: 11.5px; }
 .st-methods .st-help a { color: #1d3b31; text-decoration: underline; }
+
+/* Inscription Stripe Connect intégrée */
+.st-connect-embed { margin-top: 12px; padding: 18px; border: 1px solid var(--billio-border, #ece9e1); border-radius: 14px; background: #fff; }
+.st-connect-embed-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.st-connect-embed-head strong { font-size: 14px; color: var(--billio-text, #10241d); }
+.st-connect-embed-head span { font-size: 12.5px; color: var(--billio-text-muted, #5f6b65); line-height: 1.5; }
+.st-connect-embed-body { min-height: 120px; }
+.st-connect-loading { font-size: 13px; color: var(--billio-text-muted, #5f6b65); }
+.st-connect-error { font-size: 13px; color: #9a3b22; background: #f6d9cf; border-radius: 10px; padding: 10px 12px; }
+.st-connect-embed .st-link { margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--billio-text-muted, #5f6b65); background: none; border: none; cursor: pointer; padding: 0; }

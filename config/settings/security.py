@@ -33,6 +33,8 @@ CSP_SCRIPT_SRC = (
     "https://unpkg.com/alpinejs",
     "https://cdn.plot.ly",
     "https://cdn.jsdelivr.net",
+    "https://connect-js.stripe.com",
+    "https://js.stripe.com",
     "chrome-extension://e9830311-2186-4e8b-b0fb-56a2c30e997e/",
 )
 CSP_STYLE_SRC = (
@@ -46,7 +48,12 @@ CSP_FONT_SRC = (
     "https://fonts.gstatic.com",
 )
 CSP_IMG_SRC = ("'self'", "data:", "https:")
-CSP_CONNECT_SRC = ("'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com")
+CSP_CONNECT_SRC = (
+    "'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com",
+    # Inscription Stripe Connect intégrée (Paramètres › Paiement)
+    "https://api.stripe.com", "https://connect-js.stripe.com", "https://*.stripe.com",
+)
+CSP_FRAME_SRC = ("'self'", "https://connect-js.stripe.com", "https://js.stripe.com", "https://*.stripe.com")
 
 # Security headers middleware (consider django-security package)
 # SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'

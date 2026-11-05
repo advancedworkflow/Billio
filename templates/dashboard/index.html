@@ -105,7 +105,8 @@
                 <li class="ai-card-todo">
                     <span class="ai-card-ico ai-card-ico--danger"><i data-lucide="credit-card" class="w-4 h-4"></i></span>
                     <span class="ai-card-text"><strong>{{ stripe_todo.title }}</strong><small>{{ stripe_todo.detail }}</small></span>
-                    {% if stripe_todo.state == 'none' %}<a href="{% url 'accounts:user-settings' %}?tab=paiement" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>
+                    {% if stripe_todo.state == 'none' %}<a href="{% url 'accounts:user-settings' %}?tab=paiement{% if stripe_todo.embedded %}&connect=1{% endif %}" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>
+                    {% elif stripe_todo.embedded %}<a href="{% url 'accounts:user-settings' %}?tab=paiement&connect=1" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>
                     {% else %}<a href="{% url 'payments:connect-refresh' %}" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>{% endif %}
                 </li>
                 {% endif %}

@@ -6502,5 +6502,9 @@
   "Terminez votre profil de paiement": "Schließen Sie Ihr Zahlungsprofil ab",
   "Terminez votre profil pour que vos clients paient vos factures par carte.": "Schließen Sie Ihr Profil ab, damit Ihre Kunden Ihre Rechnungen per Karte bezahlen können.",
   "Versements en attente": "Auszahlungen ausstehend",
-  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Ihre Stripe-Anmeldung ist nicht abgeschlossen: Ihre Kunden können noch nicht online bezahlen."
+  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Ihre Stripe-Anmeldung ist nicht abgeschlossen: Ihre Kunden können noch nicht online bezahlen.",
+  "Inscription sécurisée": "Sichere Anmeldung",
+  "Vos informations (identité, entreprise, IBAN) sont transmises directement à Stripe, notre partenaire de paiement. Billio ne les voit pas.": "Ihre Angaben (Identität, Unternehmen, IBAN) gehen direkt an Stripe, unseren Zahlungspartner. Billio sieht sie nicht.",
+  "Chargement du formulaire Stripe…": "Stripe-Formular wird geladen…",
+  "L'inscription n'a pas pu s'ouvrir. Réessayez dans un instant.": "Die Anmeldung konnte nicht geöffnet werden. Bitte versuchen Sie es gleich noch einmal."
 }

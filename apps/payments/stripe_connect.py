@@ -34,6 +34,18 @@ def available():
     return bool(platform_key())
 
 
+def publishable_key():
+    """Clé publiable de Billio (pk_…), nécessaire à l'inscription intégrée dans Billio."""
+    from django.conf import settings
+    key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '') or ''
+    return key if key.startswith('pk_') and 'your' not in key else ''
+
+
+def embedded_available():
+    """Inscription affichée dans Billio (composant Stripe) ; sinon page hébergée par Stripe."""
+    return available() and bool(publishable_key())
+
+
 def supported_country(country):
     from apps.organizations.jurisdictions import PACKS
     return country in PACKS
@@ -111,6 +123,19 @@ def onboarding_url(account, refresh_url, return_url):
         'type': 'account_onboarding',
     }, headers=_headers())
     return link['url']
+
+
+def account_session(account):
+    """
+    Session (quelques minutes) pour le composant d'inscription intégré : renvoie le client_secret.
+    Stripe collecte toujours lui-même identité, entreprise et IBAN, dans son iframe.
+    """
+    session = http('POST', f'{API}/account_sessions', form={
+        'account': account.account_id,
+        'components[account_onboarding][enabled]': 'true',
+        'components[account_onboarding][features][external_account_collection]': 'true',
+    }, headers=_headers())
+    return session['client_secret']
 
 
 def sync(account, data=None):
@@ -195,6 +220,8 @@ def summary(organization):
         'status': account.status if account else 'none',
         'fee_percent': fee_percent(organization) if organization else DEFAULT_FEE_PERCENT,
         'dashboard_url': DASHBOARD_URL,
+        'embedded': embedded_available(),
+        'publishable_key': publishable_key(),
     }
 
 
@@ -213,15 +240,15 @@ def setup_todo(organization):
     if not account and stripe_instance(organization):
         return None
     if not account:
-        return {'state': 'none', 'title': 'Activez le paiement en ligne',
+        return {'embedded': embedded_available(), 'state': 'none', 'title': 'Activez le paiement en ligne',
                 'detail': 'Terminez votre profil pour que vos clients paient vos factures par carte.'}
     if not account.details_submitted:
-        return {'state': 'incomplete', 'title': 'Terminez votre profil de paiement',
+        return {'embedded': embedded_available(), 'state': 'incomplete', 'title': 'Terminez votre profil de paiement',
                 'detail': "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne."}
     if not account.charges_enabled:
-        return {'state': 'restricted', 'title': 'Paiement en ligne bloqué',
+        return {'embedded': embedded_available(), 'state': 'restricted', 'title': 'Paiement en ligne bloqué',
                 'detail': 'Stripe demande des informations complémentaires pour activer les paiements.'}
-    return {'state': 'payouts', 'title': 'Versements en attente',
+    return {'embedded': embedded_available(), 'state': 'payouts', 'title': 'Versements en attente',
             'detail': 'Ajoutez ou vérifiez votre compte bancaire pour recevoir vos paiements.'}
 
 

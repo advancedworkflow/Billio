@@ -251,6 +251,7 @@ NUM_PROXIES = int(os.getenv('NUM_PROXIES', '0'))
 
 # Abonnements Billio (compte Stripe de Billio, distinct des comptes Stripe des clients) — apps/subscriptions/billing.py
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 STRIPE_TAX_RATE_ID = os.getenv('STRIPE_TAX_RATE_ID', '')  # ex. txr_… (TVA 20 % exclusive) ; vide = pas de taxe ajoutée
 STRIPE_AUTOMATIC_TAX = os.getenv('STRIPE_AUTOMATIC_TAX', '') == '1'  # Stripe Tax (à activer dans Stripe)
