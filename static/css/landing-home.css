@@ -255,3 +255,15 @@ main > .lp-section:last-child { padding-bottom: 90px; }
 .lp-reveal.is-visible { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .lp-reveal { opacity: 1; transform: none; transition: none; } .lp-hero-list li, .lp-hero-list li svg { transition: none; } }
 @media (max-width: 520px) { .lp-plan { max-width: none; } }
+
+/* Bandeaux citron vert (pleine largeur) */
+.lp-section--lime { background: var(--lp-lime); color: var(--lp-ink); margin-top: 110px; padding: 88px 0; }
+.lp-section--lime .lp-sub { color: rgba(16, 36, 29, .72); }
+.lp-section--lime .lp-sources > div,
+.lp-section--lime .lp-audiences article { border-color: rgba(16, 36, 29, .1); }
+.lp-section--lime .lp-sources svg { color: var(--lp-ink); }
+@media (max-width: 640px) { .lp-section--lime { margin-top: 72px; padding: 60px 0; } }
+
+/* CTA final en citron vert */
+.lp-final--lime { background: var(--lp-lime); color: var(--lp-ink); }
+.lp-final--lime p { color: rgba(16, 36, 29, .72); }
