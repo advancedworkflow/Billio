@@ -1,0 +1,180 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ req.title }} · Signature</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/signatures.css' %}?v=1.0">
+    {% if state == 'sign' %}
+    <script src="{% static 'vendor/pdfjs/pdf.min.js' %}"></script>
+    <script src="{% static 'js/signatures.js' %}?v=1.1" data-pdfjs="{% static 'vendor/pdfjs/' %}"></script>
+    {{ sign_data|json_script:"sg-sign-data" }}
+    <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+    {% endif %}
+</head>
+<body class="sgp">
+    <header class="sgp-header">
+        <div class="sgp-header-in">
+            {% if logo_url %}<img src="{{ logo_url }}" alt="{{ org.name }}" class="sgp-logo">{% endif %}
+            <div class="sgp-head-text">
+                <div class="sgp-org" translate="no">{{ org.name }}</div>
+                <div class="sgp-title" translate="no">{{ req.title }}</div>
+            </div>
+            {% if state == 'done' and req.status == 'completed' and req.signed_pdf %}
+            <a href="{% url 'signatures:sign-download' signer.token %}" class="sgp-btn sgp-btn--light">Télécharger</a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if state == 'sign' %}
+    {% csrf_token %}
+    <div x-data="sgSign(JSON.parse(document.getElementById('sg-sign-data').textContent), { pdf: '{% url 'signatures:sign-pdf' signer.token %}?raw=1', submit: '{% url 'signatures:sign-submit' signer.token %}', decline: '{% url 'signatures:sign-decline' signer.token %}' })">
+        <main class="sgp-main">
+            <div class="sgp-intro">
+                Bonjour <strong translate="no">{{ signer.name }}</strong>, <strong translate="no">{{ org.name }}</strong> vous demande de signer ce document.
+                Remplissez les champs surlignés en jaune, puis validez en bas de la page.
+                {% if req.message %}<p style="margin:10px 0 0;white-space:pre-line" translate="no">{{ req.message }}</p>{% endif %}
+            </div>
+
+            <div class="sg-pages" x-ref="pages">
+                <template x-for="(dims, page) in pages" :key="page">
+                    <div class="sg-page" :data-page="page">
+                        <div class="sg-page-inner" :style="'aspect-ratio:' + dims[0] + ' / ' + dims[1]">
+                            <div class="sg-canvas"></div>
+                            <template x-for="f in pageOthers(page)" :key="'o' + f.id">
+                                <div class="sgp-field sgp-field--readonly" :style="box(f) + textSize(f)">
+                                    <template x-if="f.kind === 'signature' || f.kind === 'initials'"><img :src="f.value" alt=""></template>
+                                    <template x-if="f.kind === 'checkbox'"><span class="sgp-field-text">✓</span></template>
+                                    <template x-if="['name', 'date', 'text'].includes(f.kind)"><span class="sgp-field-text" x-text="f.value"></span></template>
+                                </div>
+                            </template>
+                            <template x-for="f in pageFields(page)" :key="f.id">
+                                <div class="sgp-field" :id="'sg-field-' + f.id" :class="filled(f) || !f.required ? 'sgp-field--ok' : 'sgp-field--todo'" :style="box(f) + textSize(f)" :title="f.label">
+                                    <template x-if="f.kind === 'signature' || f.kind === 'initials'">
+                                        <button type="button" class="sgp-sign-slot" @click="open(f)">
+                                            <template x-if="values[f.id]"><img :src="values[f.id]" alt="Votre signature"></template>
+                                            <template x-if="!values[f.id]"><span x-text="f.kind === 'signature' ? 'Signer ici' : 'Initiales'"></span></template>
+                                        </button>
+                                    </template>
+                                    <template x-if="f.kind === 'checkbox'"><input type="checkbox" x-model="values[f.id]" :aria-label="f.label"></template>
+                                    <template x-if="f.kind === 'date'"><span class="sgp-field-text" x-text="values[f.id]"></span></template>
+                                    <template x-if="f.kind === 'name' || f.kind === 'text'"><input type="text" x-model="values[f.id]" maxlength="300" :placeholder="f.label" :aria-label="f.label"></template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <p class="sgp-loading" x-show="loading">Chargement du document…</p>
+            <p class="sgp-footer">Signature électronique proposée par Billio · <a href="{% url 'signatures:sign-pdf' signer.token %}" target="_blank" rel="noopener">Ouvrir le PDF</a></p>
+        </main>
+
+        <div class="sgp-bar">
+            <div class="sgp-bar-in">
+                <div class="sgp-bar-row">
+                    <span class="sgp-count"><strong x-text="progress()"></strong> / <span x-text="fields.length"></span> champs remplis</span>
+                    <button type="button" class="sgp-btn sgp-btn--light" x-show="missing().length" @click="next()">Champ suivant ↓</button>
+                </div>
+                <label class="sgp-consent">
+                    <input type="checkbox" x-model="consent">
+                    <span>J’accepte de signer ce document électroniquement et reconnais que ma signature électronique a la même valeur que ma signature manuscrite.</span>
+                </label>
+                <p class="sgp-error" x-show="error" x-text="error" x-cloak></p>
+                <div class="sgp-bar-row">
+                    <button type="button" class="sgp-decline" @click="declineOpen = true">Refuser de signer</button>
+                    <button type="button" class="sgp-btn sgp-btn--cta" :disabled="busy" @click="submit()" x-text="busy ? 'Signature…' : 'Signer le document'"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signature : dessiner, écrire ou importer -->
+        <div class="sgp-modal" x-show="modal" x-cloak @keydown.escape.window="modal = null" @click.self="modal = null">
+            <div class="sgp-dialog" role="dialog" aria-modal="true">
+                <h2 x-text="modal && modal.kind === 'initials' ? 'Vos initiales' : 'Votre signature'"></h2>
+                <div class="sgp-tabs">
+                    <button type="button" :class="{ 'is-on': tab === 'draw' }" @click="tab = 'draw'; $nextTick(() => pad.size())">Dessiner</button>
+                    <button type="button" :class="{ 'is-on': tab === 'type' }" @click="tab = 'type'">Écrire</button>
+                    <button type="button" :class="{ 'is-on': tab === 'upload' }" @click="tab = 'upload'">Importer</button>
+                </div>
+                <div x-show="tab === 'draw'">
+                    <canvas class="sgp-pad" x-ref="pad"></canvas>
+                    <div class="sgp-dialog-actions" style="margin-top:6px">
+                        <span class="sgp-small">Signez avec la souris ou le doigt.</span>
+                        <button type="button" class="sgp-decline" @click="clearPad()">Effacer</button>
+                    </div>
+                </div>
+                <div x-show="tab === 'type'" class="sgp-fonts">
+                    <input type="text" class="sgp-typed" x-model="typed" maxlength="80" aria-label="Votre nom">
+                    <template x-for="name in fonts" :key="name">
+                        <button type="button" :class="{ 'is-on': font === name }" :style="'font-family:\'' + name + '\', cursive'" @click="font = name" x-text="typed || ' '"></button>
+                    </template>
+                </div>
+                <div x-show="tab === 'upload'">
+                    <label class="sgp-upload">
+                        <input type="file" accept="image/png,image/jpeg" class="sr-only" style="position:absolute;opacity:0;width:1px;height:1px" @change="upload($event)">
+                        <template x-if="uploaded"><img :src="uploaded" alt=""></template>
+                        <span>Photo ou scan de votre signature sur fond blanc (PNG, JPG)</span>
+                    </label>
+                </div>
+                <p class="sgp-error" x-show="modalError" x-text="modalError"></p>
+                <div class="sgp-dialog-actions">
+                    <button type="button" class="sgp-btn sgp-btn--light" @click="modal = null">Annuler</button>
+                    <div style="display:flex;gap:8px">
+                        <button type="button" class="sgp-btn sgp-btn--light" x-show="modal && kept[modal.kind]" @click="reuse()">Réutiliser</button>
+                        <button type="button" class="sgp-btn" @click="apply()">Valider</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Refus -->
+        <div class="sgp-modal" x-show="declineOpen" x-cloak @click.self="declineOpen = false">
+            <div class="sgp-dialog" role="dialog" aria-modal="true">
+                <h2>Refuser de signer</h2>
+                <p class="sgp-small" style="margin:0">{{ org.name }} sera prévenu. Vous pouvez expliquer pourquoi (facultatif).</p>
+                <textarea x-model="reason" maxlength="1000" placeholder="Motif du refus"></textarea>
+                <div class="sgp-dialog-actions">
+                    <button type="button" class="sgp-btn sgp-btn--light" @click="declineOpen = false">Retour</button>
+                    <button type="button" class="sgp-btn" style="background:#b91c1c;border-color:#b91c1c" :disabled="busy" @click="decline()">Refuser</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% elif state == 'done' %}
+    <div class="sgp-notice">
+        <span class="sgp-notice-icon">✓</span>
+        {% if req.status == 'completed' %}
+        <h1>Document signé par tous</h1>
+        <p>Merci {{ signer.name }} ! Le document signé, avec son certificat, vous a été envoyé par email. Vous pouvez aussi le télécharger ici.</p>
+        {% if req.signed_pdf %}<a href="{% url 'signatures:sign-download' signer.token %}" class="sgp-btn">Télécharger le document signé</a>{% endif %}
+        {% else %}
+        <h1>Merci, votre signature est enregistrée</h1>
+        <p>Vous recevrez le document signé par email dès que tous les signataires auront signé.</p>
+        {% endif %}
+    </div>
+    {% elif state == 'declined' %}
+    <div class="sgp-notice">
+        <span class="sgp-notice-icon is-error">✕</span>
+        <h1>Vous avez refusé de signer</h1>
+        <p>{{ org.name }} a été prévenu. Pour toute question, contactez directement votre interlocuteur.</p>
+    </div>
+    {% elif state == 'waiting' %}
+    <div class="sgp-notice">
+        <span class="sgp-notice-icon is-warn">…</span>
+        <h1>Ce n’est pas encore à vous</h1>
+        <p>D’autres personnes doivent signer avant vous. Vous recevrez un email dès que ce sera votre tour.</p>
+    </div>
+    {% else %}
+    <div class="sgp-notice">
+        <span class="sgp-notice-icon is-error">!</span>
+        {% if req.status == 'expired' %}<h1>Ce lien a expiré</h1>{% elif req.status == 'cancelled' %}<h1>Cette demande a été annulée</h1>{% else %}<h1>Ce document ne peut plus être signé</h1>{% endif %}
+        <p>Contactez {{ org.name }} pour recevoir un nouveau lien.</p>
+    </div>
+    {% endif %}
+</body>
+</html>

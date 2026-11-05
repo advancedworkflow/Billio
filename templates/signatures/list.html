@@ -1,0 +1,100 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Signatures{% endblock %}
+{% block page_title %}Signatures{% endblock %}
+{% block page_subtitle %}Faites signer vos contrats et documents en ligne{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/signatures.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="sg-card" x-data="{ over: false }">
+        <div class="sg-card-head">
+            <div class="sg-card-title">Nouvelle demande de signature</div>
+            <div class="sg-card-sub">Choisissez le document, placez les champs à remplir, puis envoyez : chaque signataire reçoit un lien et signe en ligne, sans compte.</div>
+        </div>
+        <div class="sg-new">
+            <form method="post" action="{% url 'signatures:new' %}" enctype="multipart/form-data" class="sg-new-option" x-ref="uploadForm">
+                {% csrf_token %}
+                <input type="hidden" name="source" value="upload">
+                <strong><i data-lucide="file-up" class="w-4 h-4"></i> Importer un PDF</strong>
+                <p>Un contrat, un bon de commande, un mandat… jusqu’à 20 Mo.</p>
+                <label class="sg-drop" :class="{ 'is-over': over }"
+                       @dragover.prevent="over = true" @dragleave="over = false"
+                       @drop.prevent="over = false; $refs.file.files = $event.dataTransfer.files; $refs.uploadForm.submit()">
+                    <input type="file" name="pdf" accept="application/pdf,.pdf" class="sr-only" x-ref="file" @change="if ($event.target.files[0]) $refs.uploadForm.submit()">
+                    Glissez le PDF ici ou <span class="sg-link">choisissez un fichier</span>
+                </label>
+            </form>
+            <form method="post" action="{% url 'signatures:new' %}" class="sg-new-option">
+                {% csrf_token %}
+                <input type="hidden" name="source" value="document">
+                <strong><i data-lucide="files" class="w-4 h-4"></i> Un document Billio</strong>
+                <p>Contrat, proposition ou lettre rédigés dans Documents.</p>
+                {% if documents %}
+                <select name="document_id" required translate="no">
+                    {% for document in documents %}<option value="{{ document.id }}">{{ document.title }}{% if document.client %} · {{ document.client.name }}{% endif %}</option>{% endfor %}
+                </select>
+                <button type="submit" class="sg-btn">Préparer la signature</button>
+                {% else %}
+                <p><a href="{% url 'documents:document-gallery' %}" class="sg-link">Rédiger un document</a></p>
+                {% endif %}
+            </form>
+            <form method="post" action="{% url 'signatures:new' %}" class="sg-new-option">
+                {% csrf_token %}
+                <input type="hidden" name="source" value="quote">
+                <strong><i data-lucide="file-pen-line" class="w-4 h-4"></i> Un devis</strong>
+                <p>Une fois signé par le client, le devis passe en « Accepté ».</p>
+                {% if quotes %}
+                <select name="quote_id" required translate="no">
+                    {% for quote in quotes %}<option value="{{ quote.id }}">{{ quote.quote_number }} · {{ quote.client.name }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="sg-btn">Préparer la signature</button>
+                {% else %}
+                <p><a href="{% url 'invoices:quote-create' %}" class="sg-link">Créer un devis</a></p>
+                {% endif %}
+            </form>
+        </div>
+    </section>
+
+    <section class="sg-card">
+        <div class="sg-card-head">
+            <nav class="sg-tabs">
+                {% for key, label, count in tabs %}
+                <a href="?tab={{ key }}" class="{% if tab == key %}is-active{% endif %}">{{ label }} <span>{{ count }}</span></a>
+                {% endfor %}
+            </nav>
+        </div>
+        {% if rows %}
+        <div class="sg-rows">
+            {% for row in rows %}
+            <a href="{% url 'signatures:detail' row.id %}" class="sg-row">
+                <div class="min-w-0">
+                    <div class="sg-row-title" translate="no">{{ row.title }}</div>
+                    <div class="sg-row-meta">
+                        {% if row.status == 'completed' %}Signé le {{ row.completed_at|date:"d/m/Y" }}{% elif row.status == 'sent' %}Envoyé le {{ row.sent_at|date:"d/m/Y" }}{% if row.expires_at %} · expire le {{ row.expires_at|date:"d/m/Y" }}{% endif %}{% else %}Créé le {{ row.created_at|date:"d/m/Y" }}{% endif %}
+                        · <span translate="no">{% for signer in row.signers.all %}{{ signer.name|default:signer.email }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
+                    </div>
+                </div>
+                <div class="sg-avatars" translate="no">
+                    {% for signer in row.signers.all|slice:":5" %}
+                    <span class="sg-avatar {% if signer.status == 'signed' %}is-signed{% elif signer.status == 'declined' %}is-declined{% endif %}" title="{{ signer.name }} — {{ signer.get_status_display }}">{{ signer.name|default:signer.email|make_list|first|upper }}</span>
+                    {% endfor %}
+                </div>
+                <span class="sg-status sg-status--{{ row.status }}">{{ row.get_status_display }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="sg-empty">
+            {% if tab == 'all' %}Aucune demande pour l’instant : importez un PDF ou choisissez un document ci-dessus.{% else %}Rien dans cette catégorie.{% endif %}
+        </div>
+        {% endif %}
+    </section>
+
+    <p class="text-xs sg-muted">Signature électronique simple au sens du règlement eIDAS : chaque document signé comporte un certificat (identité déclarée, horodatage, adresse IP, empreinte SHA-256), vérifiable sur la <a href="{% url 'signatures:verify' %}" class="sg-link" target="_blank" rel="noopener">page de vérification</a>.</p>
+</div>
+{% endblock %}

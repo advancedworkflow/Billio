@@ -1,0 +1,109 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}{{ req.title }} · Signature{% endblock %}
+{% block page_title %}Suivi de la signature{% endblock %}
+{% block page_subtitle %}Qui a signé, qui reste à relancer{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/signatures.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+    <div class="sg-topbar">
+        <a href="{% url 'signatures:requests' %}" class="sg-btn" title="Retour aux signatures"><i data-lucide="arrow-left" class="w-4 h-4"></i></a>
+        <div class="min-w-0 flex-1">
+            <div class="text-base font-semibold truncate" translate="no">{{ req.title }}</div>
+            <div class="text-xs sg-muted">{{ req.get_source_display }} · {{ req.pages|length }} page{{ req.pages|length|pluralize }}</div>
+        </div>
+        <span class="sg-status sg-status--{{ req.status }}">{{ req.get_status_display }}</span>
+        {% if req.signed_pdf %}
+        <a href="{% url 'signatures:pdf' req.id %}?signed=1&download=1" class="btn-primary-black px-4 py-2 text-sm rounded-lg inline-flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i> Document signé</a>
+        {% endif %}
+        <a href="{% url 'signatures:pdf' req.id %}" target="_blank" rel="noopener" class="sg-btn"><i data-lucide="file-text" class="w-4 h-4"></i> Original</a>
+    </div>
+
+    {% if needs_finalize %}
+    <form method="post" action="{% url 'signatures:finalize' req.id %}" class="sg-problems flex items-center justify-between gap-3">
+        {% csrf_token %}
+        <span>Toutes les signatures sont là, mais le document final n’a pas pu être généré.</span>
+        <button type="submit" class="sg-btn">Générer le document signé</button>
+    </form>
+    {% endif %}
+
+    <div class="sg-detail">
+        <div class="space-y-5">
+            <section class="sg-card">
+                <div class="sg-card-head">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="sg-card-title">Signataires</div>
+                        <div class="text-xs sg-muted">{{ signed }} sur {{ total }} ont signé{% if req.in_order %} · dans l’ordre{% endif %}</div>
+                    </div>
+                    <div class="sg-progress mt-3"><span style="width: {% widthratio signed total 100 %}%"></span></div>
+                </div>
+                <div class="sg-signers">
+                    {% for signer in signers %}
+                    <div class="sg-signer-row">
+                        <span class="sg-avatar {% if signer.status == 'signed' %}is-signed{% elif signer.status == 'declined' %}is-declined{% endif %}" style="margin-left:0" translate="no">{{ signer.name|make_list|first|upper }}</span>
+                        <div class="min-w-0">
+                            <div class="text-sm font-medium truncate" translate="no">{{ signer.name }} <span class="sg-muted font-normal">· {{ signer.email }}</span></div>
+                            <div class="text-xs sg-muted">
+                                {% if signer.status == 'signed' %}A signé le {{ signer.signed_at|date:"d/m/Y à H:i" }}
+                                {% elif signer.status == 'declined' %}A refusé le {{ signer.declined_at|date:"d/m/Y à H:i" }}{% if signer.decline_reason %} : « <span translate="no">{{ signer.decline_reason }}</span> »{% endif %}
+                                {% elif signer.status == 'viewed' %}A ouvert le document le {{ signer.viewed_at|date:"d/m/Y à H:i" }}
+                                {% elif signer.status == 'invited' %}Invité le {{ signer.invited_at|date:"d/m/Y à H:i" }}{% if signer.last_reminded_at %} · relancé le {{ signer.last_reminded_at|date:"d/m/Y" }}{% endif %}
+                                {% else %}Recevra le lien après le signataire précédent{% endif %}
+                            </div>
+                        </div>
+                        {% if req.status == 'sent' and signer.status == 'invited' or req.status == 'sent' and signer.status == 'viewed' %}
+                        <form method="post" action="{% url 'signatures:remind' req.id signer.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="sg-btn"><i data-lucide="bell-ring" class="w-4 h-4"></i> Relancer</button>
+                        </form>
+                        {% else %}<span></span>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {% if req.status == 'sent' %}
+            <form method="post" action="{% url 'signatures:cancel' req.id %}" onsubmit="return confirm('Annuler la demande ? Les liens de signature ne fonctionneront plus.')">
+                {% csrf_token %}
+                <button type="submit" class="sg-btn sg-btn--danger"><i data-lucide="circle-x" class="w-4 h-4"></i> Annuler la demande</button>
+            </form>
+            {% elif req.status in 'declined,cancelled,expired' %}
+            <form method="post" action="{% url 'signatures:delete' req.id %}" onsubmit="return confirm('Supprimer définitivement cette demande ?')">
+                {% csrf_token %}
+                <button type="submit" class="sg-btn sg-btn--danger"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <aside class="space-y-5">
+            <section class="sg-card">
+                <div class="sg-card-head"><div class="sg-card-title">Historique</div></div>
+                <div class="sg-timeline">
+                    {% for event in events %}
+                    <div class="sg-event sg-event--{{ event.action }}">
+                        <div>
+                            {{ event.get_action_display }}{% if event.signer %} · <span translate="no">{{ event.signer.name }}</span>{% endif %}
+                            <small>{{ event.at|date:"d/m/Y à H:i" }}{% if event.ip_address %} · IP {{ event.ip_address }}{% endif %}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            <section class="sg-card">
+                <div class="sg-card-head"><div class="sg-card-title">Preuves</div></div>
+                <div class="px-5 py-4 space-y-3 text-xs">
+                    <div><div class="sg-muted mb-1">Empreinte SHA-256 du document d’origine</div><div class="sg-hash">{{ req.original_sha256 }}</div></div>
+                    {% if req.signed_sha256 %}<div><div class="sg-muted mb-1">Empreinte SHA-256 du document signé</div><div class="sg-hash">{{ req.signed_sha256 }}</div></div>{% endif %}
+                    {% if req.expires_at and req.status == 'sent' %}<div class="sg-muted">Lien valable jusqu’au {{ req.expires_at|date:"d/m/Y" }}.</div>{% endif %}
+                    <a href="{% url 'signatures:verify' %}" target="_blank" rel="noopener" class="sg-link">Vérifier un PDF signé</a>
+                </div>
+            </section>
+        </aside>
+    </div>
+</div>
+{% endblock %}

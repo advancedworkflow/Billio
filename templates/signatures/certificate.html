@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 18mm 16mm 20mm; @bottom-center { content: "Certificat de signature · page " counter(page); font-size: 8pt; color: #888; } }
+    body { font-family: 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; font-size: 9.5pt; color: #1f2937; }
+    h1 { font-size: 17pt; margin: 0 0 2mm; color: #1d3b31; }
+    h2 { font-size: 11pt; margin: 7mm 0 3mm; color: #1d3b31; border-bottom: 1px solid #e5e7eb; padding-bottom: 1.5mm; }
+    .lead { color: #4b5563; margin: 0 0 5mm; }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { text-align: left; vertical-align: top; padding: 1.6mm 2mm; border-bottom: 1px solid #f1f1f1; }
+    th { width: 42mm; color: #6b7280; font-weight: normal; }
+    .hash { font-family: 'Courier New', monospace; font-size: 8pt; word-break: break-all; }
+    .signer { border: 1px solid #e5e7eb; border-radius: 3mm; padding: 3mm 4mm; margin-bottom: 3mm; page-break-inside: avoid; }
+    .signer-head { display: flex; justify-content: space-between; font-weight: bold; font-size: 10.5pt; }
+    .signer img { height: 14mm; max-width: 60mm; object-fit: contain; margin-top: 2mm; }
+    .ok { color: #15803d; }
+    .events td { font-size: 8.5pt; }
+    .note { margin-top: 7mm; font-size: 8pt; color: #6b7280; line-height: 1.5; }
+</style>
+</head>
+<body>
+    <h1>Certificat de signature électronique</h1>
+    <p class="lead">Ce certificat fait partie du document « {{ req.title }} » et en atteste la signature.</p>
+
+    <table>
+        <tr><th>Document</th><td>{{ req.title }} ({{ req.pages|length }} page{{ req.pages|length|pluralize }} avant ce certificat)</td></tr>
+        <tr><th>Référence</th><td class="hash">{{ req.id }}</td></tr>
+        <tr><th>Émetteur</th><td>{{ req.organization.name }}{% if req.created_by %} — {{ req.created_by.get_full_name|default:req.created_by.email }}{% endif %}</td></tr>
+        <tr><th>Envoyé le</th><td>{{ req.sent_at|date:"d/m/Y à H:i:s" }} (heure de Paris)</td></tr>
+        <tr><th>Terminé le</th><td>{{ req.completed_at|date:"d/m/Y à H:i:s" }} (heure de Paris)</td></tr>
+        <tr><th>Empreinte du document d’origine</th><td class="hash">SHA-256 {{ req.original_sha256 }}</td></tr>
+    </table>
+
+    <h2>Signataires</h2>
+    {% for signer in signers %}
+    <div class="signer">
+        <div class="signer-head"><span>{{ signer.name }}</span><span class="ok">Signé</span></div>
+        <table>
+            <tr><th>Email</th><td>{{ signer.email }} (lien de signature personnel envoyé à cette adresse)</td></tr>
+            <tr><th>Ouvert le</th><td>{{ signer.viewed_at|date:"d/m/Y à H:i:s"|default:"—" }}</td></tr>
+            <tr><th>Signé le</th><td>{{ signer.signed_at|date:"d/m/Y à H:i:s" }}</td></tr>
+            <tr><th>Adresse IP</th><td>{{ signer.ip_address|default:"—" }}</td></tr>
+            <tr><th>Navigateur</th><td>{{ signer.user_agent|default:"—" }}</td></tr>
+        </table>
+        {% if signer.signature_image %}<img src="{{ signer.signature_image }}" alt="">{% endif %}
+    </div>
+    {% endfor %}
+
+    <h2>Journal</h2>
+    <table class="events">
+        {% for event in events %}
+        <tr><th>{{ event.at|date:"d/m/Y H:i:s" }}</th><td>{{ event.get_action_display }}{% if event.signer %} — {{ event.signer.name }}{% endif %}{% if event.ip_address %} · IP {{ event.ip_address }}{% endif %}{% if event.detail %} · {{ event.detail }}{% endif %}</td></tr>
+        {% endfor %}
+    </table>
+
+    <p class="note">
+        Signature électronique simple au sens de l’article 3 du règlement (UE) n° 910/2014 (eIDAS) et de l’article 1367 du Code civil.
+        Chaque signataire a été identifié par la possession de son adresse email et a exprimé son consentement à signer électroniquement.
+        Pour vérifier que ce PDF n’a pas été modifié depuis sa signature, déposez-le sur {{ verify_url }} : son empreinte SHA-256 est comparée à celle enregistrée par Billio.
+    </p>
+</body>
+</html>

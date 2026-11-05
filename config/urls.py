@@ -60,6 +60,7 @@ urlpatterns = [
     path('dashboard/', include('apps.dashboard.urls')),
     path('templates/', include('apps.templates_app.urls')),
     path('documents/', include('apps.documents.urls')),
+    path('signatures/', include('apps.signatures.urls')),
     path('staff/', include('apps.staff.urls')),
 ]
 

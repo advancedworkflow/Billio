@@ -38,6 +38,7 @@ FEATURES = {
     'manual_payments': 'Les paiements manuels',
     'reminders': 'Les relances automatiques',
     'quote_signature': 'La signature en ligne des devis',
+    'esign': 'La signature électronique de documents',
     'portal': 'Le portail client complet',
     'booking': 'La prise de rendez-vous en ligne',
     'time_tracking': 'Le suivi du temps',

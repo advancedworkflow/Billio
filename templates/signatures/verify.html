@@ -1,0 +1,40 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Vérifier un document signé · Billio</title>
+    <link rel="stylesheet" href="{% static 'css/signatures.css' %}?v=1.0">
+</head>
+<body class="sgp">
+    <main class="sgp-verify">
+        <div class="sgp-card">
+            <h1>Vérifier un document signé</h1>
+            <p class="sgp-small" style="font-size:13.5px;line-height:1.55">Déposez un PDF signé avec Billio : son empreinte est calculée et comparée à celle enregistrée au moment de la signature. La moindre modification du fichier change l’empreinte.</p>
+            <form method="post" enctype="multipart/form-data" style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                {% csrf_token %}
+                <input type="file" name="pdf" accept="application/pdf,.pdf" required style="flex:1;min-width:0;font-size:13px">
+                <button type="submit" class="sgp-btn">Vérifier</button>
+            </form>
+            {% if error %}<p class="sgp-error" style="margin-top:12px">{{ error }}</p>{% endif %}
+            {% if result %}
+                {% if result.match %}
+                <div class="sgp-result sgp-result--ok">
+                    <strong>Document authentique et non modifié.</strong>
+                    <div translate="no">« {{ result.match.title }} » · {{ result.match.organization.name }} · signé le {{ result.match.completed_at|date:"d/m/Y à H:i" }}</div>
+                    <ul translate="no">{% for signer in result.signers %}<li>{{ signer.name }} — {{ signer.signed_at|date:"d/m/Y à H:i" }}</li>{% endfor %}</ul>
+                </div>
+                {% else %}
+                <div class="sgp-result sgp-result--ko">
+                    <strong>Aucun document signé ne correspond à ce fichier.</strong>
+                    <div>Soit il n’a pas été signé avec Billio, soit il a été modifié depuis sa signature.</div>
+                </div>
+                {% endif %}
+                <p class="sgp-small" style="margin-top:12px">Empreinte SHA-256 : <span class="sg-hash">{{ result.digest }}</span></p>
+            {% endif %}
+        </div>
+        <p class="sgp-footer"><a href="/">Billio</a></p>
+    </main>
+</body>
+</html>

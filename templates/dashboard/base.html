@@ -91,6 +91,10 @@
                 <i data-lucide="files" class="w-4 h-4 shrink-0"></i>
                 <span class="sidebar-nav-text text-sm font-medium">Documents</span>
             </a>
+            <a href="{% url 'signatures:requests' %}" title="Signatures" class="{% if request.resolver_match.app_name == 'signatures' %}billio-nav-active{% else %}billio-nav-link{% endif %} sidebar-nav-link flex items-center gap-3 px-4 py-2 rounded-lg mx-2 transition-colors">
+                <i data-lucide="signature" class="w-4 h-4 shrink-0"></i>
+                <span class="sidebar-nav-text text-sm font-medium">Signatures</span>
+            </a>
 
             <div class="border-t my-2" style="border-color: var(--billio-border);"></div>
             <div class="billio-section-label sidebar-section-label px-4 pt-3 pb-1">Facturation</div>
@@ -603,6 +607,11 @@
                 <a href="{% url 'dashboard:documents-list' %}" data-cmd-item data-cmd-label="documents documents" class="cmd-palette-item">
                     <span class="cmd-ico"><i data-lucide="folder-open" class="w-4 h-4"></i></span>
                     <span class="cmd-text"><strong>Documents</strong><small>Tous vos documents envoyés</small></span>
+                    <i data-lucide="corner-down-left" class="cmd-enter w-3.5 h-3.5"></i>
+                </a>
+                <a href="{% url 'signatures:requests' %}" data-cmd-item data-cmd-label="signatures signature électronique faire signer contrat docuseal" class="cmd-palette-item">
+                    <span class="cmd-ico"><i data-lucide="signature" class="w-4 h-4"></i></span>
+                    <span class="cmd-text"><strong>Signatures</strong><small>Faire signer un PDF en ligne</small></span>
                     <i data-lucide="corner-down-left" class="cmd-enter w-3.5 h-3.5"></i>
                 </a>
                 <a href="{% url 'templates_app:template-list' %}" data-cmd-item data-cmd-label="modèles de facture modeles templates" class="cmd-palette-item">

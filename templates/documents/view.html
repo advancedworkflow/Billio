@@ -16,6 +16,12 @@
     <a href="{% url 'dashboard:documents-list' %}" class="pd-btn pd-btn--ghost"><i data-lucide="arrow-left" class="w-4 h-4"></i> Documents</a>
     <div class="dv-bar-spacer"></div>
     <a href="{% url 'documents:document-pdf' document.id %}?download=1" class="pd-btn"><i data-lucide="download" class="w-4 h-4"></i> Télécharger le PDF</a>
+    <form method="post" action="{% url 'signatures:new' %}" style="display:contents">
+        {% csrf_token %}
+        <input type="hidden" name="source" value="document">
+        <input type="hidden" name="document_id" value="{{ document.id }}">
+        <button type="submit" class="pd-btn"><i data-lucide="signature" class="w-4 h-4"></i> Faire signer</button>
+    </form>
     <a href="{% url 'documents:document-editor' document.id %}" class="pd-btn pd-btn--primary"><i data-lucide="pencil" class="w-4 h-4"></i> Modifier</a>
 </div>
 <div class="dv-pages" data-doc-pages translate="no">

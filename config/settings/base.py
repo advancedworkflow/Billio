@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'apps.templates_app',
     'apps.integrations',
     'apps.documents',
+    'apps.signatures',
     'apps.translations',
     'apps.staff',
 ]

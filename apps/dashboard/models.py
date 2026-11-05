@@ -137,6 +137,8 @@ class Notification(models.Model):
         ('milestone_form_submitted', _('Formulaire de jalon soumis')),
         ('support_reply', _('Réponse du support')),
         ('workflow_status', _("Statut d'un workflow")),
+        ('signature_completed', _('Document signé')),
+        ('signature_declined', _('Signature refusée')),
     ]
 
     PRIORITY_CHOICES = [
