@@ -6493,5 +6493,14 @@
   "Votre argent de freelance, enfin sous contrôle.": "Your freelance money, finally under control.",
   "Votre client accepte et signe depuis son navigateur. Le devis devient facture en un clic, avec acompte si besoin.": "Your client accepts and signs from their browser. The quote becomes an invoice in one click, with a deposit if needed.",
   "Votre prochaine facture part dans 2 minutes.": "Your next invoice goes out in 2 minutes.",
-  "À jour": "Up to date"
+  "À jour": "Up to date",
+  "Aperçu pour vos nouvelles réponses : enregistrez-les pour les appliquer.": "Preview for your new answers: save them to apply.",
+  "Activez le paiement en ligne": "Turn on online payments",
+  "Ajoutez ou vérifiez votre compte bancaire pour recevoir vos paiements.": "Add or check your bank account to receive your payments.",
+  "Paiement en ligne bloqué": "Online payments blocked",
+  "Stripe demande des informations complémentaires pour activer les paiements.": "Stripe needs more information to turn on payments.",
+  "Terminez votre profil de paiement": "Finish your payment profile",
+  "Terminez votre profil pour que vos clients paient vos factures par carte.": "Finish your profile so your clients can pay your invoices by card.",
+  "Versements en attente": "Payouts pending",
+  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Your Stripe sign-up is not finished: your clients cannot pay online yet."
 }

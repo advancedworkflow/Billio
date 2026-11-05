@@ -7,7 +7,7 @@
 {% block page_subtitle %}Votre compte, votre entreprise et votre facturation{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.7">
+<link rel="stylesheet" href="{% static 'css/settings.css' %}?v=2.8">
 {% endblock %}
 
 {% block content %}
@@ -113,8 +113,10 @@
 
         <!-- ================= Pays & conformité ================= -->
         {% if org %}
+        {{ compliance_data|json_script:"comp-countries" }}
         <section class="st-card st-comp" x-show="tab === 'conformite'" x-cloak
-                 x-data="{ countries: {{ compliance_data_json|safe }}, country: '{{ compliance_country_value }}', status: '{{ compliance.status }}', taxed: '{% if compliance.tax_registered %}yes{% else %}no{% endif %}', get c() { return this.countries[this.country] || this.countries.OTHER; } }">
+                 x-data="{ countries: JSON.parse(document.getElementById('comp-countries').textContent), country: '{{ compliance_country_value }}', status: '{{ compliance.status }}', taxed: '{% if compliance.tax_registered %}yes{% else %}no{% endif %}', get c() { return this.countries[this.country] || this.countries.OTHER; } }"
+                 x-init="$watch('country', () => $dispatch('comp-change', { country, status, taxed })); $watch('status', () => $dispatch('comp-change', { country, status, taxed })); $watch('taxed', () => $dispatch('comp-change', { country, status, taxed }))">
             <header><h2>Vos règles de facturation</h2><p>Trois réponses, et Billio règle pour vous les taux, les mentions obligatoires et la devise de vos factures.</p></header>
             <form method="post" class="st-form">
                 {% csrf_token %}<input type="hidden" name="form_action" value="save_compliance">
@@ -174,22 +176,33 @@
             </form>
         </section>
 
-        <section class="st-card st-comp-check" x-show="tab === 'conformite'" x-cloak>
+        {{ compliance_heading|json_script:"comp-heading" }}
+        {{ compliance_items|json_script:"comp-items" }}
+        <section class="st-card st-comp-check" x-show="tab === 'conformite'" x-cloak
+                 x-data="{ heading: JSON.parse(document.getElementById('comp-heading').textContent), readiness: '{{ compliance_readiness }}', items: JSON.parse(document.getElementById('comp-items').textContent), changed: false, loading: false,
+                           async refresh(d) { this.loading = true; this.changed = true;
+                             try { const r = await fetch('{% url 'accounts:compliance-preview' %}?' + new URLSearchParams(d), { headers: { 'Accept': 'application/json' } });
+                                   if (r.ok) { const data = await r.json(); this.heading = data.heading; this.readiness = data.readiness; this.items = data.items; }
+                             } finally { this.loading = false; this.$nextTick(() => window.lucide && window.lucide.createIcons()); } } }"
+                 @comp-change.window="refresh($event.detail)">
             <header class="st-comp-head">
-                <div><h2>Votre conformité</h2><p>{% if not compliance_pack.supported %}Ce qu'il faut sur vos factures dans votre pays.{% elif compliance_pack.prep == 'au' %}Ce qu'il faut sur vos factures au {{ compliance_pack.name }}.{% elif compliance_pack.prep == 'aux' %}Ce qu'il faut sur vos factures aux {{ compliance_pack.name }}.{% elif compliance_pack.prep == 'à' %}Ce qu'il faut sur vos factures à {{ compliance_pack.name }}.{% else %}Ce qu'il faut sur vos factures en {{ compliance_pack.name }}.{% endif %}</p></div>
-                {% if compliance_readiness == 'ready' %}<span class="st-comp-pill is-ready">Prêt à facturer</span>
-                {% elif compliance_readiness == 'almost' %}<span class="st-comp-pill is-almost">Presque prêt</span>
-                {% else %}<span class="st-comp-pill is-todo">À compléter</span>{% endif %}
+                <div><h2>Votre conformité</h2><p x-text="heading">{{ compliance_heading }}</p></div>
+                <span class="st-comp-pill is-ready" x-show="readiness === 'ready'">Prêt à facturer</span>
+                <span class="st-comp-pill is-almost" x-show="readiness === 'almost'" x-cloak>Presque prêt</span>
+                <span class="st-comp-pill is-todo" x-show="readiness === 'todo'" x-cloak>À compléter</span>
             </header>
-            {% if not compliance.confirmed %}<p class="st-comp-note">Vérifiez vos trois réponses ci-dessus et enregistrez : elles ont été devinées à partir de votre inscription.</p>{% endif %}
-            <ul class="st-comp-list">
-                {% for item in compliance_items %}
-                <li class="{% if item.ok %}is-ok{% elif item.level == 'required' %}is-todo{% else %}is-tip{% endif %}">
-                    <i data-lucide="{% if item.ok %}check{% elif item.level == 'required' %}alert-circle{% else %}lightbulb{% endif %}" class="w-4 h-4"></i>
-                    <span><strong>{{ item.label }}</strong>{% if item.detail %}<small>{{ item.detail }}</small>{% endif %}</span>
-                    {% if not item.ok %}<button type="button" class="st-link" @click="go('{{ item.tab }}')">Compléter</button>{% endif %}
-                </li>
-                {% endfor %}
+            <p class="st-comp-note" x-show="changed" x-cloak>Aperçu pour vos nouvelles réponses : enregistrez-les pour les appliquer.</p>
+            {% if not compliance.confirmed %}<p class="st-comp-note" x-show="!changed">Vérifiez vos trois réponses ci-dessus et enregistrez : elles ont été devinées à partir de votre inscription.</p>{% endif %}
+            <ul class="st-comp-list" :class="loading && 'is-loading'">
+                <template x-for="item in items" :key="item.label">
+                    <li :class="item.ok ? 'is-ok' : (item.level === 'required' ? 'is-todo' : 'is-tip')">
+                        <span class="st-comp-ico" x-show="item.ok"><i data-lucide="check" class="w-4 h-4"></i></span>
+                        <span class="st-comp-ico" x-show="!item.ok && item.level === 'required'"><i data-lucide="alert-circle" class="w-4 h-4"></i></span>
+                        <span class="st-comp-ico" x-show="!item.ok && item.level !== 'required'"><i data-lucide="lightbulb" class="w-4 h-4"></i></span>
+                        <span><strong x-text="item.label"></strong><small x-show="item.detail" x-text="item.detail"></small></span>
+                        <button type="button" class="st-link" x-show="!item.ok" @click="go(item.tab)">Compléter</button>
+                    </li>
+                </template>
             </ul>
         </section>
 

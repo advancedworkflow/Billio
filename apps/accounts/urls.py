@@ -41,6 +41,7 @@ urlpatterns = [
         template_name='auth/password_reset/complete.html'), name='password-reset-complete'),
     path('profile/', views.profile_view, name='user-profile'),
     path('settings/', views.settings_view, name='user-settings'),
+    path('settings/compliance-preview/', views.compliance_preview, name='compliance-preview'),
     path('onboarding/', onboarding.onboarding_view, name='onboarding'),
     path('settings/token/generate/', views.generate_api_token, name='api-token-generate'),
     path('settings/token/revoke/', views.revoke_api_token, name='api-token-revoke'),

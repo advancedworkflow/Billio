@@ -198,6 +198,33 @@ def summary(organization):
     }
 
 
+def setup_todo(organization):
+    """
+    Tâche « Terminez votre profil de paiement » tant que Stripe n'est pas entièrement configuré
+    (pas de compte, inscription inachevée, encaissement ou versements bloqués). None si tout est prêt,
+    si l'organisation encaisse avec ses propres clés Stripe, ou si Connect n'est pas proposé.
+    """
+    from .stripe_checkout import stripe_instance
+    if not organization or not available() or not supported_country(_country(organization)):
+        return None
+    account = account_for(organization)
+    if account and account.charges_enabled and account.payouts_enabled:
+        return None
+    if not account and stripe_instance(organization):
+        return None
+    if not account:
+        return {'state': 'none', 'title': 'Activez le paiement en ligne',
+                'detail': 'Terminez votre profil pour que vos clients paient vos factures par carte.'}
+    if not account.details_submitted:
+        return {'state': 'incomplete', 'title': 'Terminez votre profil de paiement',
+                'detail': "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne."}
+    if not account.charges_enabled:
+        return {'state': 'restricted', 'title': 'Paiement en ligne bloqué',
+                'detail': 'Stripe demande des informations complémentaires pour activer les paiements.'}
+    return {'state': 'payouts', 'title': 'Versements en attente',
+            'detail': 'Ajoutez ou vérifiez votre compte bancaire pour recevoir vos paiements.'}
+
+
 def fee_label(percent):
     """« 0,5 % » (format français, le middleware de traduction n'y touche pas)."""
     text = f'{Decimal(percent).normalize():f}'.replace('.', ',')

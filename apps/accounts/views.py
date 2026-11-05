@@ -299,7 +299,6 @@ def _compliance_context(organization):
     """Assistant de conformité : profil, liste de contrôle et données des pays (Pays & conformité)."""
     if organization is None:
         return {}
-    import json
     from apps.organizations import jurisdictions as j
     prof = j.profile(organization)
     pack = j.pack_for(prof['country'])
@@ -307,11 +306,12 @@ def _compliance_context(organization):
     return {
         'compliance': prof,
         'compliance_pack': pack,
+        'compliance_heading': compliance_heading(pack),
         'compliance_country_value': prof['country'] if prof['country'] in j.PACKS else 'OTHER',
         'compliance_items': items,
         'compliance_readiness': j.readiness(items),
         'compliance_countries': [(code, j.PACKS[code]['name']) for code in j.SUPPORTED],
-        'compliance_data_json': json.dumps(j.assistant_data(), ensure_ascii=False),
+        'compliance_data': j.assistant_data(),
         'compliance_provinces': sorted(((code, name) for code, (name, _r) in j.CA_PROVINCES.items()), key=lambda p: p[1]),
         'compliance_languages': list(j.DOC_LANGUAGES.items()),
         'compliance_rates': j.tax_rates(pack, prof) if pack['supported'] else [],
@@ -320,6 +320,41 @@ def _compliance_context(organization):
         'online_methods': __import__('apps.payments.local_methods', fromlist=['recommended']).recommended(prof['country']),
         'stripe_settings_url': 'https://dashboard.stripe.com/settings/payment_methods',
     }
+
+
+def compliance_heading(pack):
+    """« Ce qu'il faut sur vos factures en Belgique. » (préposition du pays)."""
+    if not pack['supported']:
+        return "Ce qu'il faut sur vos factures dans votre pays."
+    prep = {'au': 'au', 'aux': 'aux', 'à': 'à'}.get(pack.get('prep'), 'en')
+    return f"Ce qu'il faut sur vos factures {prep} {pack['name']}."
+
+
+@login_required
+def compliance_preview(request):
+    """
+    Aperçu de « Votre conformité » pour les réponses en cours (pays, statut, taxe), sans les
+    enregistrer : la liste se met à jour dès qu'on change le pays dans Paramètres › Pays & conformité.
+    """
+    from django.http import JsonResponse
+    from apps.organizations import jurisdictions as j
+    organizations = list_editable_organizations_for_payment(request.user)
+    if not organizations:
+        return JsonResponse({'error': 'no_organization'}, status=404)
+    organization = organizations[0]
+    prof = dict(j.profile(organization))
+    code = (request.GET.get('country') or '').upper()
+    if code and code != 'OTHER':
+        prof['country'] = code if code in j.PACKS else ''
+    elif code == 'OTHER':
+        prof['country'] = ''
+    if request.GET.get('status') in j.STATUSES:
+        prof['status'] = request.GET['status']
+    if request.GET.get('taxed') in ('yes', 'no'):
+        prof['tax_registered'] = request.GET['taxed'] == 'yes'
+    pack = j.pack_for(prof['country'])
+    items = j.checklist(organization, prof)
+    return JsonResponse({'heading': compliance_heading(pack), 'readiness': j.readiness(items), 'items': items})
 
 
 @login_required

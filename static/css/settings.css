@@ -274,6 +274,11 @@
 .st-comp-list li.is-ok > i { color: #16a34a; }
 .st-comp-list li.is-todo > i { color: #dc2626; }
 .st-comp-list li.is-tip > i { color: #f59e0b; }
+.st-comp-list li > .st-comp-ico { flex: none; display: inline-flex; flex-direction: row; margin-top: 1px; }
+.st-comp-list li.is-ok > .st-comp-ico { color: #16a34a; }
+.st-comp-list li.is-todo > .st-comp-ico { color: #dc2626; }
+.st-comp-list li.is-tip > .st-comp-ico { color: #b0892f; }
+.st-comp-list.is-loading { opacity: .55; transition: opacity .15s; }
 .st-comp-list .st-link { flex: none; margin-top: 0; font-size: 12.5px; font-weight: 600; color: #1d3b31; background: none; border: none; cursor: pointer; }
 
 /* Moyens de paiement en ligne conseillés */

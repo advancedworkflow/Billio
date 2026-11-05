@@ -6493,5 +6493,14 @@
   "Votre argent de freelance, enfin sous contrôle.": "Ihr Freelance-Geld, endlich im Griff.",
   "Votre client accepte et signe depuis son navigateur. Le devis devient facture en un clic, avec acompte si besoin.": "Ihr Kunde akzeptiert und unterschreibt im Browser. Das Angebot wird mit einem Klick zur Rechnung, bei Bedarf mit Anzahlung.",
   "Votre prochaine facture part dans 2 minutes.": "Ihre nächste Rechnung ist in 2 Minuten raus.",
-  "À jour": "Aktuell"
+  "À jour": "Aktuell",
+  "Aperçu pour vos nouvelles réponses : enregistrez-les pour les appliquer.": "Vorschau für Ihre neuen Antworten: Speichern Sie sie, um sie anzuwenden.",
+  "Activez le paiement en ligne": "Online-Zahlung aktivieren",
+  "Ajoutez ou vérifiez votre compte bancaire pour recevoir vos paiements.": "Fügen Sie Ihr Bankkonto hinzu oder prüfen Sie es, um Ihre Zahlungen zu erhalten.",
+  "Paiement en ligne bloqué": "Online-Zahlung gesperrt",
+  "Stripe demande des informations complémentaires pour activer les paiements.": "Stripe benötigt weitere Angaben, um Zahlungen zu aktivieren.",
+  "Terminez votre profil de paiement": "Schließen Sie Ihr Zahlungsprofil ab",
+  "Terminez votre profil pour que vos clients paient vos factures par carte.": "Schließen Sie Ihr Profil ab, damit Ihre Kunden Ihre Rechnungen per Karte bezahlen können.",
+  "Versements en attente": "Auszahlungen ausstehend",
+  "Votre inscription Stripe n'est pas finie : vos clients ne peuvent pas encore payer en ligne.": "Ihre Stripe-Anmeldung ist nicht abgeschlossen: Ihre Kunden können noch nicht online bezahlen."
 }

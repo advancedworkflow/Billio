@@ -481,6 +481,7 @@ def dashboard_home(request):
         "pending_quotes_count": pending_quotes_count,
         "pending_quotes_total_formatted": format_eur(pending_quotes_total),
         "draft_invoices_count": draft_invoices_count,
+        "stripe_todo": _stripe_todo(org_ids),
         "overdue_purchases_count": overdue_purchases_count,
         "overdue_purchases_ht_formatted": format_eur(overdue_purchases_ht_total),
         "recent_transactions_data": recent_transactions_data,
@@ -1171,6 +1172,17 @@ _TIMELINE_ACTION_LABELS = {
     "deliverable": "Voir le livrable",
     "file": "Voir le projet",
 }
+
+
+def _stripe_todo(org_ids):
+    """Rappel « Terminez votre profil de paiement » pour la première organisation possédée."""
+    from apps.organizations.models import Organization
+    from apps.payments.stripe_connect import setup_todo
+    organization = Organization.objects.filter(id__in=org_ids).order_by("id").first()
+    try:
+        return setup_todo(organization)
+    except Exception:  # un souci de configuration ne doit jamais casser l'accueil
+        return None
 
 
 @login_required

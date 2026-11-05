@@ -101,6 +101,14 @@
                 </div>
             </div>
             <ul class="ai-card-list">
+                {% if stripe_todo %}
+                <li class="ai-card-todo">
+                    <span class="ai-card-ico ai-card-ico--danger"><i data-lucide="credit-card" class="w-4 h-4"></i></span>
+                    <span class="ai-card-text"><strong>{{ stripe_todo.title }}</strong><small>{{ stripe_todo.detail }}</small></span>
+                    {% if stripe_todo.state == 'none' %}<a href="{% url 'accounts:user-settings' %}?tab=paiement" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>
+                    {% else %}<a href="{% url 'payments:connect-refresh' %}" class="pd-btn pd-btn--sm pd-btn--primary">Terminer</a>{% endif %}
+                </li>
+                {% endif %}
                 {% if overdue_sales_count %}
                 <li>
                     <span class="ai-card-ico ai-card-ico--danger"><i data-lucide="alarm-clock" class="w-4 h-4"></i></span>
@@ -122,7 +130,7 @@
                     <a href="{% url 'invoices:invoice-list' %}?status=draft" class="pd-btn pd-btn--sm">Ouvrir</a>
                 </li>
                 {% endif %}
-                {% if not overdue_sales_count and not pending_quotes_count and not draft_invoices_count %}
+                {% if not overdue_sales_count and not pending_quotes_count and not draft_invoices_count and not stripe_todo %}
                 <li class="ai-card-calm">
                     <span class="ai-card-ico ai-card-ico--ok"><i data-lucide="check" class="w-4 h-4"></i></span>
                     <span class="ai-card-text"><strong>Tout est à jour</strong><small>Aucune facture en retard ni devis en attente.</small></span>
