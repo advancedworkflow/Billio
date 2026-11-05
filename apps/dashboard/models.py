@@ -270,15 +270,23 @@ class ActivityLog(models.Model):
 
 
 DEFAULT_PROJECT_PHASES = [
-    ('onboarding', 'Onboarding', '#0ea5e9'),
-    ('discovery', 'Découverte', '#3b82f6'),
-    ('planning', 'Planification', '#6366f1'),
-    ('design', 'Design', '#9333ea'),
-    ('development', 'Développement', '#f59e0b'),
-    ('review', 'Revue', '#06b6d4'),
-    ('delivery', 'Livraison', '#db2777'),
-    ('completed', 'Terminé', '#16a34a'),
+    ('onboarding', 'Onboarding', '#7a8f86'),
+    ('discovery', 'Découverte', '#3f7a5f'),
+    ('planning', 'Planification', '#2f4160'),
+    ('design', 'Design', '#8a6d3b'),
+    ('development', 'Développement', '#b0892f'),
+    ('review', 'Revue', '#5f7f8f'),
+    ('delivery', 'Livraison', '#9a5b3f'),
+    ('completed', 'Terminé', '#2f6b3a'),
 ]
+
+# Anciennes couleurs vives par défaut -> teintes accordées à la charte (vert profond / citron vert).
+# Appliqué au chargement : les phases jamais recolorées par l'utilisateur prennent la nouvelle teinte.
+LEGACY_PHASE_COLORS = {
+    '#0ea5e9': '#7a8f86', '#3b82f6': '#3f7a5f', '#6366f1': '#2f4160', '#9333ea': '#8a6d3b', '#a855f7': '#8a6d3b',
+    '#f59e0b': '#b0892f', '#06b6d4': '#5f7f8f', '#db2777': '#9a5b3f', '#ea580c': '#a8643a',
+    '#16a34a': '#2f6b3a', '#22c55e': '#2f6b3a',
+}
 
 
 class ProjectPhase(models.Model):
@@ -305,6 +313,14 @@ class ProjectPhase(models.Model):
 
     def __str__(self):
         return self.label
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        color = (instance.__dict__.get('color') or '').lower()
+        if color in LEGACY_PHASE_COLORS:
+            instance.color = LEGACY_PHASE_COLORS[color]
+        return instance
 
     @classmethod
     def for_organization(cls, organization):
@@ -439,7 +455,7 @@ class Project(models.Model):
     @property
     def status_color(self):
         phase = next((p for p in ProjectPhase.for_organization(self.organization) if p.key == self.status), None)
-        return phase.color if phase else '#9333ea'
+        return phase.color if phase else '#8a6d3b'
 
     @property
     def progress_percent(self):

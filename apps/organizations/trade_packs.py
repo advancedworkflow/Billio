@@ -17,7 +17,7 @@ début du projet), 'description', 'tasks': [{'title', 'start', 'due'}],
 """
 from django.db import transaction
 
-DONE = ('completed', 'Terminé', '#16a34a')
+DONE = ('completed', 'Terminé', '#2f6b3a')
 
 
 def _proc(name, description, phases):
@@ -38,17 +38,17 @@ TRADE_PACKS = {
         'process': 'Production vidéo',
         'processes': [
             _proc('Shooting photo', 'Mariages, portraits, évènements, packshots.', [
-                ('onboarding', 'Brief', '#0ea5e9'), ('shooting', 'Tournage / Prise de vue', '#f59e0b'),
-                ('selection', 'Sélection', '#a855f7'), ('retouch', 'Retouches', '#9333ea'), ('delivery', 'Livraison', '#db2777'), DONE]),
+                ('onboarding', 'Brief', '#7a8f86'), ('shooting', 'Tournage / Prise de vue', '#b0892f'),
+                ('selection', 'Sélection', '#8a6d3b'), ('retouch', 'Retouches', '#8a6d3b'), ('delivery', 'Livraison', '#9a5b3f'), DONE]),
             _proc('Réseaux sociaux (mensuel)', 'Abonnement de contenus : un cycle par mois.', [
-                ('monthly_plan', 'Planning du mois', '#0ea5e9'), ('creation', 'Création', '#9333ea'),
-                ('review', 'Validation client', '#06b6d4'), ('publishing', 'Publication', '#db2777'), ('monthly_report', 'Bilan du mois', '#22c55e'), DONE]),
+                ('monthly_plan', 'Planning du mois', '#7a8f86'), ('creation', 'Création', '#8a6d3b'),
+                ('review', 'Validation client', '#5f7f8f'), ('publishing', 'Publication', '#9a5b3f'), ('monthly_report', 'Bilan du mois', '#2f6b3a'), DONE]),
         ],
         'description': 'Vidéastes, photographes, motion designers, studios de création.',
         'icon': 'clapperboard',
-        'phases': [('onboarding', 'Brief', '#0ea5e9'), ('preproduction', 'Pré-production', '#6366f1'),
-                   ('shooting', 'Tournage / Prise de vue', '#f59e0b'), ('postproduction', 'Post-production', '#9333ea'),
-                   ('review', 'Validation client', '#06b6d4'), ('delivery', 'Livraison', '#db2777'), DONE],
+        'phases': [('onboarding', 'Brief', '#7a8f86'), ('preproduction', 'Pré-production', '#2f4160'),
+                   ('shooting', 'Tournage / Prise de vue', '#b0892f'), ('postproduction', 'Post-production', '#8a6d3b'),
+                   ('review', 'Validation client', '#5f7f8f'), ('delivery', 'Livraison', '#9a5b3f'), DONE],
         'units': ['forfait', 'jour', 'demi-journée', 'heure', 'photo'],
         'mentions': ("Cession des droits d'exploitation limitée aux usages, supports et durée prévus au devis ; "
                      "elle prend effet au paiement intégral de la facture."),
@@ -78,17 +78,17 @@ TRADE_PACKS = {
         'process': 'Chantier',
         'processes': [
             _proc('Dépannage', 'Intervention rapide : appel, diagnostic, réparation, facture.', [
-                ('call', 'Appel / demande', '#3b82f6'), ('diagnosis', 'Diagnostic', '#6366f1'),
-                ('intervention', 'Intervention', '#ea580c'), ('invoicing', 'Facturation', '#06b6d4'), DONE]),
+                ('call', 'Appel / demande', '#3f7a5f'), ('diagnosis', 'Diagnostic', '#2f4160'),
+                ('intervention', 'Intervention', '#a8643a'), ('invoicing', 'Facturation', '#5f7f8f'), DONE]),
             _proc('Entretien annuel', 'Contrats d’entretien : chaudière, climatisation, toiture…', [
-                ('scheduling', 'Prise de rendez-vous', '#3b82f6'), ('visit', 'Visite d’entretien', '#ea580c'),
-                ('service_report', 'Rapport d’intervention', '#06b6d4'), DONE]),
+                ('scheduling', 'Prise de rendez-vous', '#3f7a5f'), ('visit', 'Visite d’entretien', '#a8643a'),
+                ('service_report', 'Rapport d’intervention', '#5f7f8f'), DONE]),
         ],
         'description': 'Plombiers, électriciens, menuisiers, peintres, entreprises générales.',
         'icon': 'hard-hat',
-        'phases': [('discovery', 'Visite & métré', '#3b82f6'), ('planning', 'Devis signé', '#6366f1'),
-                   ('supply', 'Approvisionnement', '#f59e0b'), ('worksite', 'Chantier', '#ea580c'),
-                   ('review', 'Réception des travaux', '#06b6d4'), ('reserves', 'Levée des réserves', '#db2777'), DONE],
+        'phases': [('discovery', 'Visite & métré', '#3f7a5f'), ('planning', 'Devis signé', '#2f4160'),
+                   ('supply', 'Approvisionnement', '#b0892f'), ('worksite', 'Chantier', '#a8643a'),
+                   ('review', 'Réception des travaux', '#5f7f8f'), ('reserves', 'Levée des réserves', '#9a5b3f'), DONE],
         'units': ['m²', 'ml', 'u', 'h', 'forfait', 'jour'],
         'mentions': ("Assurance décennale : [assureur], contrat n° [numéro], couverture géographique : [zone]. "
                      "Travaux de rénovation de logements de plus de deux ans : TVA à 10 % sur attestation du client. "
@@ -118,17 +118,17 @@ TRADE_PACKS = {
         'process': 'Mission de conseil',
         'processes': [
             _proc('Formation', 'Convention, convocations, session, évaluations (Qualiopi).', [
-                ('onboarding', 'Cadrage', '#0ea5e9'), ('convocation', 'Convocations', '#6366f1'),
-                ('delivery', 'Mise en œuvre / Session', '#f59e0b'), ('evaluation', 'Évaluations & attestations', '#06b6d4'), DONE]),
+                ('onboarding', 'Cadrage', '#7a8f86'), ('convocation', 'Convocations', '#2f4160'),
+                ('delivery', 'Mise en œuvre / Session', '#b0892f'), ('evaluation', 'Évaluations & attestations', '#5f7f8f'), DONE]),
             _proc('Audit', 'Cadrage, collecte, analyse, restitution.', [
-                ('onboarding', 'Cadrage', '#0ea5e9'), ('collect', 'Collecte', '#3b82f6'),
-                ('analysis', 'Analyse', '#6366f1'), ('restitution', 'Restitution', '#f59e0b'), DONE]),
+                ('onboarding', 'Cadrage', '#7a8f86'), ('collect', 'Collecte', '#3f7a5f'),
+                ('analysis', 'Analyse', '#2f4160'), ('restitution', 'Restitution', '#b0892f'), DONE]),
         ],
         'description': 'Consultants, coachs, formateurs, organismes de formation.',
         'icon': 'presentation',
-        'phases': [('onboarding', 'Cadrage', '#0ea5e9'), ('discovery', 'Diagnostic', '#3b82f6'),
-                   ('recommendation', 'Recommandations', '#6366f1'), ('delivery', 'Mise en œuvre / Session', '#f59e0b'),
-                   ('review', 'Bilan', '#06b6d4'), DONE],
+        'phases': [('onboarding', 'Cadrage', '#7a8f86'), ('discovery', 'Diagnostic', '#3f7a5f'),
+                   ('recommendation', 'Recommandations', '#2f4160'), ('delivery', 'Mise en œuvre / Session', '#b0892f'),
+                   ('review', 'Bilan', '#5f7f8f'), DONE],
         'units': ['jour', 'demi-journée', 'heure', 'session', 'participant'],
         'mentions': ("Organisme de formation enregistré sous le n° [numéro] auprès du préfet de région [région] "
                      "(cet enregistrement ne vaut pas agrément de l'État). Formation professionnelle continue : "
@@ -156,16 +156,16 @@ TRADE_PACKS = {
         'process': 'Dossier client',
         'processes': [
             _proc('Consultation ponctuelle', 'Un rendez-vous, une note d’honoraires.', [
-                ('onboarding', 'Premier rendez-vous', '#0ea5e9'), ('consultation', 'Consultation', '#f59e0b'),
-                ('closing', 'Clôture', '#06b6d4'), DONE]),
+                ('onboarding', 'Premier rendez-vous', '#7a8f86'), ('consultation', 'Consultation', '#b0892f'),
+                ('closing', 'Clôture', '#5f7f8f'), DONE]),
             _proc('Procédure', 'Contentieux ou procédure longue : audiences et décision.', [
-                ('opening', 'Ouverture du dossier', '#6366f1'), ('procedure', 'Procédure', '#3b82f6'),
-                ('hearing', 'Audience', '#f59e0b'), ('decision', 'Décision', '#06b6d4'), ('closing', 'Clôture', '#06b6d4'), DONE]),
+                ('opening', 'Ouverture du dossier', '#2f4160'), ('procedure', 'Procédure', '#3f7a5f'),
+                ('hearing', 'Audience', '#b0892f'), ('decision', 'Décision', '#5f7f8f'), ('closing', 'Clôture', '#5f7f8f'), DONE]),
         ],
         'description': 'Avocats, experts, architectes, psychologues, thérapeutes, paramédical.',
         'icon': 'briefcase',
-        'phases': [('onboarding', 'Premier rendez-vous', '#0ea5e9'), ('opening', 'Ouverture du dossier', '#6366f1'),
-                   ('followup', 'Suivi', '#f59e0b'), ('closing', 'Clôture', '#06b6d4'), DONE],
+        'phases': [('onboarding', 'Premier rendez-vous', '#7a8f86'), ('opening', 'Ouverture du dossier', '#2f4160'),
+                   ('followup', 'Suivi', '#b0892f'), ('closing', 'Clôture', '#5f7f8f'), DONE],
         'units': ['séance', 'heure', 'forfait', 'acte'],
         'mentions': ("Membre d'une association de gestion agréée : le règlement des honoraires par chèque est accepté. "
                      "Provision sur honoraires à valoir sur la note d'honoraires définitive, le cas échéant."),
@@ -184,16 +184,16 @@ TRADE_PACKS = {
         'process': 'Commande',
         'processes': [
             _proc('Click & collect', 'Préparation et retrait en boutique.', [
-                ('order', 'Commande', '#3b82f6'), ('production', 'Fabrication / Préparation', '#f59e0b'),
-                ('ready', 'Prêt à retirer', '#06b6d4'), ('delivery', 'Livré', '#db2777'), DONE]),
+                ('order', 'Commande', '#3f7a5f'), ('production', 'Fabrication / Préparation', '#b0892f'),
+                ('ready', 'Prêt à retirer', '#5f7f8f'), ('delivery', 'Livré', '#9a5b3f'), DONE]),
             _proc('Retour / SAV', 'Demande, contrôle, échange ou remboursement.', [
-                ('return_request', 'Demande de retour', '#3b82f6'), ('inspection', 'Contrôle', '#f59e0b'),
-                ('refund', 'Échange / remboursement', '#6366f1'), DONE]),
+                ('return_request', 'Demande de retour', '#3f7a5f'), ('inspection', 'Contrôle', '#b0892f'),
+                ('refund', 'Échange / remboursement', '#2f4160'), DONE]),
         ],
         'description': 'Boutiques, e-commerce, artisans d\'art, fabrication sur mesure.',
         'icon': 'store',
-        'phases': [('order', 'Commande', '#3b82f6'), ('production', 'Fabrication / Préparation', '#f59e0b'),
-                   ('shipping', 'Expédition', '#6366f1'), ('delivery', 'Livré', '#db2777'), DONE],
+        'phases': [('order', 'Commande', '#3f7a5f'), ('production', 'Fabrication / Préparation', '#b0892f'),
+                   ('shipping', 'Expédition', '#2f4160'), ('delivery', 'Livré', '#9a5b3f'), DONE],
         'units': ['u', 'lot', 'kg', 'm', 'forfait'],
         'mentions': ("Garantie légale de conformité de 2 ans (art. L217-3 et suivants du Code de la consommation) "
                      "et garantie des vices cachés. Réserve de propriété jusqu'au paiement intégral."),
@@ -212,18 +212,18 @@ TRADE_PACKS = {
         'process': 'Projet web',
         'processes': [
             _proc('Maintenance mensuelle', 'Abonnement : un cycle de maintenance par mois.', [
-                ('monthly_plan', 'Planning du mois', '#0ea5e9'), ('development', 'Développement', '#f59e0b'),
-                ('review', 'Revue', '#06b6d4'), ('monthly_report', 'Rapport mensuel', '#22c55e'), DONE]),
+                ('monthly_plan', 'Planning du mois', '#7a8f86'), ('development', 'Développement', '#b0892f'),
+                ('review', 'Revue', '#5f7f8f'), ('monthly_report', 'Rapport mensuel', '#2f6b3a'), DONE]),
             _proc('Application / SaaS', 'Produit sur mesure avec phase de tests.', [
-                ('onboarding', 'Onboarding', '#0ea5e9'), ('discovery', 'Découverte', '#3b82f6'), ('design', 'Design', '#9333ea'),
-                ('development', 'Développement', '#f59e0b'), ('testing', 'Tests', '#06b6d4'), ('delivery', 'Livraison', '#db2777'), DONE]),
+                ('onboarding', 'Onboarding', '#7a8f86'), ('discovery', 'Découverte', '#3f7a5f'), ('design', 'Design', '#8a6d3b'),
+                ('development', 'Développement', '#b0892f'), ('testing', 'Tests', '#5f7f8f'), ('delivery', 'Livraison', '#9a5b3f'), DONE]),
         ],
         'description': 'Développeurs, designers UX/UI, agences web et marketing.',
         'icon': 'monitor-smartphone',
-        'phases': [('onboarding', 'Onboarding', '#0ea5e9'), ('discovery', 'Découverte', '#3b82f6'),
-                   ('planning', 'Planification', '#6366f1'), ('design', 'Design', '#9333ea'),
-                   ('development', 'Développement', '#f59e0b'), ('review', 'Revue', '#06b6d4'),
-                   ('delivery', 'Livraison', '#db2777'), DONE],
+        'phases': [('onboarding', 'Onboarding', '#7a8f86'), ('discovery', 'Découverte', '#3f7a5f'),
+                   ('planning', 'Planification', '#2f4160'), ('design', 'Design', '#8a6d3b'),
+                   ('development', 'Développement', '#b0892f'), ('review', 'Revue', '#5f7f8f'),
+                   ('delivery', 'Livraison', '#9a5b3f'), DONE],
         'units': ['jour', 'heure', 'forfait', 'mois'],
         'mentions': ("Les codes sources et maquettes restent la propriété du prestataire jusqu'au paiement intégral ; "
                      "la cession de droits est précisée au devis."),
@@ -243,13 +243,13 @@ TRADE_PACKS = {
         'process': 'Projet',
         'processes': [
             _proc('Prestation courte', 'Démarrage, réalisation, livraison.', [
-                ('onboarding', 'Démarrage', '#0ea5e9'), ('production', 'Réalisation', '#f59e0b'), ('delivery', 'Livraison', '#db2777'), DONE]),
+                ('onboarding', 'Démarrage', '#7a8f86'), ('production', 'Réalisation', '#b0892f'), ('delivery', 'Livraison', '#9a5b3f'), DONE]),
         ],
         'description': 'Phases génériques, à adapter ensuite.',
         'icon': 'sparkles',
-        'phases': [('onboarding', 'Démarrage', '#0ea5e9'), ('planning', 'Préparation', '#6366f1'),
-                   ('production', 'Réalisation', '#f59e0b'), ('review', 'Validation', '#06b6d4'),
-                   ('delivery', 'Livraison', '#db2777'), DONE],
+        'phases': [('onboarding', 'Démarrage', '#7a8f86'), ('planning', 'Préparation', '#2f4160'),
+                   ('production', 'Réalisation', '#b0892f'), ('review', 'Validation', '#5f7f8f'),
+                   ('delivery', 'Livraison', '#9a5b3f'), DONE],
         'units': ['forfait', 'heure', 'jour', 'u'],
         'mentions': '',
         'templates': [],

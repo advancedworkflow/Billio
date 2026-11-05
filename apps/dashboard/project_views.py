@@ -301,7 +301,7 @@ def phase_create(request):
         completed.save(update_fields=['order'])
     phase = ProjectPhase.objects.create(
         organization=organization, key=key, label=label,
-        color=request.POST.get('color') or '#6366f1',
+        color=request.POST.get('color') or '#2f4160',
         order=order,
     )
     # La nouvelle étape rejoint le processus affiché (ou le processus par défaut), avant « Terminé ».
@@ -1258,7 +1258,7 @@ def project_gantt(request, project_id):
     today = timezone.localdate()
 
     phase_colors = {p['value']: p['color'] for p in _phases_context(project.organization)}
-    default_color = '#6366f1'
+    default_color = '#2f4160'
 
     milestones = list(project.milestones.all())
     tasks = list(project.tasks.select_related('assignee', 'milestone').all())

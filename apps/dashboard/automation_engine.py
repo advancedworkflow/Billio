@@ -658,7 +658,7 @@ def _execute_action(rule, action_key, params, ctx):
             key = f"{base_key}-{n}"
             n += 1
         ProjectPhase.objects.create(
-            organization=organization, key=key, label=label, color='#6366f1',
+            organization=organization, key=key, label=label, color='#2f4160',
             order=(max((p.order for p in existing), default=-1) + 1),
         )
         from .models import ProjectProcess

@@ -157,7 +157,7 @@ function processPage() {
             if (!label) return;
             // Avant « Terminé » si le processus se termine par cette étape.
             const at = proc.steps.length && proc.steps[proc.steps.length - 1].key === 'completed' ? proc.steps.length - 1 : proc.steps.length;
-            proc.steps.splice(at, 0, { label, color: '#6366f1' });
+            proc.steps.splice(at, 0, { label, color: '#2f4160' });
             proc.newStep = ''; proc.dirty = true; this.icons();
         },
         reuseStep(proc, key) {

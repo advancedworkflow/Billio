@@ -95,7 +95,7 @@ def save_steps(organization, steps, *, rename_shared=True):
         label = str(step.get('label') or '').strip()[:50]
         if not label:
             continue
-        color = step.get('color') if _HEX.match(str(step.get('color') or '')) else '#6366f1'
+        color = step.get('color') if _HEX.match(str(step.get('color') or '')) else '#2f4160'
         key = step.get('key')
         if key in phases and not rename_shared and (phases[key].label, phases[key].color) != (label, color):
             key = None

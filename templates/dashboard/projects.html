@@ -334,7 +334,7 @@ function projectBoardPage() {
             // Avant « Terminé » quand le processus finit par cette étape.
             const last = this.steps[this.steps.length - 1];
             const at = last && last.key === 'completed' ? this.steps.length - 1 : this.steps.length;
-            this.steps.splice(at, 0, { uid: ++this._uid, label, color: '#6366f1' });
+            this.steps.splice(at, 0, { uid: ++this._uid, label, color: '#2f4160' });
             this.newStep = '';
             this.$nextTick(() => window.lucide && lucide.createIcons());
         },
@@ -351,7 +351,7 @@ function projectBoardPage() {
         clients: [],
         addingPhase: false,
         newPhaseLabel: '',
-        newPhaseColor: '#6366f1',
+        newPhaseColor: '#2f4160',
         phases: [],
         contextMenu: { open: false, x: 0, y: 0, projectId: null, currentPhase: null },
         init() {
