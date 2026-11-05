@@ -886,9 +886,9 @@
 .btn-primary,
 .btn-primary-black {
   font-family: var(--font-titles);
-  background: var(--billio-primary);
-  color: #ffffff;
-  border: 1px solid var(--billio-primary);
+  background: var(--billio-cta);
+  color: var(--billio-text);
+  border: 1px solid var(--billio-cta);
   border-radius: 0.375rem;
   min-height: 40px;
   font-weight: 700;
@@ -897,8 +897,9 @@
 
 .btn-primary:hover,
 .btn-primary-black:hover {
-  background: var(--billio-primary-hover);
-  border-color: var(--billio-primary-hover);
+  background: var(--billio-cta-hover);
+  border-color: var(--billio-cta-hover);
+  color: var(--billio-text);
 }
 
 .btn-primary:focus,

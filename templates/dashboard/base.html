@@ -14,8 +14,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&family=Newsreader:wght@500;600&display=optional" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=4.6" rel="stylesheet">
-    <link href="{% static 'css/dashboard-premium.css' %}?v=3.37" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=4.7" rel="stylesheet">
+    <link href="{% static 'css/dashboard-premium.css' %}?v=3.38" rel="stylesheet">
     <link href="{% static 'css/plugins.css' %}?v=1.1" rel="stylesheet">
     <link href="{% static 'css/time-widget.css' %}?v=1.1" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -27,7 +27,7 @@
     {% if user.is_authenticated %}<script src="{% static 'js/time-widget.js' %}?v=1.1" defer></script>{% endif %}
     {% block extra_head %}{% endblock %}
     {# Style commun des boutons, champs et onglets : en dernier, après les styles propres aux pages #}
-    <link href="{% static 'css/ui.css' %}?v=1.6" rel="stylesheet">
+    <link href="{% static 'css/ui.css' %}?v=1.7" rel="stylesheet">
 </head>
 <body
     class="billio-dashboard flex min-h-screen"
@@ -257,7 +257,7 @@
                         </button>
 
                         {% if request.resolver_match.url_name != 'invoice-create' %}
-                        <a href="{% url 'invoices:invoice-create' %}" aria-label="Nouvelle facture" class="btn-secondary-yellow px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-150 inline-flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
+                        <a href="{% url 'invoices:invoice-create' %}" aria-label="Nouvelle facture" class="btn-primary px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-150 inline-flex items-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap">
                             <i data-lucide="plus" class="w-4 h-4 shrink-0"></i>
                             <span class="hidden sm:inline">Nouvelle facture</span>
                         </a>

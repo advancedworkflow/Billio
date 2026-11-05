@@ -36,17 +36,17 @@
   .pd-btn, .st-btn, .pt-btn, .ie-btn, .bl-btn, .ig-btn, .cd-btn, .pr-btn, .te-btn, .tg-btn, .wf-btn, .rs-btn, .docfill-btn
 ):hover { background: #fafafa; border-color: #a1a1aa; color: var(--ui-text); }
 
-/* Principal : violet */
+/* Principal : citron vert */
 .billio-dashboard :is(
   .btn-primary, .btn-primary-black, .btn-modern-primary,
   .pd-btn--primary, .st-btn--primary, .pt-btn--primary, .ie-btn--primary, .bl-btn--primary, .ig-btn--primary,
   .cd-btn--primary, .pr-btn--primary, .te-btn--primary, .tg-btn--primary, .wf-btn--primary, .docfill-btn--primary
-) { background: var(--ui-primary); border-color: var(--ui-primary); color: #fff; }
+) { background: var(--billio-cta, #c8f25a); border-color: var(--billio-cta, #c8f25a); color: var(--billio-text, #10241d); }
 .billio-dashboard :is(
   .btn-primary, .btn-primary-black, .btn-modern-primary,
   .pd-btn--primary, .st-btn--primary, .pt-btn--primary, .ie-btn--primary, .bl-btn--primary, .ig-btn--primary,
   .cd-btn--primary, .pr-btn--primary, .te-btn--primary, .tg-btn--primary, .wf-btn--primary, .docfill-btn--primary
-):hover { background: var(--ui-primary-hover); border-color: var(--ui-primary-hover); color: #fff; }
+):hover { background: var(--billio-cta-hover, #b9e64a); border-color: var(--billio-cta-hover, #b9e64a); color: var(--billio-text, #10241d); }
 
 /* Discret : sans bordure */
 .billio-dashboard :is(.btn-ghost, .pd-btn--ghost, .st-btn--ghost, .pt-btn--ghost, .ie-btn--ghost, .bl-btn--ghost) {
@@ -155,7 +155,7 @@
 /* ---------- Carte Billio AI (tableau de bord) ---------- */
 .ai-card { display: flex; flex-direction: column; gap: 14px; }
 .ai-card-head { display: flex; align-items: center; gap: 12px; }
-.ai-card-badge { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #1d3b31, #9cc48a); color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ai-card-badge { width: 38px; height: 38px; border-radius: 11px; background: var(--billio-cta, #c8f25a); color: var(--billio-text, #10241d); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ai-card-sub { margin: 2px 0 0; font-size: 13px; color: var(--ui-muted); }
 .ai-card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ai-card-list li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--billio-border, #e4e4e7); border-radius: 12px; }
