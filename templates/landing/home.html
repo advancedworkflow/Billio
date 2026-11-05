@@ -10,7 +10,7 @@
     <link rel="preload" href="{% static 'fonts/manrope-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link href="{% static 'css/landing-tw.css' %}?v=1.1" rel="stylesheet">
-    <link href="{% static 'css/landing-home.css' %}?v=1.4" rel="stylesheet">
+    <link href="{% static 'css/landing-home.css' %}?v=1.6" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
 </head>
@@ -40,7 +40,7 @@
             <h1 class="lp-hero-title">Votre argent de freelance, enfin sous contrôle.</h1>
             <p class="lp-hero-lead">Devis, factures, relances, paiements et projets dans un seul espace. Vous facturez, Billio s'occupe du suivi.</p>
             <div class="lp-hero-ctas">
-                <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--lime">Créer ma première facture <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+                <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--lime">Créer ma première facture</a>
                 <a href="#produit" class="lp-btn lp-btn--outline"><i data-lucide="play" class="w-3.5 h-3.5"></i> Voir le produit</a>
             </div>
             <p class="lp-hero-note">Gratuit pour démarrer · Sans carte bancaire · Sans engagement</p>
@@ -58,34 +58,9 @@
 <!-- Aperçu de l'app, à cheval sur le hero -->
 <div class="lp-preview-band">
     <div class="lp-wrap">
-        <div class="lp-app" aria-hidden="true">
-            <aside class="lp-app-side">
-                <p class="lp-app-org">Studio Kanga</p>
-                <span class="is-active">Tableau de bord</span>
-                <span>Factures</span>
-                <span>Devis</span>
-                <span>Clients</span>
-                <span>Projets</span>
-                <span>Paiements</span>
-            </aside>
-            <div class="lp-app-main">
-                <div class="lp-app-top">
-                    <p class="lp-app-hello">Bonjour Awa</p>
-                    <span class="lp-app-new">+ Nouvelle facture</span>
-                </div>
-                <div class="lp-kpis">
-                    <div class="lp-kpi"><small>Encaissé ce mois</small><strong>4 820 €</strong><em class="is-up">+18 % vs octobre</em></div>
-                    <div class="lp-kpi"><small>En attente</small><strong>2 150 €</strong><em>3 factures</em></div>
-                    <div class="lp-kpi"><small>En retard</small><strong>640 €</strong><em class="is-late">Relance auto demain</em></div>
-                </div>
-                <div class="lp-chart">
-                    <div class="lp-chart-head"><small>Encaissements — 12 mois</small><small>Prévision incluse</small></div>
-                    <div class="lp-bars">
-                        <span style="height:38%"></span><span style="height:46%"></span><span style="height:42%"></span><span style="height:58%"></span><span style="height:52%"></span><span style="height:66%"></span><span style="height:62%"></span><span style="height:74%"></span><span style="height:70%"></span><span class="is-forecast" style="height:80%"></span><span class="is-forecast" style="height:86%"></span><span class="is-forecast" style="height:96%"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <figure class="lp-shot" translate="no">
+            <img src="{% static 'img/landing/dashboard.webp' %}" alt="Tableau de bord Billio : chiffre d'affaires, encaissements, revenus et relances" width="2000" height="1250" fetchpriority="high" decoding="async">
+        </figure>
     </div>
 </div>
 
@@ -109,7 +84,7 @@
                 <div class="lp-panel-text">
                     <h3>Des factures qui partent et qui reviennent payées</h3>
                     <p>Numérotation, mentions légales, TVA : tout est conforme. Votre client paie en ligne en un clic.</p>
-                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement →</a>
+                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement</a>
                 </div>
                 <ul class="lp-rows">
                     <li><div><strong>Atelier Moreau</strong><small>F-118 · envoyée le 28 oct.</small></div><b>1 200 €</b><span class="lp-pill lp-pill--paid">Payée</span></li>
@@ -122,7 +97,7 @@
                 <div class="lp-panel-text">
                     <h3>Des devis signés en ligne, transformés en factures</h3>
                     <p>Votre client accepte et signe depuis son navigateur. Le devis devient facture en un clic, avec acompte si besoin.</p>
-                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement →</a>
+                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement</a>
                 </div>
                 <ul class="lp-rows">
                     <li><div><strong>Studio Kanga</strong><small>D-042 · signé le 2 nov.</small></div><b>3 600 €</b><span class="lp-pill lp-pill--paid">Signé</span></li>
@@ -135,7 +110,7 @@
                 <div class="lp-panel-text">
                     <h3>Payé par carte, prélèvement ou virement</h3>
                     <p>Lien de paiement et QR code sur chaque facture. Les virements reçus sont rapprochés de vos factures.</p>
-                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement →</a>
+                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement</a>
                 </div>
                 <ul class="lp-rows">
                     <li><div><strong>Carte bancaire</strong><small>F-118 · Atelier Moreau</small></div><b>1 200 €</b><span class="lp-pill lp-pill--paid">Reçu</span></li>
@@ -148,7 +123,7 @@
                 <div class="lp-panel-text">
                     <h3>Chaque projet suivi, chaque jalon facturé</h3>
                     <p>Jalons, tâches, temps passé et livrables. Un jalon atteint se facture sans rien ressaisir.</p>
-                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement →</a>
+                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement</a>
                 </div>
                 <ul class="lp-rows">
                     <li><div><strong>Site vitrine</strong><small>Studio Kanga · jalon 2 sur 4</small></div><b>2 400 €</b><span class="lp-pill lp-pill--wait">À facturer</span></li>
@@ -161,7 +136,7 @@
                 <div class="lp-panel-text">
                     <h3>Vos clients, et tout leur historique</h3>
                     <p>Factures, devis, paiements et échanges au même endroit. Chaque client retrouve ses documents dans son portail.</p>
-                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement →</a>
+                    <a href="{% url 'accounts:register' %}" class="lp-panel-link">Essayer gratuitement</a>
                 </div>
                 <ul class="lp-rows">
                     <li><div><strong>Atelier Moreau</strong><small>6 factures · client depuis 2024</small></div><b>7 400 €</b><span class="lp-pill lp-pill--paid">À jour</span></li>
@@ -213,7 +188,6 @@
                     <p>Le client signe en ligne, la facture se crée toute seule. Rien à ressaisir.</p>
                     <div class="lp-flow">
                         <span class="lp-chip">Devis D-042 · Signé</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
                         <span class="lp-chip lp-chip--ink">Facture F-118</span>
                     </div>
                 </article>
@@ -252,15 +226,15 @@
             </div>
             <div class="lp-audiences">
                 <article>
-                    <div class="lp-audience-visual lp-audience-visual--forest"><i data-lucide="laptop" class="w-7 h-7"></i></div>
+                    <img class="lp-audience-img" src="{% static 'img/landing/aud-freelances.webp' %}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="lp-audience-body"><h3>Freelances</h3><p>Facturez vos missions, suivez vos paiements, gardez du temps pour vos clients.</p></div>
                 </article>
                 <article>
-                    <div class="lp-audience-visual lp-audience-visual--sand"><i data-lucide="users" class="w-7 h-7"></i></div>
+                    <img class="lp-audience-img" src="{% static 'img/landing/aud-entreprises.webp' %}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="lp-audience-body"><h3>Petites entreprises</h3><p>Devis, factures et paiements partagés avec votre associé et votre comptable.</p></div>
                 </article>
                 <article>
-                    <div class="lp-audience-visual lp-audience-visual--navy"><i data-lucide="palette" class="w-7 h-7"></i></div>
+                    <img class="lp-audience-img" src="{% static 'img/landing/aud-studios.webp' %}" alt="" width="800" height="500" loading="lazy" decoding="async">
                     <div class="lp-audience-body"><h3>Créatifs &amp; studios</h3><p>Acomptes, jalons de projet et livrables : une facturation qui suit vos projets.</p></div>
                 </article>
             </div>

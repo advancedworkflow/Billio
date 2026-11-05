@@ -11,7 +11,7 @@ class LandingAssetsTests(TestCase):
         for cdn in ('cdn.tailwindcss.com', 'unpkg.com/lucide', 'fonts.googleapis.com'):
             self.assertNotIn(cdn, html)
         self.assertNotIn('data-lucide=', html)  # toutes les icônes sont dans lucide_icons.json
-        self.assertIn('class="lucide lucide-arrow-right w-4 h-4"', html)
+        self.assertIn('class="lucide lucide-credit-card w-4 h-4"', html)
         self.assertIn('css/landing-tw.css', html)
 
     def test_legal_page_uses_compiled_tailwind(self):
