@@ -10,7 +10,7 @@
     <link rel="preload" href="{% static 'fonts/manrope-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link href="{% static 'css/landing-tw.css' %}?v=1.1" rel="stylesheet">
-    <link href="{% static 'css/landing-home.css' %}?v=1.6" rel="stylesheet">
+    <link href="{% static 'css/landing-home.css' %}?v=1.7" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
 </head>
@@ -58,8 +58,14 @@
 <!-- Aperçu de l'app, à cheval sur le hero -->
 <div class="lp-preview-band">
     <div class="lp-wrap">
-        <figure class="lp-shot" translate="no">
-            <img src="{% static 'img/landing/dashboard.webp' %}" alt="Tableau de bord Billio : chiffre d'affaires, encaissements, revenus et relances" width="2000" height="1250" fetchpriority="high" decoding="async">
+        <figure class="lp-mac" translate="no">
+            <div class="lp-mac-lid">
+                <div class="lp-mac-screen">
+                    <span class="lp-mac-cam" aria-hidden="true"></span>
+                    <img src="{% static 'img/landing/dashboard.webp' %}?v=2" alt="Tableau de bord Billio sur un MacBook : chiffre d'affaires, encaissements, créances à encaisser et prochaines échéances" width="2016" height="1260" fetchpriority="high" decoding="async">
+                </div>
+            </div>
+            <div class="lp-mac-base" aria-hidden="true"><span class="lp-mac-notch"></span></div>
         </figure>
     </div>
 </div>

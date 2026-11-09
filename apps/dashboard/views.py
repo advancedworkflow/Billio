@@ -465,7 +465,33 @@ def dashboard_home(request):
             sparkline_coords.append(f"{x:.1f},{y:.1f}")
     sparkline_points = " ".join(sparkline_coords)
 
+    # Accueil « qualitatif » : graphique 12 mois, créances par ancienneté, meilleurs clients.
+    from . import home_stats
+    revenue = home_stats.revenue_series(org_ids, start_date, dashboard_currency)
+    last_six = revenue["points"][-6:]
+    receivables = home_stats.receivables(org_ids, now, dashboard_currency)
+    prev_month_key = prev_start_date.strftime("%Y-%m")
+    month_options = [
+        {"value": p["key"], "label": p["full_label"]} for p in reversed(revenue["points"])
+    ]
+    next_month_start = date(requested_year + (requested_month == 12), requested_month % 12 + 1, 1)
+    home = {
+        "revenue": revenue,
+        "spark_ca": home_stats.sparkline([p["amount"] for p in last_six]),
+        "spark_cash": home_stats.sparkline([p["collected"] for p in last_six]),
+        "receivables": receivables,
+        "top_clients": home_stats.top_clients(org_ids, now, dashboard_currency),
+        "quote_conversion": home_stats.quote_conversion(org_ids, now),
+        "month_key": start_date.strftime("%Y-%m"),
+        "prev_month_key": prev_month_key,
+        "next_month_key": next_month_start.strftime("%Y-%m") if next_month_start <= now else "",
+        "month_options": month_options,
+        "is_current_month": (requested_year, requested_month) == (now.year, now.month),
+        "year": requested_year,
+    }
+
     context = {
+        "home": home,
         "greeting_name": greeting_name,
         "month_label": month_label,
         "soldes_formatted": format_eur(solde_total),
