@@ -10,7 +10,7 @@
     <link rel="preload" href="{% static 'fonts/manrope-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link href="{% static 'css/landing-tw.css' %}?v=1.1" rel="stylesheet">
-    <link href="{% static 'css/landing-home.css' %}?v=1.7" rel="stylesheet">
+    <link href="{% static 'css/landing-home.css' %}?v=1.9" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
 </head>
@@ -18,26 +18,11 @@
 
 <!-- Hero (fond vert foncé) -->
 <div class="lp-dark">
-    <header class="lp-header">
-        <div class="lp-wrap lp-header-row">
-            <a href="/" class="lp-logo" aria-label="Billio"><span class="lp-logo-badge" aria-hidden="true">b</span><span>Billio</span></a>
-            <nav class="lp-nav" aria-label="Navigation principale">
-                <a href="#produit">Produit</a>
-                <a href="#pour-qui">Pour qui</a>
-                <a href="#pricing">Tarifs</a>
-                <a href="#faq">Questions</a>
-            </nav>
-            <div class="lp-header-actions">
-                {% include "components/language_switcher.html" %}
-                <a href="{% url 'accounts:login' %}" class="lp-header-login">Connexion</a>
-                <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--cream lp-btn--sm">Essayer gratuitement</a>
-            </div>
-        </div>
-    </header>
+    {% include "landing/_header.html" with on_home=True %}
 
     <section class="lp-wrap lp-hero">
         <div>
-            <h1 class="lp-hero-title">Votre argent de freelance, enfin sous contrôle.</h1>
+            <h1 class="lp-hero-title">Votre argent de <span class="lp-hero-accent">freelance</span>, enfin sous contrôle.</h1>
             <p class="lp-hero-lead">Devis, factures, relances, paiements et projets dans un seul espace. Vous facturez, Billio s'occupe du suivi.</p>
             <div class="lp-hero-ctas">
                 <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--lime">Créer ma première facture</a>
@@ -223,6 +208,49 @@
         </div>
     </section>
 
+    <!-- Workflows : automatisations -->
+    <section id="workflows" class="lp-section">
+        <div class="lp-wrap">
+            <div class="lp-wf">
+                <div class="lp-wf-intro">
+                    <span class="lp-eyebrow">Workflows</span>
+                    <h2 class="lp-h2">Automatisez tout ce qui se répète</h2>
+                    <p class="lp-wf-lead">Choisissez un déclencheur, ajoutez des conditions et des délais, enchaînez les actions. Billio s'en occupe pendant que vous travaillez.</p>
+                    <ol class="lp-wf-steps">
+                        <li><b>1</b><div><strong>Un déclencheur</strong><small>Facture en retard, devis accepté, paiement reçu, rendez-vous réservé…</small></div></li>
+                        <li><b>2</b><div><strong>Des conditions et des délais</strong><small>Au-dessus d'un montant, pour un client précis, après 3 jours…</small></div></li>
+                        <li><b>3</b><div><strong>Des actions en chaîne</strong><small>Email, tâche, projet, formulaire, message Slack ou WhatsApp…</small></div></li>
+                    </ol>
+                    <div class="lp-wf-stats">
+                        <span><strong>22</strong> déclencheurs</span>
+                        <span><strong>14</strong> actions</span>
+                        <span><strong>30+</strong> apps connectées</span>
+                    </div>
+                </div>
+                <div class="lp-wf-board" aria-label="Exemple de workflow : relance d'une facture en retard">
+                    <div class="lp-node lp-node--trigger"><i data-lucide="zap" class="w-4 h-4"></i><div><small>Déclencheur</small><strong>Facture en retard</strong></div></div>
+                    <div class="lp-node lp-node--if"><i data-lucide="split" class="w-4 h-4"></i><div><small>Condition</small><strong>Montant supérieur à 500 €</strong></div><span class="lp-node-tag">Oui</span></div>
+                    <div class="lp-node lp-node--wait"><i data-lucide="clock" class="w-4 h-4"></i><div><small>Attendre</small><strong>3 jours</strong></div></div>
+                    <div class="lp-node"><i data-lucide="mail" class="w-4 h-4"></i><div><small>Action</small><strong>Envoyer la relance par email</strong></div></div>
+                    <div class="lp-node"><i data-lucide="message-circle" class="w-4 h-4"></i><div><small>Action</small><strong>Me prévenir sur Slack</strong></div></div>
+                </div>
+            </div>
+
+            <div class="lp-head lp-head--split lp-recipes-head">
+                <h3 class="lp-h3">Quelques idées pour commencer</h3>
+                <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--dark lp-btn--sm">Créer mon premier workflow</a>
+            </div>
+            <div class="lp-recipes">
+                <article><p class="lp-recipe-when"><i data-lucide="folder-plus" class="w-4 h-4"></i>Devis accepté</p><h4>Lancer le projet tout seul</h4><p>Le projet, ses phases et la réunion de lancement sont créés dès la signature.</p></article>
+                <article><p class="lp-recipe-when"><i data-lucide="hand-coins" class="w-4 h-4"></i>Paiement reçu</p><h4>Remercier et archiver</h4><p>Un email de remerciement part au client et le PDF est copié dans Google Drive.</p></article>
+                <article><p class="lp-recipe-when"><i data-lucide="user-plus" class="w-4 h-4"></i>Nouveau client</p><h4>Accueillir sans y penser</h4><p>Un formulaire d'accueil lui est envoyé pour récupérer ses informations et son brief.</p></article>
+                <article><p class="lp-recipe-when"><i data-lucide="eye" class="w-4 h-4"></i>Devis consulté</p><h4>Rappeler au bon moment</h4><p>Deux jours après l'ouverture du devis, une tâche vous rappelle d'appeler le client.</p></article>
+                <article><p class="lp-recipe-when"><i data-lucide="calendar-check" class="w-4 h-4"></i>Rendez-vous réservé</p><h4>Préparer chaque rendez-vous</h4><p>Une tâche de préparation est créée et vous êtes prévenu sur WhatsApp ou Telegram.</p></article>
+                <article><p class="lp-recipe-when"><i data-lucide="webhook" class="w-4 h-4"></i>Webhook entrant</p><h4>Brancher vos autres outils</h4><p>Votre site ou une autre app lance un workflow, Billio envoie vers Notion, HubSpot, Trello ou Zapier.</p></article>
+            </div>
+        </div>
+    </section>
+
     <!-- Pour qui -->
     <section id="pour-qui" class="lp-section">
         <div class="lp-wrap">
@@ -321,24 +349,8 @@
     </section>
 </main>
 
-<footer class="lp-footer">
-    <div class="lp-wrap lp-footer-row">
-        <div class="lp-footer-brand">
-            <a href="/" class="lp-logo lp-logo--dark"><span class="lp-logo-badge" aria-hidden="true">b</span><span>Billio</span></a>
-            <small>© {% now "Y" %} Billio</small>
-        </div>
-        <nav class="lp-footer-links" aria-label="Liens légaux">
-            <a href="{% url 'landing:legal-notice' %}">Mentions légales</a>
-            <a href="{% url 'landing:privacy' %}">Confidentialité</a>
-            <a href="{% url 'landing:terms' %}">CGU</a>
-            <a href="{% url 'landing:cookies' %}">Cookies</a>
-            <a href="#" data-consent-open>Gérer les cookies</a>
-            <a href="#" data-consent-open>Ne pas vendre ou partager mes informations</a>
-            <a href="{% url 'api-docs' %}">API</a>
-        </nav>
-    </div>
-</footer>
+{% include "landing/_footer.html" %}
 
-<script src="{% static 'js/landing-home.js' %}?v=1.0" defer></script>
+<script src="{% static 'js/landing-home.js' %}?v=1.1" defer></script>
 </body>
 </html>

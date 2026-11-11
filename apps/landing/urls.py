@@ -1,5 +1,5 @@
 from django.urls import path
-from . import consent, views
+from . import consent, contact, views
 
 app_name = 'landing'
 
@@ -10,6 +10,7 @@ urlpatterns = [
     path('confidentialite/', views.legal_page, {'page': 'confidentialite'}, name='privacy'),
     path('cookies/', views.legal_page, {'page': 'cookies'}, name='cookies'),
     path('cookies/consent/', consent.record_consent, name='cookie-consent'),
+    path('contact/', contact.contact_page, name='contact'),
 ]
 
 

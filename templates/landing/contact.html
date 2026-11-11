@@ -1,0 +1,113 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — Billio</title>
+    <meta name="description" content="Une question sur Billio, une démo, un besoin particulier ? Écrivez-nous, nous vous répondons par email.">
+    <meta name="theme-color" content="#10241d">
+    <link rel="preload" href="{% static 'fonts/manrope-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'fonts/inter-latin-var.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link href="{% static 'css/landing-tw.css' %}?v=1.1" rel="stylesheet">
+    <link href="{% static 'css/landing-home.css' %}?v=1.9" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/logo/favicon-32.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/logo/favicon-180.png' %}">
+</head>
+<body class="lp">
+
+<div class="lp-dark">
+    {% include "landing/_header.html" %}
+    <section class="lp-wrap lp-contact-hero">
+        <span class="lp-eyebrow">Contact</span>
+        <h1 class="lp-hero-title">Parlons de votre activité</h1>
+        <p class="lp-hero-lead">Une question sur Billio, une démo, un besoin particulier ? Écrivez-nous, nous vous répondons par email.</p>
+    </section>
+</div>
+
+<main class="lp-wrap lp-contact">
+    <aside class="lp-contact-side">
+        <a class="lp-contact-card" href="{% url 'dashboard:support' %}">
+            <i data-lucide="life-buoy" class="w-4 h-4"></i>
+            <div>
+                <strong>Déjà client ?</strong>
+                <p>Ouvrez une demande depuis votre espace, dans Aide et support : vous suivez la réponse au même endroit.</p>
+            </div>
+        </a>
+        <a class="lp-contact-card" href="{% url 'landing:home' %}#faq">
+            <i data-lucide="circle-help" class="w-4 h-4"></i>
+            <div>
+                <strong>Questions fréquentes</strong>
+                <p>Tarifs, paiements, conformité : les réponses aux questions les plus courantes.</p>
+            </div>
+        </a>
+        {% if contact_email %}
+        <a class="lp-contact-card" href="mailto:{{ contact_email }}">
+            <i data-lucide="mail" class="w-4 h-4"></i>
+            <div>
+                <strong>Par email</strong>
+                <p translate="no">{{ contact_email }}</p>
+            </div>
+        </a>
+        {% endif %}
+    </aside>
+
+    <section id="formulaire" class="lp-contact-form">
+        {% if sent %}
+        <div class="lp-contact-done" role="status">
+            <span class="lp-contact-done-icon"><i data-lucide="check" class="w-5 h-5"></i></span>
+            <h2>Message envoyé</h2>
+            <p>Merci, nous avons bien reçu votre message. Nous vous répondons par email très vite.</p>
+            <a href="{% url 'landing:home' %}" class="lp-btn lp-btn--dark">Retour à l'accueil</a>
+        </div>
+        {% else %}
+        <h2>Écrivez-nous</h2>
+        {% if limited %}
+        <p class="lp-contact-alert" role="alert">Vous avez envoyé plusieurs messages en peu de temps. Réessayez dans une heure.</p>
+        {% endif %}
+        <form method="post" action="{% url 'landing:contact' %}#formulaire" novalidate>
+            {% csrf_token %}
+            <div class="lp-field-row">
+                <label class="lp-field">
+                    <span>Nom</span>
+                    <input type="text" name="name" value="{{ form.name.value|default:'' }}" maxlength="120" autocomplete="name" required{% if form.name.errors %} aria-invalid="true"{% endif %}>
+                    {% for error in form.name.errors %}<small class="lp-field-error">{{ error }}</small>{% endfor %}
+                </label>
+                <label class="lp-field">
+                    <span>Email</span>
+                    <input type="email" name="email" value="{{ form.email.value|default:'' }}" maxlength="254" autocomplete="email" required{% if form.email.errors %} aria-invalid="true"{% endif %}>
+                    {% for error in form.email.errors %}<small class="lp-field-error">{{ error }}</small>{% endfor %}
+                </label>
+            </div>
+            <div class="lp-field-row">
+                <label class="lp-field">
+                    <span>Entreprise <em>(facultatif)</em></span>
+                    <input type="text" name="company" value="{{ form.company.value|default:'' }}" maxlength="120" autocomplete="organization">
+                </label>
+                <label class="lp-field">
+                    <span>Sujet</span>
+                    <select name="subject">
+                        {% for value, label in form.fields.subject.choices %}{% if value %}<option value="{{ value }}"{% if form.subject.value == value %} selected{% endif %}>{{ label }}</option>{% endif %}{% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label class="lp-field">
+                <span>Message</span>
+                <textarea name="message" rows="6" maxlength="5000" required{% if form.message.errors %} aria-invalid="true"{% endif %}>{{ form.message.value|default:'' }}</textarea>
+                {% for error in form.message.errors %}<small class="lp-field-error">{{ error }}</small>{% endfor %}
+            </label>
+            <label class="lp-hp" aria-hidden="true">Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            <div class="lp-contact-submit">
+                <button type="submit" class="lp-btn lp-btn--lime">Envoyer le message</button>
+                <p>Vos informations servent uniquement à vous répondre. <a href="{% url 'landing:privacy' %}">Politique de confidentialité</a></p>
+            </div>
+        </form>
+        {% endif %}
+    </section>
+</main>
+
+{% include "landing/_footer.html" %}
+
+<script src="{% static 'js/landing-home.js' %}?v=1.1" defer></script>
+</body>
+</html>

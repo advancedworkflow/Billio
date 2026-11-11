@@ -1,0 +1,18 @@
+<header class="lp-header">
+    <div class="lp-wrap lp-header-row">
+        <a href="/" class="lp-logo" aria-label="Billio"><span class="lp-logo-badge" aria-hidden="true">b</span><span>Billio</span></a>
+        <nav class="lp-nav" aria-label="Navigation principale">
+            <a href="{% if not on_home %}{% url 'landing:home' %}{% endif %}#produit">Produit</a>
+            <a href="{% if not on_home %}{% url 'landing:home' %}{% endif %}#workflows">Workflows</a>
+            <a href="{% if not on_home %}{% url 'landing:home' %}{% endif %}#pour-qui">Pour qui</a>
+            <a href="{% if not on_home %}{% url 'landing:home' %}{% endif %}#pricing">Tarifs</a>
+            <a href="{% if not on_home %}{% url 'landing:home' %}{% endif %}#faq">Questions</a>
+            <a href="{% url 'landing:contact' %}"{% if active == 'contact' %} aria-current="page"{% endif %}>Contact</a>
+        </nav>
+        <div class="lp-header-actions">
+            {% include "components/language_switcher.html" %}
+            <a href="{% url 'accounts:login' %}" class="lp-header-login">Connexion</a>
+            <a href="{% url 'accounts:register' %}" class="lp-btn lp-btn--cream lp-btn--sm">Essayer gratuitement</a>
+        </div>
+    </div>
+</header>

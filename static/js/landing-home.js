@@ -48,7 +48,7 @@
   });
 
   if (!reduceMotion && 'IntersectionObserver' in window) {
-    var targets = document.querySelectorAll('main .lp-head, main .lp-panel.is-active, .lp-sources, .lp-bento, .lp-audiences, .lp-plans, .lp-faq, .lp-final');
+    var targets = document.querySelectorAll('main .lp-head, main .lp-panel.is-active, .lp-sources, .lp-bento, .lp-wf-board, .lp-recipes, .lp-audiences, .lp-plans, .lp-faq, .lp-final');
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {

@@ -1,0 +1,18 @@
+<footer class="lp-footer">
+    <div class="lp-wrap lp-footer-row">
+        <div class="lp-footer-brand">
+            <a href="/" class="lp-logo lp-logo--dark"><span class="lp-logo-badge" aria-hidden="true">b</span><span>Billio</span></a>
+            <small>© {% now "Y" %} Billio</small>
+        </div>
+        <nav class="lp-footer-links" aria-label="Liens légaux">
+            <a href="{% url 'landing:contact' %}">Contact</a>
+            <a href="{% url 'landing:legal-notice' %}">Mentions légales</a>
+            <a href="{% url 'landing:privacy' %}">Confidentialité</a>
+            <a href="{% url 'landing:terms' %}">CGU</a>
+            <a href="{% url 'landing:cookies' %}">Cookies</a>
+            <a href="#" data-consent-open>Gérer les cookies</a>
+            <a href="#" data-consent-open>Ne pas vendre ou partager mes informations</a>
+            <a href="{% url 'api-docs' %}">API</a>
+        </nav>
+    </div>
+</footer>
